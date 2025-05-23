@@ -63,7 +63,7 @@ function ConfirmStep({
         </div>
         <h2 className="text-3xl font-bold text-white">Confirm & Send</h2>
         <p className="text-gray-400 max-w-md mx-auto">
-          Review your transaction details and sign with your wallet to complete the transfer
+          Review transaction & sign with your wallet
         </p>
       </div>
       
