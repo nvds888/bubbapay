@@ -6,9 +6,18 @@ import algosdk from 'algosdk';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 function ClaimPage({ peraWallet }) {
+  // Read parameters from URL
   const [searchParams] = useSearchParams();
-  const tempPrivateKey = searchParams.get('key');
-  const appId = searchParams.get('app');
+  const appId = searchParams.get('app'); // Keep appId in query params
+
+  // Read private key from URL fragment (#key=...)
+  const getPrivateKeyFromFragment = () => {
+    const fragment = window.location.hash.substring(1); // Remove #
+    const fragmentParams = new URLSearchParams(fragment);
+    return fragmentParams.get('key');
+  };
+
+  const tempPrivateKey = getPrivateKeyFromFragment();
   
   const [accountAddress, setAccountAddress] = useState(null);
   const [escrowDetails, setEscrowDetails] = useState(null);
@@ -81,7 +90,7 @@ function ClaimPage({ peraWallet }) {
     fetchEscrowDetails();
   }, [tempPrivateKey, appId]);
   
-  // Check wallet status when connected
+  // Check wallet status when connected - CORRECTED FLOW
   useEffect(() => {
     const checkWalletStatus = async () => {
       if (!accountAddress || !escrowDetails) return;
@@ -90,16 +99,23 @@ function ClaimPage({ peraWallet }) {
       setIsLoading(true);
       
       try {
-        // Check if user has opted into USDC
+        // STEP 1: If the sender pays for recipient fees, fund the wallet FIRST
+        if (escrowDetails.payRecipientFees) {
+          console.log("Escrow includes fee coverage, funding wallet...");
+          const fundingSuccess = await fundWallet();
+          if (!fundingSuccess) {
+            setError('Failed to receive fee coverage. Please try again.');
+            setIsLoading(false);
+            return;
+          }
+          console.log("Wallet funded successfully with fee coverage");
+        }
+        
+        // STEP 2: Check if user has opted into USDC
         const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}`);
         const hasOptedIn = optInResponse.data.hasOptedIn;
         
-        // If the sender pays for recipient fees, fund the wallet automatically
-        if (escrowDetails.payRecipientFees) {
-          await fundWallet();
-        }
-        
-        // After potential funding, determine next step
+        // STEP 3: Determine next step based on opt-in status
         if (!hasOptedIn) {
           setClaimStatus('need-optin');
         } else {
@@ -119,28 +135,43 @@ function ClaimPage({ peraWallet }) {
     }
   }, [accountAddress, escrowDetails]);
   
-  // Fund wallet with Algo - Updated to include tempPrivateKey for secure lookup
+  // Fund wallet with fee coverage - CORRECTED to use temp account
   const fundWallet = async () => {
-    if (!accountAddress || !tempPrivateKey || !appId) return;
+    if (!accountAddress || !tempPrivateKey || !appId) {
+      console.error("Missing required parameters for funding");
+      return false;
+    }
     
     setIsFunding(true);
     setError(null);
     
     try {
+      console.log("Requesting fee coverage from temp account...");
+      
       const fundResponse = await axios.post(`${API_URL}/fund-wallet`, {
         recipientAddress: accountAddress,
         appId,
-        tempPrivateKey // Pass the private key for secure hash-based lookup
+        tempPrivateKey // This allows secure lookup and temp account reconstruction
       });
       
-      console.log("Funding response:", fundResponse.data);
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log("Fee coverage response:", fundResponse.data);
       
-      setIsFunding(false);
-      return true;
+      if (fundResponse.data.success && fundResponse.data.fundingAmount > 0) {
+        console.log(`Received ${fundResponse.data.fundingAmount} ALGO for transaction fees`);
+        
+        // Wait a moment for the transaction to propagate
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        setIsFunding(false);
+        return true;
+      } else {
+        console.log("No fee coverage needed for this escrow");
+        setIsFunding(false);
+        return true; // Still success, just no funding needed
+      }
     } catch (error) {
-      console.error('Error funding wallet:', error);
-      setError(error.response?.data?.error || 'Failed to fund your wallet. Please try again.');
+      console.error('Error receiving fee coverage:', error);
+      setError(error.response?.data?.error || 'Failed to receive fee coverage. Please try again.');
       setIsFunding(false);
       return false;
     }
@@ -176,7 +207,7 @@ function ClaimPage({ peraWallet }) {
     }
   };
   
-  // Handle USDC claim - Updated to include tempPrivateKey in claim request
+  // Handle USDC claim - SIMPLIFIED (no fee transfer during claim)
   const handleClaim = async () => {
     if (!accountAddress || !tempPrivateKey || !appId) return;
     
@@ -185,22 +216,29 @@ function ClaimPage({ peraWallet }) {
     setClaimStatus('claiming');
     
     try {
-      // Generate pre-signed claim transaction using temporary account
+      console.log("Generating claim transaction...");
+      
+      // Generate claim transaction (NO fee transfer since it's already done)
       const response = await axios.post(`${API_URL}/generate-claim`, {
         tempPrivateKey,
         appId,
         recipientAddress: accountAddress
       });
       
-      // Submit the pre-signed transaction - Updated to include tempPrivateKey for secure lookup
-      const claimResponse = await axios.post(`${API_URL}/claim-usdc`, {
+      console.log("Submitting claim transaction...");
+      
+      // Submit the claim transaction - should always be single transaction now
+      const submitData = {
         signedTxn: response.data.signedTransaction,
         appId,
         recipientAddress: accountAddress,
-        tempPrivateKey // Pass the private key for secure hash-based lookup
-      });
+        tempPrivateKey
+      };
+      
+      const claimResponse = await axios.post(`${API_URL}/claim-usdc`, submitData);
       
       if (claimResponse.data.success) {
+        console.log("USDC claimed successfully!");
         setClaimStatus('success');
       } else {
         setError(claimResponse.data.error || 'Failed to claim USDC');
@@ -298,6 +336,11 @@ function ClaimPage({ peraWallet }) {
               <p className="text-gray-300 text-lg">
                 Connect your Algorand wallet to claim the funds
               </p>
+              {escrowDetails.payRecipientFees && (
+                <div className="mt-3 text-xs text-gray-400">
+                  Transaction fees covered by sender
+                </div>
+              )}
               <div className="mt-4 text-sm text-gray-400">
                 App ID: {appId}
               </div>
@@ -329,14 +372,14 @@ function ClaimPage({ peraWallet }) {
             {claimStatus === 'claiming' 
               ? 'Claiming Your USDC...' 
               : (isFunding 
-                  ? 'Funding Your Wallet...' 
+                  ? 'Receiving Fee Coverage...' 
                   : 'Preparing Your Wallet...')}
           </h3>
           <p className="text-gray-400">
             {claimStatus === 'claiming' 
               ? 'Please wait while we process your claim' 
               : (isFunding 
-                  ? 'Adding ALGO for transaction fees' 
+                  ? 'Transferring ALGO for transaction fees from escrow' 
                   : 'Setting up your wallet for USDC')}
           </p>
           
@@ -413,6 +456,12 @@ function ClaimPage({ peraWallet }) {
             Claim your <span className="text-green-400 font-bold">{formatAmount(escrowDetails.amount)} USDC</span> now
           </p>
           
+          {escrowDetails?.payRecipientFees && (
+            <div className="mb-4 text-xs text-gray-400">
+              Fees covered by sender
+            </div>
+          )}
+          
           <button
             onClick={handleClaim}
             disabled={isLoading}
@@ -459,6 +508,11 @@ function ClaimPage({ peraWallet }) {
             <p className="text-gray-300 text-lg mb-2">
               <span className="text-green-400 font-bold">{formatAmount(escrowDetails.amount)} USDC</span> has been transferred to your wallet
             </p>
+            {escrowDetails?.payRecipientFees && (
+              <p className="text-gray-400 text-xs mb-2">
+                Fees covered by sender
+              </p>
+            )}
             <p className="text-gray-400 text-sm">
               Wallet: <span className="font-mono">{formatAddress(accountAddress)}</span>
             </p>

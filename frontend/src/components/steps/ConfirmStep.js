@@ -9,9 +9,14 @@ function ConfirmStep({
   txnData,
   generateTransaction,
   handleSignFirstTransaction,
-  handleSignGroupTransactions
+  handleSignGroupTransactions,
+  mcpSessionData = null,
+  peraWallet = null,
+  onWalletConnect = null
 }) {
   const [stage, setStage] = React.useState('initial'); // initial, app-created, funded
+  const [connectingWallet, setConnectingWallet] = React.useState(false);
+  const [walletError, setWalletError] = React.useState(null);
   
   // Update stage based on transaction data
   useEffect(() => {
@@ -21,6 +26,33 @@ function ConfirmStep({
       }
     }
   }, [txnData]);
+  
+  // Handle wallet connection for MCP users
+  const handleConnectWallet = async () => {
+    if (!peraWallet) {
+      setWalletError('Wallet connection not available');
+      return;
+    }
+    
+    setConnectingWallet(true);
+    setWalletError(null);
+    
+    try {
+      const accounts = await peraWallet.connect();
+      if (accounts && accounts.length > 0) {
+        // Call the parent's wallet connect handler if provided
+        if (onWalletConnect) {
+          onWalletConnect(accounts[0]);
+        }
+        console.log('Wallet connected for MCP user:', accounts[0]);
+      }
+    } catch (error) {
+      console.error('Error connecting wallet:', error);
+      setWalletError('Failed to connect wallet. Please try again.');
+    } finally {
+      setConnectingWallet(false);
+    }
+  };
   
   // Format USDC amount with 2 decimal places
   const formatAmount = (amount) => {
@@ -51,6 +83,9 @@ function ConfirmStep({
       completed: false
     }
   ];
+
+  // Check if wallet is connected
+  const isWalletConnected = !!accountAddress;
   
   return (
     <div className="space-y-8">
@@ -63,7 +98,7 @@ function ConfirmStep({
         </div>
         <h2 className="text-3xl font-bold text-white">Confirm & Send</h2>
         <p className="text-gray-400 max-w-md mx-auto">
-          Review transaction & sign with your wallet
+          {!isWalletConnected ? 'Connect your wallet to continue' : 'Review transaction & sign with your wallet'}
         </p>
       </div>
       
@@ -79,7 +114,9 @@ function ConfirmStep({
           
           <div className="flex justify-between items-center">
             <span className="text-gray-400">From:</span>
-            <span className="text-purple-300 font-mono text-sm">{formatAddress(accountAddress)}</span>
+            <span className="text-purple-300 font-mono text-sm">
+              {isWalletConnected ? formatAddress(accountAddress) : 'Connect wallet first'}
+            </span>
           </div>
           
           <div className="flex justify-between items-center">
@@ -104,71 +141,123 @@ function ConfirmStep({
         </div>
       </div>
       
-      {/* Transaction steps */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-white">Transaction Steps</h3>
-        <p className="text-gray-400 text-sm">
-          You'll need to sign two transactions with your Pera Wallet to complete this transfer:
-        </p>
-        
-        <div className="space-y-3">
-          {steps.map((step) => (
-            <div
-              key={step.number}
-              className={`glass-dark border rounded-xl p-4 transition-all duration-300 ${
-                step.active
-                  ? 'border-purple-500/50 bg-purple-500/5'
-                  : step.completed
-                  ? 'border-green-500/30 bg-green-500/5'
-                  : 'border-gray-700'
-              }`}
+      {/* Wallet Connection Section for MCP users */}
+      {!isWalletConnected && mcpSessionData && (
+        <div className="glass-dark border border-blue-500/20 rounded-2xl p-6 space-y-4">
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-white">Connect Your Wallet</h3>
+            <p className="text-gray-400">
+              Connect your Pera Wallet to sign this transaction
+            </p>
+            
+            {walletError && (
+              <div className="glass border border-red-500/20 bg-red-500/10 rounded-xl p-3">
+                <div className="flex items-center space-x-2">
+                  <svg className="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-red-300 text-sm">{walletError}</span>
+                </div>
+              </div>
+            )}
+            
+            <button
+              onClick={handleConnectWallet}
+              disabled={connectingWallet}
+              className="btn-primary w-full py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70"
             >
-              <div className="flex items-center space-x-4">
-                <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center font-semibold text-sm transition-all duration-300 ${
-                    step.active
-                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                      : step.completed
-                      ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                      : 'bg-gray-700 text-gray-400'
-                  }`}
-                >
-                  {step.completed ? (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              <span className="relative z-10 flex items-center justify-center space-x-2">
+                {connectingWallet ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
-                  ) : (
-                    step.number
+                    <span>Connect Pera Wallet</span>
+                  </>
+                )}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Transaction steps - only show if wallet is connected */}
+      {isWalletConnected && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-white">Transaction Steps</h3>
+          <p className="text-gray-400 text-sm">
+            You'll need to sign two transactions with your Pera Wallet to complete this transfer:
+          </p>
+          
+          <div className="space-y-3">
+            {steps.map((step) => (
+              <div
+                key={step.number}
+                className={`glass-dark border rounded-xl p-4 transition-all duration-300 ${
+                  step.active
+                    ? 'border-purple-500/50 bg-purple-500/5'
+                    : step.completed
+                    ? 'border-green-500/30 bg-green-500/5'
+                    : 'border-gray-700'
+                }`}
+              >
+                <div className="flex items-center space-x-4">
+                  <div
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center font-semibold text-sm transition-all duration-300 ${
+                      step.active
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                        : step.completed
+                        ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                        : 'bg-gray-700 text-gray-400'
+                    }`}
+                  >
+                    {step.completed ? (
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      step.number
+                    )}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <div className={`font-medium ${step.active ? 'text-white' : step.completed ? 'text-green-300' : 'text-gray-400'}`}>
+                      {step.title}
+                    </div>
+                    <div className={`text-sm ${step.active ? 'text-gray-300' : 'text-gray-500'}`}>
+                      {step.description}
+                    </div>
+                  </div>
+                  
+                  {step.active && (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                      <span className="text-purple-300 text-sm">Active</span>
+                    </div>
+                  )}
+                  
+                  {step.completed && (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span className="text-green-300 text-sm">Completed</span>
+                    </div>
                   )}
                 </div>
-                
-                <div className="flex-1">
-                  <div className={`font-medium ${step.active ? 'text-white' : step.completed ? 'text-green-300' : 'text-gray-400'}`}>
-                    {step.title}
-                  </div>
-                  <div className={`text-sm ${step.active ? 'text-gray-300' : 'text-gray-500'}`}>
-                    {step.description}
-                  </div>
-                </div>
-                
-                {step.active && (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                    <span className="text-purple-300 text-sm">Active</span>
-                  </div>
-                )}
-                
-                {step.completed && (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                    <span className="text-green-300 text-sm">Completed</span>
-                  </div>
-                )}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       
       {/* Error display */}
       {error && (
@@ -185,72 +274,81 @@ function ConfirmStep({
         </div>
       )}
       
-      {/* Action buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 pt-4">
-        <button
-          type="button"
-          onClick={prevStep}
-          disabled={isLoading}
-          className="btn-secondary flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50"
-        >
-          <span className="flex items-center justify-center space-x-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span>Back</span>
-          </span>
-        </button>
-        
-        {stage === 'initial' && (
-          <button
-            type="button"
-            onClick={handleSignFirstTransaction}
-            disabled={isLoading}
-            className="btn-primary flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70"
-          >
-            <span className="relative z-10 flex items-center justify-center space-x-2">
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  <span>Sign First Transaction</span>
-                </>
-              )}
-            </span>
-          </button>
-        )}
-        
-        {stage === 'app-created' && (
-          <button
-            type="button"
-            onClick={handleSignGroupTransactions}
-            disabled={isLoading}
-            className="btn-primary flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70"
-          >
-            <span className="relative z-10 flex items-center justify-center space-x-2">
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  <span>Sign Final Transaction</span>
-                </>
-              )}
-            </span>
-          </button>
-        )}
-      </div>
+      {/* Action buttons - only show if wallet is connected */}
+      {isWalletConnected && (
+        <div className="flex flex-col sm:flex-row gap-4 pt-4">
+          {/* Hide back button for MCP users */}
+          {!mcpSessionData && (
+            <button
+              type="button"
+              onClick={prevStep}
+              disabled={isLoading}
+              className="btn-secondary flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50"
+            >
+              <span className="flex items-center justify-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Back</span>
+              </span>
+            </button>
+          )}
+          
+          {stage === 'initial' && (
+            <button
+              type="button"
+              onClick={handleSignFirstTransaction}
+              disabled={isLoading}
+              className={`btn-primary py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70 ${
+                mcpSessionData ? 'w-full' : 'flex-1'
+              }`}
+            >
+              <span className="relative z-10 flex items-center justify-center space-x-2">
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span>Sign First Transaction</span>
+                  </>
+                )}
+              </span>
+            </button>
+          )}
+          
+          {stage === 'app-created' && (
+            <button
+              type="button"
+              onClick={handleSignGroupTransactions}
+              disabled={isLoading}
+              className={`btn-primary py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70 ${
+                mcpSessionData ? 'w-full' : 'flex-1'
+              }`}
+            >
+              <span className="relative z-10 flex items-center justify-center space-x-2">
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span>Sign Final Transaction</span>
+                  </>
+                )}
+              </span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

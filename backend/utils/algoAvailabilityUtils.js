@@ -2,43 +2,57 @@ const algosdk = require('algosdk');
 
 /**
  * Calculate comprehensive ALGO availability for escrow transactions
- * Based on real transaction data from the blockchain
+ * Based on real transaction data from the blockchain with platform fee
  * @param {Object} accountInfo - Account information from algodClient.accountInformation()
  * @param {boolean} payRecipientFees - Whether the sender is paying recipient fees
  * @returns {Object} Availability analysis with detailed breakdown
  */
 function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
-  // REAL transaction costs based on actual blockchain data
+  // REAL transaction costs based on actual blockchain data (updated with platform fee)
   const TRANSACTION_COSTS = {
     // Phase 1: App Creation Transaction
     APP_CREATION_FEE: 1000,             // 0.001 ALGO - confirmed from blockchain
     
-    // Phase 2: Group Transaction Fees (based on your actual txns)
-    GROUP_TXN_1_FEE: 1000,              // 0.001 ALGO - Application Call
-    GROUP_TXN_2_FEE: 2000,              // 0.002 ALGO - Application Call (with inner txn)
-    GROUP_TXN_3_FEE: 1000,              // 0.001 ALGO - Application Call
-    GROUP_TXN_4_FEE: 2000,              // 0.002 ALGO - Application Call (with inner txn)
+    // Phase 2: Group Transaction Fees (now includes platform fee transaction)
+    GROUP_TXN_1_FEE: 1000,              // 0.001 ALGO - Application Call (funding)
+    GROUP_TXN_2_FEE: 1000,              // 0.001 ALGO - Payment (platform fee)
+    GROUP_TXN_3_FEE: 1000,              // 0.001 ALGO - Payment (temp funding)
+    GROUP_TXN_4_FEE: 2000,              // 0.002 ALGO - Application Call (opt-in with inner txn)
+    GROUP_TXN_5_FEE: 1000,              // 0.001 ALGO - Application Call (set amount)
+    GROUP_TXN_6_FEE: 1000,              // 0.001 ALGO - Asset Transfer (send USDC)
+    
+    // Optional recipient funding fee (if enabled)
+    RECIPIENT_FUNDING_FEE: 1000,        // 0.001 ALGO - Payment (recipient fee funding)
     
     // ALGO Transfers (actual ALGO sent, not fees)
     TEMP_ACCOUNT_FUNDING: 102000,       // 0.102 ALGO - fund temp account
-    CONTRACT_FUNDING: 300000,           // 0.3 ALGO - fund smart contract
+    CONTRACT_FUNDING: 200000,           // 0.2 ALGO - fund smart contract (reduced from 0.3)
+    PLATFORM_FEE: 100000,               // 0.1 ALGO - platform fee (new)
     RECIPIENT_FEE_FUNDING: 400000,      // 0.4 ALGO - recipient fee coverage (if enabled)
   };
   
-  // Calculate total fees
-  const totalFees = TRANSACTION_COSTS.APP_CREATION_FEE + 
+  // Calculate total fees (including optional recipient funding fee)
+  const baseFees = TRANSACTION_COSTS.APP_CREATION_FEE + 
                    TRANSACTION_COSTS.GROUP_TXN_1_FEE + 
                    TRANSACTION_COSTS.GROUP_TXN_2_FEE + 
                    TRANSACTION_COSTS.GROUP_TXN_3_FEE + 
-                   TRANSACTION_COSTS.GROUP_TXN_4_FEE;
+                   TRANSACTION_COSTS.GROUP_TXN_4_FEE + 
+                   TRANSACTION_COSTS.GROUP_TXN_5_FEE + 
+                   TRANSACTION_COSTS.GROUP_TXN_6_FEE;
   
-  // Calculate total ALGO sent out
-  const algoSentOut = TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING + 
-                     TRANSACTION_COSTS.CONTRACT_FUNDING + 
-                     (payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0);
+  const recipientFundingFee = payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FUNDING_FEE : 0;
+  const totalFees = baseFees + recipientFundingFee;
+  
+  // Calculate total ALGO sent out (including new platform fee)
+  const baseAlgoSentOut = TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING + 
+                         TRANSACTION_COSTS.CONTRACT_FUNDING + 
+                         TRANSACTION_COSTS.PLATFORM_FEE;
+  
+  const recipientFunding = payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0;
+  const totalAlgoSentOut = baseAlgoSentOut + recipientFunding;
   
   // Total ALGO needed = fees + ALGO sent out
-  const totalRequired = totalFees + algoSentOut;
+  const totalRequired = totalFees + totalAlgoSentOut;
   
   // Add 10% safety margin as requested
   const totalRequiredWithBuffer = Math.ceil(totalRequired * 1.10);
@@ -76,8 +90,9 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
       // ALGO transfers
       tempAccountFunding: microAlgoToAlgo(TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING),
       contractFunding: microAlgoToAlgo(TRANSACTION_COSTS.CONTRACT_FUNDING),
+      platformFee: microAlgoToAlgo(TRANSACTION_COSTS.PLATFORM_FEE),
       recipientFunding: microAlgoToAlgo(payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0),
-      totalAlgoSent: microAlgoToAlgo(algoSentOut),
+      totalAlgoSent: microAlgoToAlgo(totalAlgoSentOut),
       
       // Summary
       totalRequired: microAlgoToAlgo(totalRequired),
@@ -96,13 +111,17 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
         groupTxn2: TRANSACTION_COSTS.GROUP_TXN_2_FEE,
         groupTxn3: TRANSACTION_COSTS.GROUP_TXN_3_FEE,
         groupTxn4: TRANSACTION_COSTS.GROUP_TXN_4_FEE,
+        groupTxn5: TRANSACTION_COSTS.GROUP_TXN_5_FEE,
+        groupTxn6: TRANSACTION_COSTS.GROUP_TXN_6_FEE,
+        recipientFundingFee: recipientFundingFee,
         totalFees
       },
       algoTransfers: {
         tempAccount: TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING,
         contract: TRANSACTION_COSTS.CONTRACT_FUNDING,
+        platformFee: TRANSACTION_COSTS.PLATFORM_FEE,
         recipientFees: payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0,
-        totalSent: algoSentOut
+        totalSent: totalAlgoSentOut
       }
     }
   };
@@ -133,7 +152,7 @@ function isValidAlgorandAddress(address) {
 
 /**
  * Check if user has sufficient ALGO for escrow transactions
- * Simplified and accurate based on real transaction costs
+ * Simplified and accurate based on real transaction costs with platform fee
  * @param {Object} algodClient - Algorand client instance
  * @param {string} address - User's Algorand address
  * @param {boolean} payRecipientFees - Whether the sender is paying recipient fees
@@ -153,8 +172,9 @@ async function checkAlgoAvailabilityForEscrow(algodClient, address, payRecipient
     const availability = calculateAlgoAvailability(accountInfo, payRecipientFees);
     
     // Summary for easy reference:
-    // Without recipient fees: ~0.408 ALGO (0.006 fees + 0.402 transfers + 10% buffer)
-    // With recipient fees: ~0.808 ALGO (0.006 fees + 0.802 transfers + 10% buffer)
+    // Without recipient fees: ~0.449 ALGO (0.007 fees + 0.402 transfers + 10% buffer)
+    // With recipient fees: ~0.849 ALGO (0.008 fees + 0.802 transfers + 10% buffer)
+    // Note: Now includes 0.1 ALGO platform fee in the transfers
     
     console.log(`ALGO availability check for ${address}:`, {
       payRecipientFees,
@@ -177,22 +197,28 @@ async function checkAlgoAvailabilityForEscrow(algodClient, address, payRecipient
  * @returns {Object} Summary of requirements
  */
 function getAlgoRequirementSummary(payRecipientFees = false) {
-  const fees = 6000; // 0.006 ALGO total fees
-  const baseTransfers = 402000; // 0.402 ALGO (temp + contract funding)
-  const recipientFees = payRecipientFees ? 400000 : 0; // 0.4 ALGO if enabled
+  const baseFees = 7000; // 0.007 ALGO total fees (6 base transactions + app creation)
+  const recipientFundingFee = payRecipientFees ? 1000 : 0; // 0.001 ALGO if enabled
+  const totalFees = baseFees + recipientFundingFee;
   
-  const total = fees + baseTransfers + recipientFees;
+  const baseTransfers = 402000; // 0.402 ALGO (temp: 0.102 + contract: 0.2 + platform: 0.1)
+  const recipientFees = payRecipientFees ? 400000 : 0; // 0.4 ALGO if enabled
+  const totalTransfers = baseTransfers + recipientFees;
+  
+  const total = totalFees + totalTransfers;
   const withBuffer = Math.ceil(total * 1.10);
   
   return {
-    fees: microAlgoToAlgo(fees),
+    fees: microAlgoToAlgo(totalFees),
     baseTransfers: microAlgoToAlgo(baseTransfers),
+    platformFee: microAlgoToAlgo(100000), // 0.1 ALGO platform fee
+    contractFunding: microAlgoToAlgo(200000), // 0.2 ALGO contract funding
     recipientFees: microAlgoToAlgo(recipientFees),
     subtotal: microAlgoToAlgo(total),
     withBuffer: microAlgoToAlgo(withBuffer),
     description: payRecipientFees 
-      ? "~0.808 ALGO (includes recipient fee coverage)"
-      : "~0.408 ALGO (no recipient fee coverage)"
+      ? "~0.849 ALGO (includes recipient fee coverage + platform fee)"
+      : "~0.449 ALGO (includes platform fee, no recipient fee coverage)"
   };
 }
 

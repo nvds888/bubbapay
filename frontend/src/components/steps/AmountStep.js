@@ -220,16 +220,33 @@ function AmountStep({
               </div>
             )}
             
-            {/* ALGO Sufficient - Clean display */}
+            {/* ALGO Sufficient - Enhanced display with platform fee info */}
             {algoAvailability && algoAvailability.hasSufficientAlgo && algoAvailability.canCompleteGroupTxns && (
-              <div className="flex items-center space-x-2 text-green-400 text-sm">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>
-                  Transaction cost: {algoAvailability.requiredForTransaction} ALGO 
-                  (Available: {algoAvailability.availableBalance} ALGO)
-                </span>
+              <div className="glass border border-green-500/20 bg-green-500/10 rounded-xl p-3">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <div className="text-sm">
+                    <div className="text-green-300 font-medium">Transaction Ready</div>
+                    <div className="text-green-200 mt-1">
+                      <div>
+                        Total cost: <span className="font-mono">{algoAvailability.requiredForTransaction} ALGO</span>
+                      </div>
+                      <div>
+                        Available: <span className="font-mono">{algoAvailability.availableBalance} ALGO</span>
+                      </div>
+                      {algoAvailability.breakdown && (
+                        <div className="mt-2 text-xs text-green-300">
+                          Includes: Smart contract ({algoAvailability.breakdown.contractFunding} ALGO) + 
+                          Platform fee ({algoAvailability.breakdown.platformFee} ALGO) + 
+                          Transaction fees ({algoAvailability.breakdown.totalFees} ALGO)
+                          {formData.payRecipientFees && ` + Recipient fees (${algoAvailability.breakdown.recipientFunding} ALGO)`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
             
@@ -273,7 +290,7 @@ function AmountStep({
           </div>
         </div>
         
-        {/* Fee coverage option */}
+        {/* Fee coverage option - Updated description */}
         <div className="glass-dark p-4 rounded-xl border border-purple-500/20">
           <label className="flex items-start space-x-3 cursor-pointer">
             <div className="relative">
@@ -295,7 +312,7 @@ function AmountStep({
             <div className="flex-1">
               <span className="text-white font-medium">Cover recipient's fees (onboarding wizard)</span>
               <p className="text-gray-400 text-sm mt-1">
-                Pay 0.4 ALGO to cover the recipient's wallet funding and transaction costs
+                Pay ~0.4 ALGO to cover the recipient's wallet funding and transaction costs
               </p>
             </div>
           </label>

@@ -17,11 +17,66 @@ function DocumentationPage() {
             <section>
               <h2 className="text-2xl font-bold text-white mb-4">Overview</h2>
               <p>
-                This application solves a fundamental problem in cryptocurrency: how to send digital assets to someone who may not have a wallet or understand blockchain technology. Built on Algorand, our system creates secure escrow smart contracts that hold USDC until recipients can claim them, either through email notifications or shareable links.
+                This application aims to solve a fundamental problem in cryptocurrency: how to send digital assets to someone who may not have a wallet or understand blockchain technology. Built on Algorand, our system creates secure escrow smart contracts that hold USDC until recipients can claim them, either through email notifications or shareable links.
               </p>
               <p>
                 The security model uses temporary accounts and hash-based database protection to ensure only legitimate recipients can access funds while preventing unauthorized claims even if backend systems are compromised.
               </p>
+              
+              {/* Security Disclaimer */}
+              <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-6 my-6">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <h4 className="text-red-300 font-bold text-lg mb-2">⚠️ CRITICAL SECURITY NOTICE</h4>
+                    <p className="text-red-200 mb-3">
+                      <strong>Nomizo Pay is experimental software provided "as is" without warranty.</strong> We take no responsibility for lost, stolen, or inaccessible funds. Users assume all risks when using this service.
+                    </p>
+                    <p className="text-red-200 text-sm">
+                      Always verify claim links are secure, never share private keys, and only send amounts you can afford to lose. Smart contracts are immutable - transactions cannot be reversed.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-white mb-4">Use Cases & Applications</h2>
+              <p>
+                Nomizo Pay enables seamless USDC transfers for various scenarios where traditional crypto onboarding creates friction:
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+                <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-4">
+                  <h4 className="text-purple-300 font-semibold mb-2">🚀 Algorand Onboarding</h4>
+                  <p className="text-sm text-gray-300">
+                    Introduce new users to Algorand projects with fee-covered transfers. Recipients get USDC and ALGO for transactions without needing prior blockchain knowledge.
+                  </p>
+                </div>
+                
+                <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-4">
+                  <h4 className="text-green-300 font-semibold mb-2">🌍 Cross-Border Payments</h4>
+                  <p className="text-sm text-gray-300">
+                    Send USDC instantly across the planet, 24/7, with minimal fees. Perfect for remittances, international business, or emergency funding.
+                  </p>
+                </div>
+                
+                <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-4">
+                  <h4 className="text-yellow-300 font-semibold mb-2">🎯 Memecoin Onboarding</h4>
+                  <p className="text-sm text-gray-300">
+                    Send USDC to friends for trading memecoins on Vestige or other DEXs. They receive both the USDC and transaction fees covered.
+                  </p>
+                </div>
+                
+                <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-4">
+                  <h4 className="text-blue-300 font-semibold mb-2">💳 Social Payments</h4>
+                  <p className="text-sm text-gray-300">
+                    Pay back friends with USDC they can spend immediately using Pera Wallet's debit card. Perfect for splitting bills or casual payments.
+                  </p>
+                </div>
+              </div>
             </section>
 
             <section>
@@ -54,7 +109,7 @@ function DocumentationPage() {
             <section>
               <h2 className="text-2xl font-bold text-white mb-4">Temporary Account Security Model</h2>
               <p>
-                The core security innovation centers on unique temporary accounts generated for each transfer. These accounts serve as cryptographic authorization tokens that cannot be forged or transferred between escrows.
+                The core centers on unique temporary accounts generated for each transfer. These accounts serve as cryptographic authorization tokens that cannot be forged or transferred between escrows.
               </p>
 
               <h3 className="text-xl font-semibold text-purple-300 mb-3 mt-6">Temporary Account Generation Flow</h3>
@@ -78,6 +133,39 @@ function DocumentationPage() {
               <p>
                 The temporary account receives minimal funding - just enough ALGO to execute one claim transaction. After successful claiming, the account becomes effectively useless since it holds no funds and its authorization has been consumed.
               </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-white mb-4">Fee Coverage System</h2>
+              <p>
+                When senders enable "Cover Recipient Fees," the system provides recipients with ALGO to enable immediate use of their USDC within the broader Algorand ecosystem. This funding covers USDC opt-in fees (if the recipient hasn't previously used USDC) and provides ALGO for future transactions, allowing recipients to directly spend their USDC or interact with other Algorand dApps without requiring prior blockchain knowledge or funding.
+              </p>
+
+              <h3 className="text-xl font-semibold text-purple-300 mb-3 mt-6">Fee Coverage Flow</h3>
+              
+              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
+                <pre className="text-sm text-gray-300 overflow-x-auto">
+{`Fee Coverage Process:
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ Sender Opts for │───▶│ 0.4 ALGO Sent   │───▶│ Recipient Gets  │
+│ Fee Coverage    │    │ to Temp Account │    │ ALGO for Claim  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+   +0.001 ALGO fee       Temp Account Holds        Auto-Transfer
+   Added to Cost         Fee Coverage              When Wallet Connected`}
+                </pre>
+              </div>
+
+              <p>
+                The fee coverage is stored in the temporary account and automatically transferred to the recipient when they connect their wallet. This enables truly frictionless onboarding where recipients need zero prior blockchain experience or funding to claim their USDC.
+              </p>
+              
+              <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-4 my-4">
+                <p className="text-amber-200 text-sm">
+                  <strong>Important:</strong> Fee coverage uses the temporary account as an intermediary. If the temp account is compromised, both the USDC authorization and fee coverage could be at risk.
+                </p>
+              </div>
             </section>
 
             <section>
@@ -140,27 +228,27 @@ Database Lookup Process:
               
               <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
                 <pre className="text-sm text-gray-300 overflow-x-auto">
-{`Atomic Transaction Group:
+{`Atomic Transaction Group (includes Platform Fee):
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ Fund Contract   │───▶│ Configure       │───▶│ Transfer USDC   │
-│ & Temp Account  │    │ Parameters      │    │ to Contract     │
+│ Fund Contract   │───▶│ Platform Fee    │───▶│ Configure &     │
+│ & Temp Account  │    │ (0.1 ALGO)      │    │ Transfer USDC   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          ▼                       ▼                       ▼
-   ALGO for Operations    Set Amount + Opt-in      Final Fund Transfer
-   All or Nothing         Contract State           All or Nothing`}
+   ALGO for Operations    Service Fee Payment      Final Fund Transfer
+   All or Nothing         All or Nothing           All or Nothing`}
                 </pre>
               </div>
 
               <p>
-                The second phase uses Algorand's atomic transfers to ensure all configuration steps succeed together or fail completely. This prevents partial states where funds might be locked or lost due to incomplete setup.
+                The second phase uses Algorand's atomic transfers to ensure all configuration steps succeed together or fail completely. This includes platform fee payment, contract funding, and optional recipient fee coverage. This prevents partial states where funds might be locked or lost due to incomplete setup.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold text-white mb-4">Claim Verification Flow</h2>
               <p>
-                The claiming process combines temporary account authorization with hash-based validation to create a two-factor security system.
+                The claiming process combines temporary account authorization with hash-based validation to create a dual-layer security verification system.
               </p>
 
               <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
@@ -178,7 +266,7 @@ Database Lookup Process:
               </div>
 
               <p>
-                The verification happens at both the application layer through hash validation and the blockchain layer through smart contract logic. Both checks must pass for funds to be released.
+                The verification happens at both the application layer through hash validation and the blockchain layer through smart contract logic. Both checks must pass for funds to be released. Additionally, the system automatically tests whether the recipient is already opted into USDC. If not, the recipient must first sign a USDC opt-in transaction, which can be funded by the fee coverage they received upon wallet connection if the sender enabled this feature.
               </p>
             </section>
 
@@ -213,6 +301,12 @@ Database Lookup Process:
               <p>
                 The security model relies on several key assumptions while minimizing required trust in centralized components.
               </p>
+              
+              <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 my-4">
+                <p className="text-red-200 text-sm">
+                  <strong>DISCLAIMER:</strong> Users are solely responsible for the security of their funds. Nomizo Pay cannot recover lost funds, reverse transactions, or guarantee smart contract behavior. Use at your own risk.
+                </p>
+              </div>
 
               <h3 className="text-xl font-semibold text-purple-300 mb-3 mt-6">Trust Requirements</h3>
               
@@ -241,7 +335,7 @@ Limited Risk Components:
               </div>
 
               <p>
-                The hash-based database protection means that even complete database compromise cannot expose claim credentials. The backend API can deny service but cannot steal funds since all verification logic lives in immutable smart contracts.
+                The hash-based database protection means that even complete database compromise cannot expose claim credentials. The backend API can deny service but cannot steal funds since all verification logic lives in immutable smart contracts. Importantly, funds remain accessible directly through the Algorand blockchain using the claim URL even if Nomizo Pay's service becomes unavailable, as the smart contracts operate independently of our infrastructure.
               </p>
             </section>
 
@@ -251,11 +345,25 @@ Limited Risk Components:
                 The system cannot prevent legitimate scenarios where multiple people have access to the same claim URL, such as shared links forwarded to multiple recipients. In such cases, whoever submits a valid claim first will succeed, and subsequent attempts will fail due to the smart contract's claimed flag.
               </p>
               <p>
-                The temporary account funding mechanism creates a natural rate limit where each escrow can only be claimed once, since the temporary account becomes depleted after successful claim execution. This prevents replay attacks and ensures each authorization token is single-use.
+                <strong>Critical:</strong> The unique claim URL grants complete access to the escrowed funds. Users must store and transfer these URLs securely using encrypted channels, password managers, or other secure methods. Anyone with access to the claim URL can immediately claim the funds without additional authentication.
               </p>
               <p>
                 The combination of temporary account authorization, hash-based database protection, creator reclaim rights, and careful separation of concerns creates a system where users can send and receive USDC with confidence, even when dealing with unfamiliar recipients or in situations where traditional payment methods would be impractical.
               </p>
+              
+              <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 my-6">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <h4 className="text-red-300 font-semibold mb-1">Final Security Warning</h4>
+                    <p className="text-red-200 text-sm">
+                      Smart contracts are immutable and experimental. Nomizo Pay assumes no liability for lost funds, smart contract bugs, network failures, or user errors. Only send amounts you can afford to lose completely.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </section>
 
           </div>

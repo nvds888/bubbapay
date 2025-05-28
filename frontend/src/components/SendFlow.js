@@ -16,6 +16,9 @@ function SendFlow({ accountAddress, peraWallet }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Internal account address state for MCP users who connect wallet on confirm step
+  const [internalAccountAddress, setInternalAccountAddress] = useState(accountAddress);
+  
   // USDC balance state
   const [usdcBalance, setUsdcBalance] = useState(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
@@ -37,10 +40,21 @@ function SendFlow({ accountAddress, peraWallet }) {
   // Transaction data
   const [txnData, setTxnData] = useState(null);
   
+  // MCP session data
+  const [mcpSessionData, setMcpSessionData] = useState(null);
+  
+  // Update internal account address when prop changes
+  useEffect(() => {
+    setInternalAccountAddress(accountAddress);
+  }, [accountAddress]);
+  
+  // Use internal account address for balance and ALGO checks
+  const effectiveAccountAddress = internalAccountAddress || accountAddress;
+  
   // Fetch USDC balance and ALGO availability when account changes
   useEffect(() => {
     const getBalances = async () => {
-      if (!accountAddress) {
+      if (!effectiveAccountAddress) {
         setUsdcBalance(null);
         setAlgoAvailability(null);
         return;
@@ -53,7 +67,7 @@ function SendFlow({ accountAddress, peraWallet }) {
       
       try {
         // Fetch USDC balance
-        const balance = await fetchUSDCBalance(accountAddress);
+        const balance = await fetchUSDCBalance(effectiveAccountAddress);
         setUsdcBalance(balance);
       } catch (error) {
         console.error('Error fetching USDC balance:', error);
@@ -64,7 +78,7 @@ function SendFlow({ accountAddress, peraWallet }) {
       
       try {
         // Check ALGO availability (we'll update this when payRecipientFees changes)
-        const algoCheck = await checkAlgoAvailability(accountAddress, formData.payRecipientFees);
+        const algoCheck = await checkAlgoAvailability(effectiveAccountAddress, formData.payRecipientFees);
         setAlgoAvailability(algoCheck);
       } catch (error) {
         console.error('Error checking ALGO availability:', error);
@@ -75,7 +89,85 @@ function SendFlow({ accountAddress, peraWallet }) {
     };
     
     getBalances();
-  }, [accountAddress, formData.payRecipientFees]); // Also re-check when payRecipientFees changes
+  }, [effectiveAccountAddress, formData.payRecipientFees]); // Also re-check when payRecipientFees changes
+  
+  // Load MCP session if present in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mcpSession = urlParams.get('mcp_session');
+    const escrowId = urlParams.get('escrow_id');
+    
+    if (mcpSession) {
+      loadMCPSession(mcpSession);
+    } else if (escrowId) {
+      loadMCPEscrow(escrowId);
+    }
+  }, []);
+  
+  const loadMCPSession = async (sessionToken) => {
+    try {
+      const response = await axios.get(`${API_URL}/mcp/signing-session/${sessionToken}`);
+      const session = response.data.session;
+      
+      // Pre-fill form data
+      setFormData({
+        amount: session.amount.toString(),
+        recipientEmail: session.recipientEmail || '',
+        isShareableLink: session.shareable,
+        payRecipientFees: session.coverRecipientFees
+      });
+      
+      // Skip to confirm step
+      setCurrentStep(3);
+      
+      // Store session for later use
+      setMcpSessionData(session);
+    } catch (error) {
+      setError('Failed to load MCP session');
+    }
+  };
+  
+  const loadMCPEscrow = async (escrowId) => {
+    try {
+      const response = await axios.get(`${API_URL}/mcp/escrow/${escrowId}`);
+      const escrow = response.data.escrow;
+      
+      // Pre-fill form data
+      setFormData({
+        amount: escrow.amount.toString(),
+        recipientEmail: escrow.recipientEmail || '',
+        isShareableLink: escrow.shareable,
+        payRecipientFees: escrow.coverRecipientFees
+      });
+      
+      // Skip to confirm step
+      setCurrentStep(3);
+      
+      // Store escrow data for later use
+      setMcpSessionData(escrow);
+    } catch (error) {
+      setError('Failed to load MCP escrow');
+    }
+  };
+  
+  // Handle wallet connection for MCP users
+  const handleMCPWalletConnect = async (walletAddress) => {
+    try {
+      setInternalAccountAddress(walletAddress);
+      
+      // Update the MCP session with the wallet address if we have session data
+      if (mcpSessionData) {
+        await axios.post(`${API_URL}/mcp/update-session/${new URLSearchParams(window.location.search).get('mcp_session')}`, {
+          userAddress: walletAddress
+        });
+      }
+      
+      console.log('MCP wallet connected:', walletAddress);
+    } catch (error) {
+      console.error('Error updating MCP session with wallet address:', error);
+      // Continue anyway, the wallet connection itself worked
+    }
+  };
   
   // Handle input changes
   const handleInputChange = (e) => {
@@ -98,9 +190,21 @@ function SendFlow({ accountAddress, peraWallet }) {
   
   // Generate the initial transaction to create the app
   const generateTransaction = async () => {
-    if (!accountAddress) {
+    if (!effectiveAccountAddress) {
       setError('Please connect your wallet first');
       return null;
+    }
+    
+    // If we have MCP session data, use its transaction data
+    if (mcpSessionData && mcpSessionData.deployTransaction) {
+      const mcpTxnData = {
+        transaction: mcpSessionData.deployTransaction,
+        tempAccount: mcpSessionData.tempAccount,
+        amount: mcpSessionData.amount,
+        microAmount: mcpSessionData.amount * 1e6
+      };
+      setTxnData(mcpTxnData);
+      return mcpTxnData;
     }
     
     setIsLoading(true);
@@ -111,7 +215,7 @@ function SendFlow({ accountAddress, peraWallet }) {
       const response = await axios.post(`${API_URL}/generate-transactions`, {
         amount: formData.amount,
         recipientEmail: formData.isShareableLink ? null : formData.recipientEmail,
-        senderAddress: accountAddress,
+        senderAddress: effectiveAccountAddress,
         payRecipientFees: formData.payRecipientFees
       });
       
@@ -138,7 +242,7 @@ function SendFlow({ accountAddress, peraWallet }) {
         }
       }
       
-      if (!accountAddress) {
+      if (!effectiveAccountAddress) {
         setError('Wallet not connected');
         return;
       }
@@ -153,7 +257,7 @@ function SendFlow({ accountAddress, peraWallet }) {
       const txn = algosdk.decodeUnsignedTransaction(txnUint8);
       
       // Sign with Pera Wallet
-      const signedTxns = await peraWallet.signTransaction([[{ txn, signers: [accountAddress] }]]);
+      const signedTxns = await peraWallet.signTransaction([[{ txn, signers: [effectiveAccountAddress] }]]);
       
       // Convert the signed transaction to base64
       const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
@@ -165,7 +269,7 @@ function SendFlow({ accountAddress, peraWallet }) {
         amount: currentTxnData.amount,
         microAmount: currentTxnData.microAmount,
         recipientEmail: formData.isShareableLink ? null : formData.recipientEmail,
-        senderAddress: accountAddress,
+        senderAddress: effectiveAccountAddress,
         payRecipientFees: formData.payRecipientFees
       });
       
@@ -187,7 +291,7 @@ function SendFlow({ accountAddress, peraWallet }) {
   
   // Handle group transaction signing (funding, opt-in, etc.)
   const handleSignGroupTransactions = async () => {
-    if (!txnData || !txnData.groupTransactions || !accountAddress) {
+    if (!txnData || !txnData.groupTransactions || !effectiveAccountAddress) {
       setError('Group transaction data or wallet not available');
       return;
     }
@@ -201,7 +305,7 @@ function SendFlow({ accountAddress, peraWallet }) {
       for (const base64Txn of txnData.groupTransactions) {
         const txnBytes = new Uint8Array(Buffer.from(base64Txn, 'base64'));
         const txn = algosdk.decodeUnsignedTransaction(txnBytes);
-        txnGroup.push({ txn, signers: [accountAddress] });
+        txnGroup.push({ txn, signers: [effectiveAccountAddress] });
       }
       
       // Sign with Pera Wallet
@@ -219,13 +323,13 @@ function SendFlow({ accountAddress, peraWallet }) {
         tempAccount: txnData.tempAccount,
         amount: txnData.amount,
         recipientEmail: formData.isShareableLink ? null : formData.recipientEmail,
-        senderAddress: accountAddress,
+        senderAddress: effectiveAccountAddress,
         payRecipientFees: formData.payRecipientFees
       });
       
       // Generate claim URL ourselves to match the backend version
       // This ensures we have the URL even if it's not stored in the database
-      const generatedClaimUrl = `${window.location.origin}/claim?key=${txnData.tempAccount.privateKey}&app=${txnData.appId}`;
+      const generatedClaimUrl = `${window.location.origin}/claim?app=${txnData.appId}#key=${txnData.tempAccount.privateKey}`;
       
       // Navigate to success page with both the escrow ID and claim URL
       navigate(`/success/${response.data.escrowId}`, { 
@@ -251,7 +355,7 @@ function SendFlow({ accountAddress, peraWallet }) {
             formData={formData}
             handleInputChange={handleInputChange}
             nextStep={nextStep}
-            isConnected={!!accountAddress}
+            isConnected={!!effectiveAccountAddress}
             onConnectWallet={() => {}} // This would be passed from parent
             usdcBalance={usdcBalance}
             balanceLoading={balanceLoading}
@@ -274,7 +378,7 @@ function SendFlow({ accountAddress, peraWallet }) {
         return (
           <ConfirmStep 
             formData={formData}
-            accountAddress={accountAddress}
+            accountAddress={effectiveAccountAddress}
             prevStep={prevStep}
             isLoading={isLoading}
             error={error}
@@ -282,6 +386,9 @@ function SendFlow({ accountAddress, peraWallet }) {
             generateTransaction={generateTransaction}
             handleSignFirstTransaction={handleSignFirstTransaction}
             handleSignGroupTransactions={handleSignGroupTransactions}
+            mcpSessionData={mcpSessionData}
+            peraWallet={peraWallet}
+            onWalletConnect={handleMCPWalletConnect}
           />
         );
       default:
@@ -291,7 +398,8 @@ function SendFlow({ accountAddress, peraWallet }) {
   
   return (
     <div className="w-full max-w-4xl mx-auto">
-      <StepIndicator currentStep={currentStep} totalSteps={3} />
+      {/* Hide step indicator for MCP users */}
+      {!mcpSessionData && <StepIndicator currentStep={currentStep} totalSteps={3} />}
       
       {/* Main card with glassmorphism effect */}
       <div className="glass-dark border border-purple-500/20 rounded-2xl p-6 lg:p-8 card-animate">
@@ -302,7 +410,7 @@ function SendFlow({ accountAddress, peraWallet }) {
       <div className="mt-8 flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8 text-sm text-gray-400">
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-          <span>Algorand Network</span>
+          <span>Fast Transactions</span>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-400 rounded-full"></div>

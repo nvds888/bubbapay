@@ -78,60 +78,69 @@ async function printAppState(appId) {
   }
 }
 
-async function generateClaimTransaction(params) {
+async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddress }) {
   try {
-    const { claimCode, appId, recipientAddress } = params;
-    
     console.log("Generating claim transaction for app:", appId);
     
-    if (!claimCode || !appId || !recipientAddress) {
-      throw new Error("Missing required parameters: claimCode, appId, or recipientAddress");
+    // Validate inputs
+    if (!appId || isNaN(parseInt(appId))) {
+      throw new Error("Invalid app ID");
     }
     
-    // Calculate hash - use binary hash for blockchain operations
-    const claimCodeHash = hashClaimCode(claimCode);
-    console.log(`Calculated hash of claim code (hex): ${claimCodeHash.toString('hex')}`);
+    if (!tempPrivateKey || typeof tempPrivateKey !== 'string') {
+      throw new Error("Invalid temporary private key");
+    }
     
-    // Create derived hash
-    const derivedHash = createDerivedHash(claimCode, recipientAddress);
-    console.log(`Derived hash with recipient address: ${derivedHash.toString('hex')}`);
+    if (!algosdk.isValidAddress(recipientAddress)) {
+      throw new Error("Invalid recipient address");
+    }
     
-    // Get suggested parameters
-    const suggestedParams = await algodClient.getTransactionParams().do();
+    const appIdInt = parseInt(appId);
     
-    // Process parameters for the transaction
-    const processedParams = {
-      fee: 2000, // Increased fee for inner transaction
-      firstRound: Number(suggestedParams.firstRound),
-      lastRound: Number(suggestedParams.lastRound),
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      flatFee: true
+    // Reconstruct temporary account from private key
+    const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
+    const publicKey = secretKeyUint8.slice(32, 64);
+    const address = algosdk.encodeAddress(publicKey);
+    
+    const tempAccountObj = {
+      addr: address,
+      sk: secretKeyUint8
     };
     
-    // CHANGE: Use makeApplicationNoOpTxnFromObject instead of direct constructor
-    const claimTxn = algosdk.makeApplicationNoOpTxnFromObject({
-      from: recipientAddress,
-      appIndex: parseInt(appId),
-      appArgs: [
-        new Uint8Array(Buffer.from("claim")),
-        new Uint8Array(Buffer.from(claimCode)),
-        new Uint8Array(derivedHash)
-      ],
-      foreignAssets: [USDC_ASSET_ID], // CHANGE: use foreignAssets not appForeignAssets
-      suggestedParams: processedParams // CHANGE: Use suggestedParams format
+    console.log("Reconstructed temp account address:", tempAccountObj.addr);
+    
+    // Get suggested parameters
+    let suggestedParams = await algodClient.getTransactionParams().do();
+    
+    // Create ONLY the claim transaction (fees already transferred when wallet connected)
+    const claimTxn = new algosdk.Transaction({
+      from: tempAccountObj.addr,
+      appIndex: appIdInt,
+      appArgs: [new Uint8Array(Buffer.from("claim"))],
+      appAccounts: [recipientAddress], // Where to send USDC
+      appForeignAssets: [USDC_ASSET_ID],
+      fee: calculateTransactionFee(true, 1), // 2000 microALGO
+      flatFee: true,
+      firstRound: suggestedParams.firstRound,
+      lastRound: suggestedParams.lastRound,
+      genesisID: suggestedParams.genesisID,
+      genesisHash: suggestedParams.genesisHash,
+      type: 'appl'
     });
+
+    // Sign the transaction with temp account
+    const signedTxn = algosdk.signTransaction(claimTxn, tempAccountObj.sk);
+
+    console.log(`Claim transaction created and signed`);
     
-    console.log("Claim transaction created successfully");
-    
-    // CHANGE: Use encodeUnsignedTransaction like in the working script
-    return {
-      transaction: Buffer.from(algosdk.encodeUnsignedTransaction(claimTxn)).toString('base64'),
+    // Return single transaction format (no fee transfer needed)
+    return { 
+      signedTransaction: Buffer.from(signedTxn.blob).toString('base64'),
       txnId: claimTxn.txID()
     };
   } catch (error) {
-    console.error("Error generating claim transaction:", error);
-    throw error;
+    console.error("Error in generateClaimTransaction:", error);
+    throw new Error(`Failed to create claim transaction: ${error.message}`);
   }
 }
 

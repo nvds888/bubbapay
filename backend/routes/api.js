@@ -1,4 +1,4 @@
-// routes/api.js - Complete Updated Implementation with Security Improvements
+// routes/api.js - Complete Updated Implementation with Corrected Fee Flow
 
 const express = require('express');
 const router = express.Router();
@@ -153,7 +153,7 @@ router.post('/submit-group-transactions', async (req, res) => {
     const claimHash = hashPrivateKey(tempAccount.privateKey, appId);
     
     // Generate claim URL with hashed reference (private key still in URL for signing)
-    const claimUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claim?key=${tempAccount.privateKey}&app=${appId}`;
+    const claimUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claim?app=${appId}#key=${tempAccount.privateKey}`;
     
     const escrowRecord = {
       appId: parseInt(appId),
@@ -339,7 +339,7 @@ router.post('/submit-optin', async (req, res) => {
   }
 });
 
-// Generate claim transaction - Updated with hash-based lookup
+// Generate claim transaction - SIMPLIFIED (no transferFees parameter)
 router.post('/generate-claim', async (req, res) => {
   try {
     const { tempPrivateKey, appId, recipientAddress } = req.body;
@@ -357,7 +357,7 @@ router.post('/generate-claim', async (req, res) => {
     
     const escrow = await escrowCollection.findOne({ 
       claimHash: claimHash,
-      appId: parseInt(appId) // Double validation with app ID
+      appId: parseInt(appId)
     });
     
     if (!escrow) {
@@ -368,7 +368,7 @@ router.post('/generate-claim', async (req, res) => {
       return res.status(400).json({ error: 'Funds have already been claimed' });
     }
     
-    // Generate the claim transaction
+    // Generate ONLY the claim transaction (no fee transfer)
     const txnData = await generateClaimTransaction({
       appId: parseInt(appId),
       tempPrivateKey,
@@ -382,7 +382,7 @@ router.post('/generate-claim', async (req, res) => {
   }
 });
 
-// Claim USDC - Updated with hash-based lookup
+// Claim USDC - SIMPLIFIED (only single transaction support)
 router.post('/claim-usdc', async (req, res) => {
   try {
     const { signedTxn, appId, recipientAddress, tempPrivateKey } = req.body;
@@ -400,7 +400,7 @@ router.post('/claim-usdc', async (req, res) => {
     
     const escrow = await escrowCollection.findOne({ 
       claimHash: claimHash,
-      appId: parseInt(appId) // Double validation with app ID
+      appId: parseInt(appId)
     });
     
     if (!escrow) {
@@ -430,10 +430,16 @@ router.post('/claim-usdc', async (req, res) => {
         }
       );
       
+      let message = `Successfully claimed ${escrow.amount} USDC`;
+      if (escrow.payRecipientFees) {
+        message += '. Fee coverage was provided for all transactions.';
+      }
+      
       res.status(200).json({
         success: true,
         amount: escrow.amount,
-        message: `Successfully claimed ${escrow.amount} USDC`
+        feeCoverageProvided: escrow.payRecipientFees,
+        message
       });
     } catch (error) {
       console.error('Error submitting claim transaction:', error);
@@ -454,33 +460,24 @@ router.post('/claim-usdc', async (req, res) => {
   }
 });
 
-// Fund wallet - Updated with hash-based lookup
+// Fund wallet - CORRECTED to use temp account instead of funder account
 router.post('/fund-wallet', async (req, res) => {
   try {
     const { recipientAddress, appId, tempPrivateKey } = req.body;
     
-    if (!recipientAddress || !appId) {
+    if (!recipientAddress || !appId || !tempPrivateKey) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
-    // If tempPrivateKey is provided, use hash-based lookup for security
-    let escrow;
+    // SECURITY: Use hash-based lookup for escrow validation
+    const claimHash = hashPrivateKey(tempPrivateKey, appId);
     const db = req.app.locals.db;
     const escrowCollection = db.collection('escrows');
     
-    if (tempPrivateKey) {
-      // SECURITY: Use hash-based lookup
-      const claimHash = hashPrivateKey(tempPrivateKey, appId);
-      escrow = await escrowCollection.findOne({ 
-        claimHash: claimHash,
-        appId: parseInt(appId)
-      });
-    } else {
-      // Fallback to app ID only (for backward compatibility)
-      escrow = await escrowCollection.findOne({ 
-        appId: parseInt(appId)
-      });
-    }
+    const escrow = await escrowCollection.findOne({ 
+      claimHash: claimHash,
+      appId: parseInt(appId)
+    });
     
     if (!escrow) {
       return res.status(404).json({ error: 'Escrow not found' });
@@ -490,70 +487,102 @@ router.post('/fund-wallet', async (req, res) => {
       return res.status(400).json({ error: 'This escrow has already been funded once' });
     }
     
-    // Validate the Algorand address
+    // Validate the recipient address
     try {
       algosdk.decodeAddress(recipientAddress);
     } catch (error) {
       return res.status(400).json({ error: 'Invalid Algorand address format' });
     }
     
-    // If this escrow is set to pay recipient fees, send a fixed amount of ALGO
-    let fundingAmount = 0;
-    if (escrow.payRecipientFees) {
-      fundingAmount = 400000; // 0.4 ALGO - enough for opt-in and transactions
-    }
-
-    if (fundingAmount > 0) {
-      // Configure funding account
-      let funderAccount;
-      
-      if (process.env.FUNDER_MNEMONIC) {
-        funderAccount = algosdk.mnemonicToSecretKey(process.env.FUNDER_MNEMONIC);
-      } else {
-        return res.status(500).json({ error: 'Funding account not properly configured' });
-      }
-      
-      // Get suggested parameters for the transaction
-      const suggestedParams = await algodClient.getTransactionParams().do();
-      
-      // Create and sign the funding transaction
-      const fundingTxn = algosdk.makePaymentTxnWithSuggestedParams(
-        funderAccount.addr,
-        recipientAddress,
-        fundingAmount,
-        undefined,
-        new Uint8Array(Buffer.from('AlgoSend wallet funding')),
-        suggestedParams
-      );
-      
-      const signedTxn = algosdk.signTransaction(fundingTxn, funderAccount.sk);
-      
-      // Submit the transaction
-      const { txId } = await algodClient.sendRawTransaction(signedTxn.blob).do();
-      
-      // Wait for confirmation
-      await algosdk.waitForConfirmation(algodClient, txId, 5);
-      
-      // Mark escrow as funded
-      await escrowCollection.updateOne(
-        { _id: escrow._id },
-        { $set: { funded: true } }
-      );
-      
-      res.status(200).json({
-        success: true,
-        txId,
-        fundingAmount: fundingAmount / 1000000, // Convert back to Algo for display
-        message: 'Wallet funded successfully'
-      });
-    } else {
-      // No funding needed for this escrow
-      res.status(200).json({
+    // Only proceed if this escrow is set to pay recipient fees
+    if (!escrow.payRecipientFees) {
+      return res.status(200).json({
         success: true,
         fundingAmount: 0,
         message: 'No funding needed for this escrow'
       });
     }
+    
+    // Reconstruct temporary account from private key
+    const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
+    const publicKey = secretKeyUint8.slice(32, 64);
+    const tempAddress = algosdk.encodeAddress(publicKey);
+    
+    const tempAccountObj = {
+      addr: tempAddress,
+      sk: secretKeyUint8
+    };
+    
+    console.log(`Funding wallet ${recipientAddress} from temp account ${tempAddress}`);
+    
+    // Check temp account balance first
+    const tempAccountInfo = await algodClient.accountInformation(tempAccountObj.addr).do();
+    const tempBalance = tempAccountInfo.amount;
+    
+    console.log(`Temp account balance: ${tempBalance / 1e6} ALGO`);
+    
+    // Calculate how much to send (reserve some for minimum balance and the funding transaction fee)
+    const fundingTransactionFee = 1000; // 0.001 ALGO for the funding transaction
+    const minimumTempBalance = 100000; // 0.1 ALGO minimum for temp account
+    const claimTransactionReserve = 2000; // 0.002 ALGO reserve for claim transaction
+    
+    const maxTransferAmount = tempBalance - fundingTransactionFee - minimumTempBalance - claimTransactionReserve;
+    
+    // The target funding amount is 0.4 ALGO, but we'll send what's available up to that amount
+    const targetFundingAmount = 400000; // 0.4 ALGO
+    const actualFundingAmount = Math.min(maxTransferAmount, targetFundingAmount);
+    
+    console.log(`Calculated funding amount: ${actualFundingAmount / 1e6} ALGO`);
+    
+    if (actualFundingAmount <= 0) {
+      return res.status(400).json({ 
+        error: 'Insufficient balance in temp account for funding',
+        details: `Temp balance: ${tempBalance / 1e6} ALGO, but need reserves for transactions`
+      });
+    }
+    
+    // Get suggested parameters for the transaction
+    const suggestedParams = await algodClient.getTransactionParams().do();
+    
+    // Create and sign the funding transaction FROM temp account TO recipient
+    const fundingTxn = new algosdk.Transaction({
+      from: tempAccountObj.addr,
+      to: recipientAddress,
+      amount: actualFundingAmount,
+      fee: fundingTransactionFee,
+      flatFee: true,
+      firstRound: suggestedParams.firstRound,
+      lastRound: suggestedParams.lastRound,
+      genesisID: suggestedParams.genesisID,
+      genesisHash: suggestedParams.genesisHash,
+      type: 'pay',
+      note: new Uint8Array(Buffer.from('AlgoSend fee coverage'))
+    });
+    
+    // Sign with temp account
+    const signedTxn = algosdk.signTransaction(fundingTxn, tempAccountObj.sk);
+    
+    // Submit the transaction
+    const { txId } = await algodClient.sendRawTransaction(signedTxn.blob).do();
+    
+    // Wait for confirmation
+    await algosdk.waitForConfirmation(algodClient, txId, 5);
+    
+    // Mark escrow as funded
+    await escrowCollection.updateOne(
+      { _id: escrow._id },
+      { $set: { funded: true, fundedAt: new Date() } }
+    );
+    
+    console.log(`Successfully funded wallet with ${actualFundingAmount / 1e6} ALGO`);
+    
+    res.status(200).json({
+      success: true,
+      txId,
+      fundingAmount: actualFundingAmount / 1e6, // Convert to ALGO for display
+      message: `Wallet funded with ${(actualFundingAmount / 1e6).toFixed(3)} ALGO for transaction fees`
+    });
+    
   } catch (error) {
     console.error('Error funding wallet:', error);
     res.status(500).json({ error: 'Failed to fund wallet', details: error.message });
