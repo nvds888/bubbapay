@@ -28,6 +28,9 @@ function Navbar({ accountAddress, onConnectWallet, onDisconnectWallet, hideWalle
               <span className="text-xl font-bold text-white group-hover:text-purple-300 transition-colors duration-300">
                 Nomizo <span className="gradient-text">Pay</span>
               </span>
+              <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-500/20 text-orange-300 border border-orange-500/30 rounded-md">
+                Beta
+              </span>
             </div>
           </Link>
           

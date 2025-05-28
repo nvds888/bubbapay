@@ -7,7 +7,7 @@ function DocumentationPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-white mb-4">Technical Documentation</h1>
-          <p className="text-gray-400 text-lg">Understanding the security architecture behind Nomizo Pay</p>
+          <p className="text-gray-400 text-lg">Understanding the architecture behind NomizoPay</p>
         </div>
 
         {/* Documentation Content */}
