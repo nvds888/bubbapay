@@ -43,6 +43,9 @@ function SendFlow({ accountAddress, peraWallet }) {
   // MCP session data
   const [mcpSessionData, setMcpSessionData] = useState(null);
   
+  // ADDED: Track original payRecipientFees setting when app was created
+  const [originalPayRecipientFees, setOriginalPayRecipientFees] = useState(null);
+  
   // Update internal account address when prop changes
   useEffect(() => {
     setInternalAccountAddress(accountAddress);
@@ -103,6 +106,39 @@ function SendFlow({ accountAddress, peraWallet }) {
       loadMCPEscrow(escrowId);
     }
   }, []);
+  
+  // ADDED: Detect if payRecipientFees changes after app creation and reset everything for consistency
+  useEffect(() => {
+    if (!txnData || !txnData.appId) {
+      return; // No app created yet
+    }
+    
+    // If this is the first time setting originalPayRecipientFees, just store it
+    if (originalPayRecipientFees === null) {
+      setOriginalPayRecipientFees(formData.payRecipientFees);
+      return;
+    }
+    
+    // If payRecipientFees changed after app creation, reset everything for consistency
+    if (originalPayRecipientFees !== formData.payRecipientFees) {
+      console.log(`payRecipientFees changed from ${originalPayRecipientFees} to ${formData.payRecipientFees}, resetting to ensure consistency...`);
+      
+      // Reset everything to force a fresh start with correct settings
+      setTxnData(null);
+      setOriginalPayRecipientFees(null);
+      setError('Fee coverage setting changed. Starting fresh to ensure consistency.');
+      
+      // Optionally, you could also reset to step 1
+      // setCurrentStep(1);
+    }
+  }, [formData.payRecipientFees, txnData, originalPayRecipientFees]);
+  
+  // ADDED: Reset originalPayRecipientFees when txnData is cleared
+  useEffect(() => {
+    if (!txnData) {
+      setOriginalPayRecipientFees(null);
+    }
+  }, [txnData]);
   
   const loadMCPSession = async (sessionToken) => {
     try {
@@ -281,6 +317,9 @@ function SendFlow({ accountAddress, peraWallet }) {
         groupTransactions: response.data.groupTransactions,
         tempAccount: response.data.tempAccount
       });
+      
+      // ADDED: Store the payRecipientFees setting that was used for app creation
+      setOriginalPayRecipientFees(formData.payRecipientFees);
     } catch (error) {
       console.error('Error signing transaction:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit transaction');
@@ -342,7 +381,8 @@ function SendFlow({ accountAddress, peraWallet }) {
       console.error('Error signing group transactions:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit group transactions');
       
-      // ADDED: Clear transaction data so user can start fresh if they try again
+      // CRITICAL FIX: Clear transaction data so user can start fresh if they try again
+      // This prevents the flow from trying to continue with a partially completed app
       setTxnData(null);
     } finally {
       setIsLoading(false);
