@@ -41,15 +41,10 @@ const PORT = process.env.PORT || 5000;
 // Set up SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// MongoDB connection - UPDATED WITH SSL FIX
+// MongoDB connection - FIXED OPTIONS
 const connectToDatabase = async () => {
   try {
     const client = new MongoClient(process.env.MONGODB_URI, {
-      // SSL configuration for Render compatibility
-      ssl: true,
-      sslValidate: true,
-      tlsAllowInvalidCertificates: false,
-      tlsAllowInvalidHostnames: false,
       // Connection pooling and timeout settings
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10000,
