@@ -248,7 +248,7 @@ Database Lookup Process:
             <section>
               <h2 className="text-2xl font-bold text-white mb-4">Claim Verification Flow</h2>
               <p>
-                The claiming process combines temporary account authorization with hash-based validation to create a dual-layer security verification system.
+                The claiming process entails a hash validation check & optin check before an user can submit a claim to the App (using our backend).
               </p>
 
               <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
@@ -266,7 +266,7 @@ Database Lookup Process:
               </div>
 
               <p>
-                The verification happens at both the application layer through hash validation and the blockchain layer through smart contract logic. Both checks must pass for funds to be released. Additionally, the system automatically tests whether the recipient is already opted into USDC. If not, the recipient must first sign a USDC opt-in transaction, which can be funded by the fee coverage they received upon wallet connection if the sender enabled this feature.
+                The verification happens at both the application layer through hash validation and the blockchain layer through smart contract logic. The system automatically tests whether the recipient is already opted into USDC. If not, the recipient must first sign a USDC opt-in transaction, which can be funded by the fee coverage they received upon wallet connection if the sender enabled this feature.
               </p>
             </section>
 
