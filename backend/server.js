@@ -38,6 +38,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy for rate limiting (required for Render/Heroku/etc.)
+app.set('trust proxy', true);
+
 // Set up SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -142,8 +145,8 @@ app.use(cors({
   origin: [
     'http://localhost:3000', 
     'https://localhost:3000',
-    process.env.FRONTEND_URL
-  ].filter(Boolean), // Remove any undefined values
+    'https://nomizopay.vercel.app'  // Hardcode your Vercel URL
+  ],
   credentials: true
 }));
 app.use(express.json());
