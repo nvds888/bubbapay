@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -42,16 +41,37 @@ const PORT = process.env.PORT || 5000;
 // Set up SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// MongoDB connection
+// MongoDB connection - UPDATED WITH SSL FIX
 const connectToDatabase = async () => {
   try {
-    const client = new MongoClient(process.env.MONGODB_URI);
+    const client = new MongoClient(process.env.MONGODB_URI, {
+      // SSL configuration for Render compatibility
+      ssl: true,
+      sslValidate: true,
+      tlsAllowInvalidCertificates: false,
+      tlsAllowInvalidHostnames: false,
+      // Connection pooling and timeout settings
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      // Additional options for stability
+      retryWrites: true,
+      w: 'majority'
+    });
+    
     await client.connect();
-    console.log('Connected to MongoDB');
+    console.log('Connected to MongoDB Atlas successfully');
     const db = client.db('algosend');
+    
+    // Test the connection
+    await db.admin().ping();
+    console.log('MongoDB ping successful');
+    
     return db;
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('MongoDB connection error:', error.message);
+    console.error('Full error:', error);
     process.exit(1);
   }
 };
@@ -123,7 +143,10 @@ const optInRateLimit = rateLimit({
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'https://localhost:3000'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
@@ -131,13 +154,32 @@ app.use(morgan('dev'));
 app.use('/api', generalRateLimit);
 
 // Health check routes (keep existing, not rate limited)
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
+app.get('/api/health', async (req, res) => {
+  const health = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     service: 'AlgoSend API',
-    version: '1.0.0'
-  });
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  };
+
+  // Test database connection
+  try {
+    if (req.app.locals.db) {
+      await req.app.locals.db.admin().ping();
+      health.database = 'connected';
+    } else {
+      health.database = 'not_initialized';
+      health.status = 'degraded';
+    }
+  } catch (error) {
+    health.database = 'error';
+    health.status = 'unhealthy';
+    health.databaseError = error.message;
+  }
+
+  const statusCode = health.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 // MCP-specific health check
@@ -152,40 +194,47 @@ app.get('/api/mcp/health', (req, res) => {
 
 // Start the server
 const startServer = async () => {
-  // Connect to database
-  const db = await connectToDatabase();
-  
-  // Make db available to routes
-  app.locals.db = db;
-  
-  // Apply specific rate limits to sensitive endpoints BEFORE registering routes
-  app.use('/api/generate-transactions', transactionRateLimit);
-  app.use('/api/submit-app-creation', transactionRateLimit);
-  app.use('/api/submit-group-transactions', transactionRateLimit);
-  app.use('/api/generate-reclaim', transactionRateLimit);
-  app.use('/api/submit-reclaim', transactionRateLimit);
-  
-  // Apply claim rate limits
-  app.use('/api/generate-claim', claimRateLimit);
-  app.use('/api/claim-usdc', claimRateLimit);
-  app.use('/api/fund-wallet', claimRateLimit);
-  
-  // Apply opt-in rate limits
-  app.use('/api/generate-optin', optInRateLimit);
-  app.use('/api/submit-optin', optInRateLimit);
-  
-  // Register API routes
-  app.use('/api', apiRoutes);           // Your existing routes
-  app.use('/api/mcp', mcpRoutes);       // New MCP routes
-  
-  // Start listening
-  app.listen(PORT, () => {
-    console.log(`🚀 AlgoSend server running on port ${PORT}`);
-    console.log(`📍 Main API: http://localhost:${PORT}/api`);
-    console.log(`🤖 MCP API: http://localhost:${PORT}/api/mcp`);
-    console.log(`💚 Health: http://localhost:${PORT}/api/health`);
-    console.log(`🛡️  Rate limiting enabled - in-memory storage`);
-  });
+  try {
+    // Connect to database
+    console.log('Attempting to connect to MongoDB...');
+    const db = await connectToDatabase();
+    
+    // Make db available to routes
+    app.locals.db = db;
+    
+    // Apply specific rate limits to sensitive endpoints BEFORE registering routes
+    app.use('/api/generate-transactions', transactionRateLimit);
+    app.use('/api/submit-app-creation', transactionRateLimit);
+    app.use('/api/submit-group-transactions', transactionRateLimit);
+    app.use('/api/generate-reclaim', transactionRateLimit);
+    app.use('/api/submit-reclaim', transactionRateLimit);
+    
+    // Apply claim rate limits
+    app.use('/api/generate-claim', claimRateLimit);
+    app.use('/api/claim-usdc', claimRateLimit);
+    app.use('/api/fund-wallet', claimRateLimit);
+    
+    // Apply opt-in rate limits
+    app.use('/api/generate-optin', optInRateLimit);
+    app.use('/api/submit-optin', optInRateLimit);
+    
+    // Register API routes
+    app.use('/api', apiRoutes);           // Your existing routes
+    app.use('/api/mcp', mcpRoutes);       // New MCP routes
+    
+    // Start listening
+    app.listen(PORT, () => {
+      console.log(`🚀 AlgoSend server running on port ${PORT}`);
+      console.log(`📍 Main API: http://localhost:${PORT}/api`);
+      console.log(`🤖 MCP API: http://localhost:${PORT}/api/mcp`);
+      console.log(`💚 Health: http://localhost:${PORT}/api/health`);
+      console.log(`🛡️  Rate limiting enabled - in-memory storage`);
+      console.log(`🗄️  Database: Connected to MongoDB Atlas`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
 };
 
 startServer();
