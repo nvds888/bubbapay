@@ -139,7 +139,11 @@ const optInRateLimit = rateLimit({
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'https://localhost:3000'],
+  origin: [
+    'http://localhost:3000', 
+    'https://localhost:3000',
+    process.env.FRONTEND_URL
+  ].filter(Boolean), // Remove any undefined values
   credentials: true
 }));
 app.use(express.json());
