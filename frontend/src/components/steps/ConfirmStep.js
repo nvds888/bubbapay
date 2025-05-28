@@ -87,6 +87,10 @@ function ConfirmStep({
   // Check if wallet is connected
   const isWalletConnected = !!accountAddress;
   
+  // SIMPLIFIED: Determine if back button should be shown
+  // Hide back button for MCP users OR after first transaction is signed
+  const canGoBack = !mcpSessionData && stage === 'initial';
+  
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -140,6 +144,23 @@ function ConfirmStep({
           )}
         </div>
       </div>
+      
+      {/* ADDED: Notice when user can't go back */}
+      {stage === 'app-created' && (
+        <div className="glass border border-blue-500/20 bg-blue-500/10 rounded-xl p-4">
+          <div className="flex items-start space-x-3">
+            <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <div className="text-sm">
+              <div className="text-blue-300 font-medium">Smart Contract Created</div>
+              <div className="text-blue-200 mt-1">
+                Your smart contract has been created with your selected settings. Complete the final step to fund the transfer.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Wallet Connection Section for MCP users */}
       {!isWalletConnected && mcpSessionData && (
@@ -277,8 +298,8 @@ function ConfirmStep({
       {/* Action buttons - only show if wallet is connected */}
       {isWalletConnected && (
         <div className="flex flex-col sm:flex-row gap-4 pt-4">
-          {/* Hide back button for MCP users */}
-          {!mcpSessionData && (
+          {/* SIMPLIFIED: Only show back button if user can go back */}
+          {canGoBack && (
             <button
               type="button"
               onClick={prevStep}
@@ -300,7 +321,7 @@ function ConfirmStep({
               onClick={handleSignFirstTransaction}
               disabled={isLoading}
               className={`btn-primary py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70 ${
-                mcpSessionData ? 'w-full' : 'flex-1'
+                !canGoBack ? 'w-full' : 'flex-1'
               }`}
             >
               <span className="relative z-10 flex items-center justify-center space-x-2">
@@ -326,9 +347,7 @@ function ConfirmStep({
               type="button"
               onClick={handleSignGroupTransactions}
               disabled={isLoading}
-              className={`btn-primary py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70 ${
-                mcpSessionData ? 'w-full' : 'flex-1'
-              }`}
+              className="btn-primary w-full py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70"
             >
               <span className="relative z-10 flex items-center justify-center space-x-2">
                 {isLoading ? (
