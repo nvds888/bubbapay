@@ -12,9 +12,10 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
   const TRANSACTION_COSTS = {
     // Phase 1: App Creation Transaction
     APP_CREATION_FEE: 1000,             // 0.001 ALGO - confirmed from blockchain
+    APP_CREATION_MIN_BALANCE: 100000,   // 0.1 ALGO - app creation increases min balance
     
-    // Phase 2: Group Transaction Fees (now includes platform fee transaction)
-    GROUP_TXN_1_FEE: 1000,              // 0.001 ALGO - Application Call (funding)
+    // Phase 2: Group Transaction Fees (aligned with atomic-deploy-email-escrow.js)
+    GROUP_TXN_1_FEE: 1000,              // 0.001 ALGO - Payment (contract funding)
     GROUP_TXN_2_FEE: 1000,              // 0.001 ALGO - Payment (platform fee)
     GROUP_TXN_3_FEE: 1000,              // 0.001 ALGO - Payment (temp funding)
     GROUP_TXN_4_FEE: 2000,              // 0.002 ALGO - Application Call (opt-in with inner txn)
@@ -26,8 +27,8 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
     
     // ALGO Transfers (actual ALGO sent, not fees)
     TEMP_ACCOUNT_FUNDING: 102000,       // 0.102 ALGO - fund temp account
-    CONTRACT_FUNDING: 200000,           // 0.2 ALGO - fund smart contract (reduced from 0.3)
-    PLATFORM_FEE: 100000,               // 0.1 ALGO - platform fee (new)
+    CONTRACT_FUNDING: 200000,           // 0.2 ALGO - fund smart contract
+    PLATFORM_FEE: 100000,               // 0.1 ALGO - platform fee
     RECIPIENT_FEE_FUNDING: 400000,      // 0.4 ALGO - recipient fee coverage (if enabled)
   };
   
@@ -43,7 +44,7 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
   const recipientFundingFee = payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FUNDING_FEE : 0;
   const totalFees = baseFees + recipientFundingFee;
   
-  // Calculate total ALGO sent out (including new platform fee)
+  // Calculate total ALGO sent out
   const baseAlgoSentOut = TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING + 
                          TRANSACTION_COSTS.CONTRACT_FUNDING + 
                          TRANSACTION_COSTS.PLATFORM_FEE;
@@ -51,15 +52,18 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
   const recipientFunding = payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0;
   const totalAlgoSentOut = baseAlgoSentOut + recipientFunding;
   
-  // Total ALGO needed = fees + ALGO sent out
-  const totalRequired = totalFees + totalAlgoSentOut;
+  // CRITICAL: Account for app creation minimum balance increase
+  const minBalanceIncrease = TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE;
   
-  // Add 10% safety margin as requested
-  const totalRequiredWithBuffer = Math.ceil(totalRequired * 1.10);
+  // Total ALGO needed = fees + ALGO sent out + minimum balance increase
+  const totalRequired = totalFees + totalAlgoSentOut + minBalanceIncrease;
+  
+  // Add 5% safety margin (reduced from 10% as the calculation is now more accurate)
+  const totalRequiredWithBuffer = Math.ceil(totalRequired * 1.05);
   
   // Current balance and minimum balance
   const currentBalance = accountInfo.amount; // in microALGO
-  const currentMinBalance = accountInfo['min-balance'] || 0; // Use Algorand's reported min balance
+  const currentMinBalance = accountInfo['min-balance'] || 0;
   const currentAvailableBalance = Math.max(0, currentBalance - currentMinBalance);
   
   // Check if sufficient ALGO is available
@@ -67,9 +71,13 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
   const shortfall = hasSufficientAlgo ? 0 : totalRequiredWithBuffer - currentAvailableBalance;
   
   // For group transactions, we need to check if we can complete after app creation
-  // App creation doesn't change minimum balance significantly, so we use same available balance
-  const canCompleteGroupTxns = hasSufficientAlgo; // Same condition for simplicity
-  const groupTxnShortfall = canCompleteGroupTxns ? 0 : shortfall;
+  // After app creation, minimum balance increases, so available balance decreases
+  const balanceAfterAppCreation = Math.max(0, currentBalance - currentMinBalance - minBalanceIncrease);
+  const groupTxnCost = totalFees - TRANSACTION_COSTS.APP_CREATION_FEE + totalAlgoSentOut;
+  const groupTxnCostWithBuffer = Math.ceil(groupTxnCost * 1.05);
+  
+  const canCompleteGroupTxns = balanceAfterAppCreation >= groupTxnCostWithBuffer;
+  const groupTxnShortfall = canCompleteGroupTxns ? 0 : groupTxnCostWithBuffer - balanceAfterAppCreation;
   
   return {
     address: accountInfo.address,
@@ -84,6 +92,7 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
     breakdown: {
       // Real transaction fees
       appCreationFee: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_FEE),
+      appMinBalanceIncrease: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE),
       groupTransactionFees: microAlgoToAlgo(totalFees - TRANSACTION_COSTS.APP_CREATION_FEE),
       totalFees: microAlgoToAlgo(totalFees),
       
@@ -97,7 +106,7 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
       // Summary
       totalRequired: microAlgoToAlgo(totalRequired),
       totalRequiredWithBuffer: microAlgoToAlgo(totalRequiredWithBuffer),
-      safetyBufferPercentage: "10%"
+      safetyBufferPercentage: "5%"
     },
     debug: {
       payRecipientFees,
@@ -105,6 +114,8 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
       minBalanceMicroAlgo: currentMinBalance,
       availableBalanceMicroAlgo: currentAvailableBalance,
       totalRequiredMicroAlgo: totalRequiredWithBuffer,
+      balanceAfterAppCreation: balanceAfterAppCreation,
+      groupTxnCostWithBuffer: groupTxnCostWithBuffer,
       feeBreakdown: {
         appCreation: TRANSACTION_COSTS.APP_CREATION_FEE,
         groupTxn1: TRANSACTION_COSTS.GROUP_TXN_1_FEE,
@@ -122,6 +133,9 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
         platformFee: TRANSACTION_COSTS.PLATFORM_FEE,
         recipientFees: payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0,
         totalSent: totalAlgoSentOut
+      },
+      minBalanceChanges: {
+        appCreationIncrease: TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE
       }
     }
   };
@@ -152,7 +166,7 @@ function isValidAlgorandAddress(address) {
 
 /**
  * Check if user has sufficient ALGO for escrow transactions
- * Simplified and accurate based on real transaction costs with platform fee
+ * Accurate calculation including app creation minimum balance impact
  * @param {Object} algodClient - Algorand client instance
  * @param {string} address - User's Algorand address
  * @param {boolean} payRecipientFees - Whether the sender is paying recipient fees
@@ -168,20 +182,22 @@ async function checkAlgoAvailabilityForEscrow(algodClient, address, payRecipient
     // Fetch account information
     const accountInfo = await algodClient.accountInformation(address).do();
     
-    // Calculate availability with accurate costs
+    // Calculate availability with accurate costs including min balance changes
     const availability = calculateAlgoAvailability(accountInfo, payRecipientFees);
     
     // Summary for easy reference:
-    // Without recipient fees: ~0.449 ALGO (0.007 fees + 0.402 transfers + 10% buffer)
-    // With recipient fees: ~0.849 ALGO (0.008 fees + 0.802 transfers + 10% buffer)
-    // Note: Now includes 0.1 ALGO platform fee in the transfers
+    // Without recipient fees: ~0.552 ALGO (0.008 fees + 0.402 transfers + 0.1 min balance + 5% buffer)
+    // With recipient fees: ~0.953 ALGO (0.009 fees + 0.802 transfers + 0.1 min balance + 5% buffer)
+    // Note: Now includes 0.1 ALGO app creation minimum balance increase
     
     console.log(`ALGO availability check for ${address}:`, {
       payRecipientFees,
       required: availability.requiredForTransaction,
       available: availability.availableBalance,
       sufficient: availability.hasSufficientAlgo,
-      shortfall: availability.shortfall
+      canCompleteGroup: availability.canCompleteGroupTxns,
+      shortfall: availability.shortfall,
+      groupShortfall: availability.groupTxnShortfall
     });
     
     return availability;
@@ -205,20 +221,23 @@ function getAlgoRequirementSummary(payRecipientFees = false) {
   const recipientFees = payRecipientFees ? 400000 : 0; // 0.4 ALGO if enabled
   const totalTransfers = baseTransfers + recipientFees;
   
-  const total = totalFees + totalTransfers;
-  const withBuffer = Math.ceil(total * 1.10);
+  const minBalanceIncrease = 100000; // 0.1 ALGO for app creation
+  
+  const total = totalFees + totalTransfers + minBalanceIncrease;
+  const withBuffer = Math.ceil(total * 1.05);
   
   return {
     fees: microAlgoToAlgo(totalFees),
     baseTransfers: microAlgoToAlgo(baseTransfers),
     platformFee: microAlgoToAlgo(100000), // 0.1 ALGO platform fee
     contractFunding: microAlgoToAlgo(200000), // 0.2 ALGO contract funding
+    minBalanceIncrease: microAlgoToAlgo(minBalanceIncrease), // 0.1 ALGO app creation
     recipientFees: microAlgoToAlgo(recipientFees),
     subtotal: microAlgoToAlgo(total),
     withBuffer: microAlgoToAlgo(withBuffer),
     description: payRecipientFees 
-      ? "~0.849 ALGO (includes recipient fee coverage + platform fee)"
-      : "~0.449 ALGO (includes platform fee, no recipient fee coverage)"
+      ? "~0.953 ALGO (includes recipient fees + platform fee + app min balance)"
+      : "~0.552 ALGO (includes platform fee + app min balance, no recipient fees)"
   };
 }
 

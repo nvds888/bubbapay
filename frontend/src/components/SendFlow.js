@@ -341,6 +341,9 @@ function SendFlow({ accountAddress, peraWallet }) {
     } catch (error) {
       console.error('Error signing group transactions:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit group transactions');
+      
+      // ADDED: Clear transaction data so user can start fresh if they try again
+      setTxnData(null);
     } finally {
       setIsLoading(false);
     }

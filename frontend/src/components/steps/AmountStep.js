@@ -49,12 +49,12 @@ function AmountStep({
       return;
     }
     
-    // Check ALGO availability - simplified logic
-    if (algoAvailability && (!algoAvailability.hasSufficientAlgo || !algoAvailability.canCompleteGroupTxns)) {
+    // Check ALGO availability - improved logic
+    if (algoAvailability && !algoAvailability.hasSufficientAlgo) {
       const totalCost = algoAvailability.requiredForTransaction;
-      const deficit = Math.max(algoAvailability.shortfall || 0, algoAvailability.groupTxnShortfall || 0);
+      const deficit = algoAvailability.shortfall || 0;
       
-      let errorMessage = `This transaction costs ${totalCost} ALGO total. You need ${deficit} more ALGO.`;
+      let errorMessage = `Transaction requires ${totalCost} ALGO total. You need ${deficit} more ALGO.`;
       
       // Check if they'd have enough without recipient fees
       if (formData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.400000") {
@@ -65,6 +65,20 @@ function AmountStep({
         if (availableBalance >= parseFloat(costWithoutRecipientFees)) {
           errorMessage += ` You could complete this transaction by unchecking "Cover recipient's transaction fees".`;
         }
+      }
+      
+      setError(errorMessage);
+      return;
+    }
+    
+    // Check if can complete group transactions after app creation
+    if (algoAvailability && !algoAvailability.canCompleteGroupTxns) {
+      const groupDeficit = algoAvailability.groupTxnShortfall || 0;
+      
+      let errorMessage = `You have enough ALGO to create the app, but not enough to complete the funding step. You need ${groupDeficit} more ALGO after app creation.`;
+      
+      if (formData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.400000") {
+        errorMessage += ` Try unchecking "Cover recipient's transaction fees" to reduce the cost.`;
       }
       
       setError(errorMessage);
@@ -190,8 +204,8 @@ function AmountStep({
               </div>
             )}
             
-            {/* ALGO Insufficient Warning - Simplified */}
-            {algoAvailability && (!algoAvailability.hasSufficientAlgo || !algoAvailability.canCompleteGroupTxns) && (
+            {/* ALGO Insufficient Warning - Enhanced */}
+            {algoAvailability && !algoAvailability.hasSufficientAlgo && (
               <div className="glass border border-red-500/20 bg-red-500/10 rounded-xl p-3">
                 <div className="flex items-start space-x-2">
                   <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -201,10 +215,10 @@ function AmountStep({
                     <div className="text-red-300 font-medium">Insufficient ALGO Balance</div>
                     <div className="text-red-200 mt-1">
                       <div>
-                        Transaction costs <span className="font-mono">{algoAvailability.requiredForTransaction} ALGO</span> total.
+                        Transaction requires <span className="font-mono">{algoAvailability.requiredForTransaction} ALGO</span> total.
                       </div>
                       <div>
-                        You need <span className="font-mono">{Math.max(algoAvailability.shortfall || 0, algoAvailability.groupTxnShortfall || 0)} ALGO</span> more.
+                        You need <span className="font-mono">{algoAvailability.shortfall} ALGO</span> more.
                       </div>
                       {/* Show suggestion to disable recipient fees if applicable */}
                       {formData.payRecipientFees && 
@@ -220,7 +234,34 @@ function AmountStep({
               </div>
             )}
             
-            {/* ALGO Sufficient - Enhanced display with platform fee info */}
+            {/* ALGO Group Transaction Warning */}
+            {algoAvailability && algoAvailability.hasSufficientAlgo && !algoAvailability.canCompleteGroupTxns && (
+              <div className="glass border border-yellow-500/20 bg-yellow-500/10 rounded-xl p-3">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <div className="text-sm">
+                    <div className="text-yellow-300 font-medium">Insufficient ALGO for Completion</div>
+                    <div className="text-yellow-200 mt-1">
+                      <div>
+                        You can create the app, but need <span className="font-mono">{algoAvailability.groupTxnShortfall} ALGO</span> more to complete funding.
+                      </div>
+                      <div className="mt-1 text-xs">
+                        Creating an app increases your minimum balance by 0.1 ALGO.
+                      </div>
+                      {formData.payRecipientFees && (
+                        <div className="mt-2 text-yellow-200">
+                          💡 Try unchecking "Cover recipient's transaction fees" to reduce the cost.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* ALGO Sufficient - Enhanced display with detailed breakdown */}
             {algoAvailability && algoAvailability.hasSufficientAlgo && algoAvailability.canCompleteGroupTxns && (
               <div className="glass border border-green-500/20 bg-green-500/10 rounded-xl p-3">
                 <div className="flex items-start space-x-2">
@@ -238,7 +279,7 @@ function AmountStep({
                       </div>
                       {algoAvailability.breakdown && (
                         <div className="mt-2 text-xs text-green-300">
-                          Includes: Smart contract ({algoAvailability.breakdown.contractFunding} ALGO) + 
+                          Includes: App creation (0.1 ALGO min balance) + Smart contract ({algoAvailability.breakdown.contractFunding} ALGO) + 
                           Platform fee ({algoAvailability.breakdown.platformFee} ALGO) + 
                           Transaction fees ({algoAvailability.breakdown.totalFees} ALGO)
                           {formData.payRecipientFees && ` + Recipient fees (${algoAvailability.breakdown.recipientFunding} ALGO)`}
