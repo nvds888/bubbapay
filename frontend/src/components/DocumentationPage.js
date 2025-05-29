@@ -3,19 +3,25 @@ import React from 'react';
 function DocumentationPage() {
   return (
     <div className="w-full max-w-4xl mx-auto">
-      <div className="glass-dark border border-purple-500/20 rounded-2xl p-8 lg:p-12">
+      <div className="card card-normal">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-white mb-4">Technical Documentation</h1>
-          <p className="text-gray-400 text-lg">Understanding the architecture behind NomizoPay</p>
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
+               style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-3">Technical Documentation</h1>
+          <p className="text-gray-600">Understanding the architecture behind Nomizo Pay</p>
         </div>
 
         {/* Documentation Content */}
-        <div className="prose prose-invert max-w-none">
-          <div className="text-gray-300 leading-relaxed space-y-8">
+        <div className="prose prose-gray max-w-none">
+          <div className="text-gray-700 leading-relaxed space-y-8">
             
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">Overview</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Overview</h2>
               <p>
                 This application aims to solve a fundamental problem in cryptocurrency: how to send digital assets to someone who may not have a wallet or understand blockchain technology. Built on Algorand, our system creates secure escrow smart contracts that hold USDC until recipients can claim them, either through email notifications or shareable links.
               </p>
@@ -24,17 +30,17 @@ function DocumentationPage() {
               </p>
               
               {/* Security Disclaimer */}
-              <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-6 my-6">
+              <div className="status-error mt-6 mb-6">
                 <div className="flex items-start space-x-3">
-                  <svg className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                   <div>
-                    <h4 className="text-red-300 font-bold text-lg mb-2">⚠️ CRITICAL SECURITY NOTICE</h4>
-                    <p className="text-red-200 mb-3">
+                    <h4 className="text-red-800 font-semibold text-lg mb-2">⚠️ CRITICAL SECURITY NOTICE</h4>
+                    <p className="text-red-700 mb-3">
                       <strong>Nomizo Pay is experimental software provided "as is" without warranty.</strong> We take no responsibility for lost, stolen, or inaccessible funds. Users assume all risks when using this service.
                     </p>
-                    <p className="text-red-200 text-sm">
+                    <p className="text-red-700 text-sm">
                       Always verify claim links are secure, never share private keys, and only send amounts you can afford to lose. Smart contracts are immutable - transactions cannot be reversed.
                     </p>
                   </div>
@@ -43,36 +49,36 @@ function DocumentationPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">Use Cases & Applications</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Use Cases & Applications</h2>
               <p>
                 Nomizo Pay enables seamless USDC transfers for various scenarios where traditional crypto onboarding creates friction:
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
-                <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-4">
-                  <h4 className="text-purple-300 font-semibold mb-2">🚀 Algorand Onboarding</h4>
-                  <p className="text-sm text-gray-300">
+                <div className="card card-compact bg-gray-50">
+                  <h4 className="text-purple-700 font-semibold mb-2">🚀 Algorand Onboarding</h4>
+                  <p className="text-sm text-gray-600">
                     Introduce new users to Algorand projects with fee-covered transfers. Recipients get USDC and ALGO for transactions without needing prior blockchain knowledge.
                   </p>
                 </div>
                 
-                <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-4">
-                  <h4 className="text-green-300 font-semibold mb-2">🌍 Cross-Border Payments</h4>
-                  <p className="text-sm text-gray-300">
+                <div className="card card-compact bg-gray-50">
+                  <h4 className="text-green-700 font-semibold mb-2">🌍 Cross-Border Payments</h4>
+                  <p className="text-sm text-gray-600">
                     Send USDC instantly across the planet, 24/7, with minimal fees. Perfect for remittances, international business, or emergency funding.
                   </p>
                 </div>
                 
-                <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-4">
-                  <h4 className="text-yellow-300 font-semibold mb-2">🎯 Memecoin Onboarding</h4>
-                  <p className="text-sm text-gray-300">
+                <div className="card card-compact bg-gray-50">
+                  <h4 className="text-yellow-700 font-semibold mb-2">🎯 Memecoin Onboarding</h4>
+                  <p className="text-sm text-gray-600">
                     Send USDC to friends for trading memecoins on Vestige or other DEXs. They receive both the USDC and transaction fees covered.
                   </p>
                 </div>
                 
-                <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-4">
-                  <h4 className="text-blue-300 font-semibold mb-2">💳 Social Payments</h4>
-                  <p className="text-sm text-gray-300">
+                <div className="card card-compact bg-gray-50">
+                  <h4 className="text-blue-700 font-semibold mb-2">💳 Social Payments</h4>
+                  <p className="text-sm text-gray-600">
                     Pay back friends with USDC they can spend immediately using Pera Wallet's debit card. Perfect for splitting bills or casual payments.
                   </p>
                 </div>
@@ -80,13 +86,13 @@ function DocumentationPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">The Smart Contract Architecture</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">The Smart Contract Architecture</h2>
               <p>
                 At the heart of the system is a smart contract that acts as an autonomous escrow agent. When someone wants to send USDC, the system generates a unique temporary account and deploys a new smart contract instance specifically for that transfer.
               </p>
               
-              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
-                <pre className="text-sm text-gray-300 overflow-x-auto">
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
 {`┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │     Sender      │    │  Smart Contract │    │   Recipient     │
 │                 │    │     Escrow      │    │                 │
@@ -107,15 +113,15 @@ function DocumentationPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">Temporary Account Security Model</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Temporary Account Security Model</h2>
               <p>
                 The core centers on unique temporary accounts generated for each transfer. These accounts serve as cryptographic authorization tokens that cannot be forged or transferred between escrows.
               </p>
 
-              <h3 className="text-xl font-semibold text-purple-300 mb-3 mt-6">Temporary Account Generation Flow</h3>
+              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Temporary Account Generation Flow</h3>
               
-              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
-                <pre className="text-sm text-gray-300 overflow-x-auto">
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
 {`Transfer Creation:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ Generate Unique │───▶│ Embed Address   │───▶│ Fund Temp Acct  │
@@ -136,15 +142,15 @@ function DocumentationPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">Fee Coverage System</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Fee Coverage System</h2>
               <p>
                 When senders enable "Cover Recipient Fees," the system provides recipients with ALGO to enable immediate use of their USDC within the broader Algorand ecosystem. This funding covers USDC opt-in fees (if the recipient hasn't previously used USDC) and provides ALGO for future transactions, allowing recipients to directly spend their USDC or interact with other Algorand dApps without requiring prior blockchain knowledge or funding.
               </p>
 
-              <h3 className="text-xl font-semibold text-purple-300 mb-3 mt-6">Fee Coverage Flow</h3>
+              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Fee Coverage Flow</h3>
               
-              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
-                <pre className="text-sm text-gray-300 overflow-x-auto">
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
 {`Fee Coverage Process:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ Sender Opts for │───▶│ 0.4 ALGO Sent   │───▶│ Recipient Gets  │
@@ -161,23 +167,23 @@ function DocumentationPage() {
                 The fee coverage is stored in the temporary account and automatically transferred to the recipient when they connect their wallet. This enables truly frictionless onboarding where recipients need zero prior blockchain experience or funding to claim their USDC.
               </p>
               
-              <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-4 my-4">
-                <p className="text-amber-200 text-sm">
+              <div className="status-warning my-4">
+                <p className="text-amber-800 text-sm">
                   <strong>Important:</strong> Fee coverage uses the temporary account as an intermediary. If the temp account is compromised, both the USDC authorization and fee coverage could be at risk.
                 </p>
               </div>
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">Hash-Based Database Protection</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Hash-Based Database Protection</h2>
               <p>
                 The database layer implements a hash-based lookup system that protects claim credentials even if the database is completely compromised.
               </p>
 
-              <h3 className="text-xl font-semibold text-purple-300 mb-3 mt-6">Database Security Architecture</h3>
+              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Database Security Architecture</h3>
               
-              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
-                <pre className="text-sm text-gray-300 overflow-x-auto">
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
 {`Claim URL: /claim?key=ABC123...&app=12345
                     │
                     ▼
@@ -203,15 +209,15 @@ Database Lookup Process:
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">The Two-Phase Transaction Process</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">The Two-Phase Transaction Process</h2>
               <p>
                 Creating an escrow requires careful orchestration across two distinct phases to ensure atomic execution and proper security setup.
               </p>
 
-              <h3 className="text-xl font-semibold text-purple-300 mb-3 mt-6">Phase One: Contract Deployment</h3>
+              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Phase One: Contract Deployment</h3>
               
-              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
-                <pre className="text-sm text-gray-300 overflow-x-auto">
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
 {`Smart Contract Creation:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ Compile TEAL    │───▶│ Deploy Contract │───▶│ Get App ID      │
@@ -224,10 +230,10 @@ Database Lookup Process:
                 </pre>
               </div>
 
-              <h3 className="text-xl font-semibold text-purple-300 mb-3 mt-6">Phase Two: Atomic Configuration</h3>
+              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Phase Two: Atomic Configuration</h3>
               
-              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
-                <pre className="text-sm text-gray-300 overflow-x-auto">
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
 {`Atomic Transaction Group (includes Platform Fee):
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ Fund Contract   │───▶│ Platform Fee    │───▶│ Configure &     │
@@ -246,13 +252,13 @@ Database Lookup Process:
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">Claim Verification Flow</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Claim Verification Flow</h2>
               <p>
                 The claiming process entails a hash validation check & optin check before an user can submit a claim to the App (using our backend).
               </p>
 
-              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
-                <pre className="text-sm text-gray-300 overflow-x-auto">
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
 {`Complete Claim Process:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ User Clicks     │───▶│ Hash Validation │───▶│ Temp Account    │
@@ -271,13 +277,13 @@ Database Lookup Process:
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">Fund Recovery and Reclaim Mechanisms</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Fund Recovery and Reclaim Mechanisms</h2>
               <p>
                 The original creator can always reclaim funds from unclaimed transfers. The smart contract includes a reclaim function that allows only the original sender to recover their USDC if the recipient never claims it or loses access to the claim URL.
               </p>
 
-              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
-                <pre className="text-sm text-gray-300 overflow-x-auto">
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
 {`Reclaim Process:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ Creator Calls   │───▶│ Verify Sender   │───▶│ Transfer USDC   │
@@ -297,21 +303,21 @@ Database Lookup Process:
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">Security Assumptions and Trust Model</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Security Assumptions and Trust Model</h2>
               <p>
                 The security model relies on several key assumptions while minimizing required trust in centralized components.
               </p>
               
-              <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 my-4">
-                <p className="text-red-200 text-sm">
+              <div className="status-error my-4">
+                <p className="text-red-700 text-sm">
                   <strong>DISCLAIMER:</strong> Users are solely responsible for the security of their funds. Nomizo Pay cannot recover lost funds, reverse transactions, or guarantee smart contract behavior. Use at your own risk.
                 </p>
               </div>
 
-              <h3 className="text-xl font-semibold text-purple-300 mb-3 mt-6">Trust Requirements</h3>
+              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Trust Requirements</h3>
               
-              <div className="bg-gray-900/50 border border-purple-500/20 rounded-xl p-6 my-6">
-                <pre className="text-sm text-gray-300 overflow-x-auto">
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
 {`High Trust Components:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ User's Wallet   │    │ Algorand        │    │ Smart Contract  │
@@ -340,7 +346,7 @@ Limited Risk Components:
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-white mb-4">Remaining Security Considerations</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Remaining Security Considerations</h2>
               <p>
                 The system cannot prevent legitimate scenarios where multiple people have access to the same claim URL, such as shared links forwarded to multiple recipients. In such cases, whoever submits a valid claim first will succeed, and subsequent attempts will fail due to the smart contract's claimed flag.
               </p>
@@ -351,14 +357,14 @@ Limited Risk Components:
                 The combination of temporary account authorization, hash-based database protection, creator reclaim rights, and careful separation of concerns creates a system where users can send and receive USDC with confidence, even when dealing with unfamiliar recipients or in situations where traditional payment methods would be impractical.
               </p>
               
-              <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 my-6">
+              <div className="status-error my-6">
                 <div className="flex items-start space-x-3">
-                  <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                   <div>
-                    <h4 className="text-red-300 font-semibold mb-1">Final Security Warning</h4>
-                    <p className="text-red-200 text-sm">
+                    <h4 className="text-red-800 font-semibold mb-1">Final Security Warning</h4>
+                    <p className="text-red-700 text-sm">
                       Smart contracts are immutable and experimental. Nomizo Pay assumes no liability for lost funds, smart contract bugs, network failures, or user errors. Only send amounts you can afford to lose completely.
                     </p>
                   </div>
@@ -370,10 +376,10 @@ Limited Risk Components:
         </div>
 
         {/* Back to top button */}
-        <div className="text-center mt-12 pt-8 border-t border-purple-500/20">
+        <div className="text-center mt-8 pt-6 border-t border-gray-200">
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="btn-secondary px-6 py-3 rounded-xl font-semibold"
+            className="btn-secondary px-4 py-2 font-medium"
           >
             <span className="flex items-center space-x-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

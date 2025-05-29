@@ -90,7 +90,7 @@ function ClaimPage({ peraWallet }) {
     fetchEscrowDetails();
   }, [tempPrivateKey, appId]);
   
-  // Check wallet status when connected - CORRECTED FLOW
+  // Check wallet status when connected
   useEffect(() => {
     const checkWalletStatus = async () => {
       if (!accountAddress || !escrowDetails) return;
@@ -135,7 +135,7 @@ function ClaimPage({ peraWallet }) {
     }
   }, [accountAddress, escrowDetails]);
   
-  // Fund wallet with fee coverage - CORRECTED to use temp account
+  // Fund wallet with fee coverage
   const fundWallet = async () => {
     if (!accountAddress || !tempPrivateKey || !appId) {
       console.error("Missing required parameters for funding");
@@ -151,7 +151,7 @@ function ClaimPage({ peraWallet }) {
       const fundResponse = await axios.post(`${API_URL}/fund-wallet`, {
         recipientAddress: accountAddress,
         appId,
-        tempPrivateKey // This allows secure lookup and temp account reconstruction
+        tempPrivateKey
       });
       
       console.log("Fee coverage response:", fundResponse.data);
@@ -167,7 +167,7 @@ function ClaimPage({ peraWallet }) {
       } else {
         console.log("No fee coverage needed for this escrow");
         setIsFunding(false);
-        return true; // Still success, just no funding needed
+        return true;
       }
     } catch (error) {
       console.error('Error receiving fee coverage:', error);
@@ -207,7 +207,7 @@ function ClaimPage({ peraWallet }) {
     }
   };
   
-  // Handle USDC claim - SIMPLIFIED (no fee transfer during claim)
+  // Handle USDC claim
   const handleClaim = async () => {
     if (!accountAddress || !tempPrivateKey || !appId) return;
     
@@ -218,7 +218,6 @@ function ClaimPage({ peraWallet }) {
     try {
       console.log("Generating claim transaction...");
       
-      // Generate claim transaction (NO fee transfer since it's already done)
       const response = await axios.post(`${API_URL}/generate-claim`, {
         tempPrivateKey,
         appId,
@@ -227,7 +226,6 @@ function ClaimPage({ peraWallet }) {
       
       console.log("Submitting claim transaction...");
       
-      // Submit the claim transaction - should always be single transaction now
       const submitData = {
         signedTxn: response.data.signedTransaction,
         appId,
@@ -270,27 +268,27 @@ function ClaimPage({ peraWallet }) {
     if (!tempPrivateKey || !appId) {
       return (
         <div className="text-center">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
-              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <h3 className="text-xl font-semibold text-white mb-2">Invalid Claim Link</h3>
-          <p className="text-gray-400">Please check the URL and try again. Both private key and app ID are required.</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Invalid Claim Link</h3>
+          <p className="text-gray-600 text-sm">Please check the URL and try again. Both private key and app ID are required.</p>
         </div>
       );
     }
     
     if (isLoading && !escrowDetails) {
       return (
-        <div className="text-center py-8">
-          <div className="flex justify-center mb-6">
-            <div className="w-12 h-12 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+        <div className="text-center py-6">
+          <div className="flex justify-center mb-4">
+            <div className="w-8 h-8 spinner"></div>
           </div>
-          <h3 className="text-xl font-semibold text-white mb-2">Loading Transfer Details</h3>
-          <p className="text-gray-400">Please wait while we fetch your transfer information...</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Transfer Details</h3>
+          <p className="text-gray-600 text-sm">Please wait while we fetch your transfer information...</p>
         </div>
       );
     }
@@ -298,18 +296,18 @@ function ClaimPage({ peraWallet }) {
     if (error && !accountAddress) {
       return (
         <div className="text-center">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
-              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <h3 className="text-xl font-semibold text-white mb-2">Error</h3>
-          <p className="text-red-400 mb-6">{error}</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error</h3>
+          <p className="text-red-600 mb-4 text-sm">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="btn-primary px-6 py-3 rounded-xl font-semibold"
+            className="btn-primary px-4 py-2 font-medium"
           >
             Try Again
           </button>
@@ -321,27 +319,27 @@ function ClaimPage({ peraWallet }) {
       return (
         <div className="text-center">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center float">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
             </div>
           </div>
           
           {escrowDetails && (
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-white mb-4">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">
                 You've received {formatAmount(escrowDetails.amount)} USDC! 🎉
               </h2>
-              <p className="text-gray-300 text-lg">
+              <p className="text-gray-600">
                 Connect your Algorand wallet to claim the funds
               </p>
               {escrowDetails.payRecipientFees && (
-                <div className="mt-3 text-xs text-gray-400">
+                <div className="mt-2 text-xs text-gray-500">
                   Transaction fees covered by sender
                 </div>
               )}
-              <div className="mt-4 text-sm text-gray-400">
+              <div className="mt-3 text-sm text-gray-500">
                 App ID: {appId}
               </div>
             </div>
@@ -349,10 +347,10 @@ function ClaimPage({ peraWallet }) {
           
           <button
             onClick={connectWallet}
-            className="btn-primary px-8 py-4 rounded-xl font-semibold text-lg"
+            className="btn-primary px-6 py-3 font-medium"
           >
-            <span className="flex items-center space-x-3">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span className="flex items-center space-x-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               <span>Connect Wallet</span>
@@ -364,18 +362,18 @@ function ClaimPage({ peraWallet }) {
     
     if (claimStatus === 'checking' || (isLoading && !['initial', 'success'].includes(claimStatus))) {
       return (
-        <div className="text-center py-8">
-          <div className="flex justify-center mb-6">
-            <div className="w-12 h-12 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+        <div className="text-center py-6">
+          <div className="flex justify-center mb-4">
+            <div className="w-8 h-8 spinner"></div>
           </div>
-          <h3 className="text-xl font-semibold text-white mb-2">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
             {claimStatus === 'claiming' 
               ? 'Claiming Your USDC...' 
               : (isFunding 
                   ? 'Receiving Fee Coverage...' 
                   : 'Preparing Your Wallet...')}
           </h3>
-          <p className="text-gray-400">
+          <p className="text-gray-600 text-sm">
             {claimStatus === 'claiming' 
               ? 'Please wait while we process your claim' 
               : (isFunding 
@@ -384,16 +382,16 @@ function ClaimPage({ peraWallet }) {
           </p>
           
           {/* Connected wallet display */}
-          <div className="mt-6 glass-dark border border-purple-500/20 rounded-xl p-4 inline-block">
+          <div className="mt-4 card card-compact inline-block">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                <svg className="w-4 h-4 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+              <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
+                <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                 </svg>
               </div>
               <div>
-                <div className="text-purple-300 text-sm font-medium">Connected Wallet</div>
-                <div className="text-white font-mono text-sm">{formatAddress(accountAddress)}</div>
+                <div className="text-purple-600 text-sm font-medium">Connected Wallet</div>
+                <div className="text-gray-900 font-mono text-sm">{formatAddress(accountAddress)}</div>
               </div>
             </div>
           </div>
@@ -404,16 +402,16 @@ function ClaimPage({ peraWallet }) {
     if (claimStatus === 'need-optin') {
       return (
         <div className="text-center">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center">
-              <svg className="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
           
-          <h3 className="text-xl font-semibold text-white mb-4">USDC Opt-in Required</h3>
-          <p className="text-gray-300 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">USDC Opt-in Required</h3>
+          <p className="text-gray-600 mb-4 text-sm">
             Your wallet needs to opt-in to the USDC token before you can receive the funds.
             This is a one-time setup step.
           </p>
@@ -421,11 +419,11 @@ function ClaimPage({ peraWallet }) {
           <button
             onClick={handleOptIn}
             disabled={isLoading}
-            className="btn-primary px-6 py-3 rounded-xl font-semibold"
+            className="btn-primary px-4 py-2 font-medium"
           >
             {isLoading ? (
               <span className="flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-4 h-4 spinner"></div>
                 <span>Processing...</span>
               </span>
             ) : (
@@ -434,7 +432,7 @@ function ClaimPage({ peraWallet }) {
           </button>
           
           {error && (
-            <div className="mt-4 text-red-400 text-sm">{error}</div>
+            <div className="mt-3 text-red-600 text-sm">{error}</div>
           )}
         </div>
       );
@@ -443,21 +441,21 @@ function ClaimPage({ peraWallet }) {
     if (claimStatus === 'ready-to-claim') {
       return (
         <div className="text-center">
-          <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center pulse-purple">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
             </div>
           </div>
           
-          <h2 className="text-2xl font-bold text-white mb-4">Ready to Claim!</h2>
-          <p className="text-gray-300 text-lg mb-8">
-            Claim your <span className="text-green-400 font-bold">{formatAmount(escrowDetails.amount)} USDC</span> now
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Ready to Claim!</h2>
+          <p className="text-gray-600 mb-6">
+            Claim your <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} USDC</span> now
           </p>
           
           {escrowDetails?.payRecipientFees && (
-            <div className="mb-4 text-xs text-gray-400">
+            <div className="mb-4 text-xs text-gray-500">
               Fees covered by sender
             </div>
           )}
@@ -465,16 +463,16 @@ function ClaimPage({ peraWallet }) {
           <button
             onClick={handleClaim}
             disabled={isLoading}
-            className="btn-primary px-8 py-4 rounded-xl font-semibold text-lg"
+            className="btn-primary px-6 py-3 font-medium"
           >
             {isLoading ? (
               <span className="flex items-center space-x-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-4 h-4 spinner"></div>
                 <span>Claiming...</span>
               </span>
             ) : (
               <span className="flex items-center space-x-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
                 <span>Claim USDC</span>
@@ -483,8 +481,8 @@ function ClaimPage({ peraWallet }) {
           </button>
           
           {error && (
-            <div className="mt-6 glass border border-red-500/20 bg-red-500/10 rounded-xl p-4">
-              <p className="text-red-300">{error}</p>
+            <div className="mt-4 status-error">
+              <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
         </div>
@@ -493,58 +491,58 @@ function ClaimPage({ peraWallet }) {
     
     if (claimStatus === 'success') {
       return (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Success header */}
           <div className="text-center">
-            <div className="flex justify-center mb-6">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center checkmark">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex justify-center mb-4">
+              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
             </div>
             
-            <h2 className="text-3xl font-bold text-white mb-4">Successfully Claimed! 🎉</h2>
-            <p className="text-gray-300 text-lg mb-2">
-              <span className="text-green-400 font-bold">{formatAmount(escrowDetails.amount)} USDC</span> has been transferred to your wallet
+            <h2 className="text-2xl font-semibold text-gray-900 mb-3">Successfully Claimed! 🎉</h2>
+            <p className="text-gray-600 mb-2">
+              <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} USDC</span> has been transferred to your wallet
             </p>
             {escrowDetails?.payRecipientFees && (
-              <p className="text-gray-400 text-xs mb-2">
+              <p className="text-gray-500 text-xs mb-2">
                 Fees covered by sender
               </p>
             )}
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-500 text-sm">
               Wallet: <span className="font-mono">{formatAddress(accountAddress)}</span>
             </p>
           </div>
           
           {/* What's next section */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-white mb-2">What's Next?</h3>
-              <p className="text-gray-400">Put your USDC to work in the Algorand ecosystem</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">What's Next?</h3>
+              <p className="text-gray-600 text-sm">Put your USDC to work in the Algorand ecosystem</p>
             </div>
             
             {/* Ecosystem project cards */}
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {ecosystemProjects.map((project, index) => (
                 <div
                   key={project.name}
-                  className="glass-dark border border-purple-500/20 rounded-xl p-4 hover:border-purple-400/40 transition-all duration-300 group"
+                  className="card card-compact hover:shadow-md transition-all duration-200 group"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${project.gradient} flex items-center justify-center text-xl group-hover:scale-110 transition-transform duration-300`}>
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${project.gradient} flex items-center justify-center text-lg group-hover:scale-110 transition-transform duration-200`}>
                       {project.icon}
                     </div>
                     
                     <div className="flex-1">
-                      <h4 className="text-white font-semibold text-lg">{project.name}</h4>
-                      <p className="text-gray-400 text-sm">{project.description}</p>
+                      <h4 className="text-gray-900 font-medium">{project.name}</h4>
+                      <p className="text-gray-600 text-sm">{project.description}</p>
                     </div>
                     
                     <button
                       onClick={() => window.open(project.url, '_blank')}
-                      className="btn-secondary px-4 py-2 rounded-lg text-sm font-medium hover:scale-105 transition-transform duration-300"
+                      className="btn-secondary px-3 py-1.5 text-sm font-medium hover:scale-105 transition-transform duration-200"
                     >
                       <span className="flex items-center space-x-1">
                         <span>Visit</span>
@@ -559,10 +557,10 @@ function ClaimPage({ peraWallet }) {
             </div>
             
             {/* Send your own USDC */}
-            <div className="text-center pt-4">
+            <div className="text-center pt-3">
               <button
                 onClick={() => window.open(window.location.origin, '_blank')}
-                className="btn-primary px-6 py-3 rounded-xl font-semibold"
+                className="btn-primary px-4 py-2 font-medium"
               >
                 <span className="flex items-center space-x-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -581,14 +579,28 @@ function ClaimPage({ peraWallet }) {
   };
   
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="glass-dark border border-purple-500/20 rounded-2xl p-6 lg:p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">Claim USDC</h1>
-          <p className="text-gray-400">Secure and instant USDC transfer on Algorand</p>
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      {/* Clean background decoration */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 right-10 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-30"></div>
+        <div className="absolute bottom-32 left-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-20"></div>
+      </div>
+      
+      <div className="w-full max-w-lg mx-auto relative z-10">
+        <div className="card card-normal">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
+                 style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
+              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim USDC</h1>
+            <p className="text-gray-600 text-sm">Secure and instant USDC transfer on Algorand</p>
+          </div>
+          
+          {renderContent()}
         </div>
-        
-        {renderContent()}
       </div>
     </div>
   );
