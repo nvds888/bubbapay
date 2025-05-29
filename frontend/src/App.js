@@ -1,4 +1,4 @@
-// src/App.js - Updated with signing page route
+// src/App.js - Updated with clean white theme
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { PeraWalletConnect } from '@perawallet/connect';
@@ -8,7 +8,7 @@ import SendFlow from './components/SendFlow';
 import ClaimPage from './components/ClaimPage';
 import TransactionsPage from './components/TransactionsPage';
 import SuccessPage from './components/SuccessPage';
-import SigningPage from './components/SigningPage'; // New signing page
+import SigningPage from './components/SigningPage';
 import DocumentationPage from './components/DocumentationPage';
 import './App.css';
 
@@ -61,13 +61,12 @@ function AppContent() {
   };
   
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Animated background - hide on signing page for clean experience */}
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* Clean background - minimal decoration */}
       {!isSigningPage && (
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-400/5 rounded-full blur-3xl"></div>
+          <div className="absolute top-20 right-10 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-30"></div>
+          <div className="absolute bottom-32 left-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-20"></div>
         </div>
       )}
 
@@ -82,39 +81,37 @@ function AppContent() {
       )}
       
       {/* Main content */}
-      <main className={`flex-grow relative z-10 ${isSigningPage ? '' : 'container mx-auto px-4 lg:px-6 py-8 lg:py-12'}`}>
+      <main className={`flex-grow relative z-10 ${
+        isSigningPage ? '' : 'py-4 sm:py-6 lg:py-8'
+      }`}>
         <Routes>
           {/* Main send flow */}
           <Route 
             path="/" 
             element={
-              <div className="max-w-2xl mx-auto">
-                <SendFlow 
-                  accountAddress={accountAddress} 
-                  peraWallet={peraWallet}
-                />
-              </div>
+              <SendFlow 
+                accountAddress={accountAddress} 
+                peraWallet={peraWallet}
+              />
             } 
           />
 
-           {/* Send flow with MCP session support - ADD THIS ROUTE */}
-  <Route 
-    path="/send" 
-    element={
-      <div className="max-w-2xl mx-auto">
-        <SendFlow 
-          accountAddress={accountAddress} 
-          peraWallet={peraWallet}
-        />
-      </div>
-    } 
-  />
+          {/* Send flow with MCP session support */}
+          <Route 
+            path="/send" 
+            element={
+              <SendFlow 
+                accountAddress={accountAddress} 
+                peraWallet={peraWallet}
+              />
+            } 
+          />
           
           {/* Claim page (handles own wallet connection) */}
           <Route 
             path="/claim" 
             element={
-              <div className="max-w-2xl mx-auto">
+              <div className="max-w-2xl mx-auto px-4">
                 <ClaimPage peraWallet={peraWallet} />
               </div>
             } 
@@ -130,12 +127,16 @@ function AppContent() {
           <Route 
             path="/transactions" 
             element={
-              accountAddress ? 
-              <TransactionsPage 
-                accountAddress={accountAddress} 
-                peraWallet={peraWallet} 
-              /> : 
-              <Navigate to="/" replace />
+              accountAddress ? (
+                <div className="max-w-6xl mx-auto px-4">
+                  <TransactionsPage 
+                    accountAddress={accountAddress} 
+                    peraWallet={peraWallet} 
+                  />
+                </div>
+              ) : (
+                <Navigate to="/" replace />
+              )
             } 
           />
           
@@ -143,7 +144,7 @@ function AppContent() {
           <Route 
             path="/success/:escrowId" 
             element={
-              <div className="max-w-2xl mx-auto">
+              <div className="max-w-2xl mx-auto px-4">
                 <SuccessPage />
               </div>
             } 
@@ -153,7 +154,7 @@ function AppContent() {
           <Route 
             path="/docs" 
             element={
-              <div className="max-w-4xl mx-auto">
+              <div className="max-w-4xl mx-auto px-4">
                 <DocumentationPage />
               </div>
             } 

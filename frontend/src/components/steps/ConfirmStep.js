@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 function ConfirmStep({
   formData,
@@ -14,9 +14,10 @@ function ConfirmStep({
   peraWallet = null,
   onWalletConnect = null
 }) {
-  const [stage, setStage] = React.useState('initial'); // initial, app-created, funded
-  const [connectingWallet, setConnectingWallet] = React.useState(false);
-  const [walletError, setWalletError] = React.useState(null);
+  const [stage, setStage] = useState('initial'); // initial, app-created, funded
+  const [connectingWallet, setConnectingWallet] = useState(false);
+  const [walletError, setWalletError] = useState(null);
+  const [showTransactionDetails, setShowTransactionDetails] = useState(false);
   
   // Update stage based on transaction data
   useEffect(() => {
@@ -40,7 +41,6 @@ function ConfirmStep({
     try {
       const accounts = await peraWallet.connect();
       if (accounts && accounts.length > 0) {
-        // Call the parent's wallet connect handler if provided
         if (onWalletConnect) {
           onWalletConnect(accounts[0]);
         }
@@ -65,69 +65,59 @@ function ConfirmStep({
     return `${address.substring(0, 8)}...${address.substring(address.length - 4)}`;
   };
   
-  const steps = [
-    {
-      number: 1,
-      title: "Create Smart Contract",
-      description: "Create the smart contract for this transfer",
-      icon: "📄",
-      active: stage === 'initial',
-      completed: stage !== 'initial'
-    },
-    {
-      number: 2,
-      title: "Fund & Setup Transfer",
-      description: "Fund the contract and set up the USDC transfer",
-      icon: "💰",
-      active: stage === 'app-created',
-      completed: false
-    }
-  ];
-
   // Check if wallet is connected
   const isWalletConnected = !!accountAddress;
   
-  // SIMPLIFIED: Determine if back button should be shown
-  // Hide back button for MCP users OR after first transaction is signed
+  // Determine if back button should be shown
   const canGoBack = !mcpSessionData && stage === 'initial';
   
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="text-center space-y-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-400 to-green-600 mb-4 float">
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="max-w-md mx-auto">
+      {/* Compact header */}
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3" 
+             style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)'}}>
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-3xl font-bold text-white">Confirm & Send</h2>
-        <p className="text-gray-400 max-w-md mx-auto">
-          {!isWalletConnected ? 'Connect your wallet to continue' : 'Review transaction & sign with your wallet'}
+        <h2 className="text-xl font-semibold text-gray-900 mb-1">Confirm & Send</h2>
+        <p className="text-gray-600 text-sm">
+          {!isWalletConnected ? 'Connect your wallet to continue' : 'Review and sign transaction'}
         </p>
       </div>
       
       {/* Transaction summary */}
-      <div className="glass-dark border border-purple-500/20 rounded-2xl p-6 space-y-4">
-        <h3 className="text-lg font-semibold text-white mb-4">Transaction Summary</h3>
+      <div className="card card-normal mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-gray-900">Transaction Summary</h3>
+          <button
+            type="button"
+            onClick={() => setShowTransactionDetails(!showTransactionDetails)}
+            className="btn-ghost text-xs px-2 py-1"
+          >
+            {showTransactionDetails ? 'Hide' : 'Details'}
+          </button>
+        </div>
         
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">Amount:</span>
-            <span className="text-white font-semibold text-lg">{formatAmount(formData.amount)} USDC</span>
+            <span className="text-gray-600">Amount:</span>
+            <span className="font-semibold text-lg">{formatAmount(formData.amount)} USDC</span>
           </div>
           
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">From:</span>
-            <span className="text-purple-300 font-mono text-sm">
-              {isWalletConnected ? formatAddress(accountAddress) : 'Connect wallet first'}
+            <span className="text-gray-600">From:</span>
+            <span className="font-mono text-sm text-purple-600">
+              {isWalletConnected ? formatAddress(accountAddress) : 'Connect wallet'}
             </span>
           </div>
           
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">To:</span>
-            <span className="text-white font-medium">
+            <span className="text-gray-600">To:</span>
+            <span className="text-gray-900">
               {formData.isShareableLink ? (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                   Shareable Link
                 </span>
               ) : (
@@ -138,173 +128,184 @@ function ConfirmStep({
           
           {formData.payRecipientFees && (
             <div className="flex justify-between items-center">
-              <span className="text-gray-400">Fee Coverage:</span>
-              <span className="text-green-400 font-medium">0.4 ALGO</span>
+              <span className="text-gray-600">Fee Coverage:</span>
+              <span className="text-green-600 font-medium">0.4 ALGO</span>
             </div>
           )}
         </div>
+        
+        {/* Expanded transaction details */}
+        {showTransactionDetails && (
+          <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm text-gray-600">
+            <div className="flex justify-between">
+              <span>Network:</span>
+              <span>Algorand Testnet</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Settlement:</span>
+              <span>Instant</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Security:</span>
+              <span>Smart Contract</span>
+            </div>
+          </div>
+        )}
       </div>
       
-      {/* ADDED: Notice when user can't go back */}
+      {/* Status indicator */}
       {stage === 'app-created' && (
-        <div className="glass border border-blue-500/20 bg-blue-500/10 rounded-xl p-4">
-          <div className="flex items-start space-x-3">
-            <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <div className="card card-compact status-info mb-4">
+          <div className="flex items-center space-x-2">
+            <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>
-            <div className="text-sm">
-              <div className="text-blue-300 font-medium">Smart Contract Created</div>
-              <div className="text-blue-200 mt-1">
-                Your smart contract has been created with your selected settings. Complete the final step to fund the transfer.
-              </div>
-            </div>
+            <span className="text-sm">Smart contract created. Complete the final step to fund the transfer.</span>
           </div>
         </div>
       )}
       
       {/* Wallet Connection Section for MCP users */}
       {!isWalletConnected && mcpSessionData && (
-        <div className="glass-dark border border-blue-500/20 rounded-2xl p-6 space-y-4">
+        <div className="card card-normal mb-4">
           <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-white">Connect Your Wallet</h3>
-            <p className="text-gray-400">
-              Connect your Pera Wallet to sign this transaction
-            </p>
+            <div>
+              <h3 className="font-medium text-gray-900">Connect Your Wallet</h3>
+              <p className="text-gray-600 text-sm mt-1">
+                Connect Pera Wallet to sign this transaction
+              </p>
+            </div>
             
             {walletError && (
-              <div className="glass border border-red-500/20 bg-red-500/10 rounded-xl p-3">
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-red-300 text-sm">{walletError}</span>
-                </div>
+              <div className="card card-compact status-error">
+                <span className="text-sm">{walletError}</span>
               </div>
             )}
             
             <button
               onClick={handleConnectWallet}
               disabled={connectingWallet}
-              className="btn-primary w-full py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70"
+              className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
             >
-              <span className="relative z-10 flex items-center justify-center space-x-2">
-                {connectingWallet ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Connecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <span>Connect Pera Wallet</span>
-                  </>
-                )}
-              </span>
+              {connectingWallet ? (
+                <span className="flex items-center justify-center space-x-2">
+                  <div className="w-4 h-4 spinner"></div>
+                  <span>Connecting...</span>
+                </span>
+              ) : (
+                <span className="flex items-center justify-center space-x-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>Connect Pera Wallet</span>
+                </span>
+              )}
             </button>
           </div>
         </div>
       )}
       
-      {/* Transaction steps - only show if wallet is connected */}
+      {/* Transaction steps - compact */}
       {isWalletConnected && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white">Transaction Steps</h3>
-          <p className="text-gray-400 text-sm">
-            You'll need to sign two transactions with your Pera Wallet to complete this transfer:
+        <div className="card card-normal mb-4">
+          <h3 className="font-medium text-gray-900 mb-3">Transaction Steps</h3>
+          <p className="text-gray-600 text-sm mb-4">
+            Sign two transactions with your Pera Wallet:
           </p>
           
           <div className="space-y-3">
-            {steps.map((step) => (
-              <div
-                key={step.number}
-                className={`glass-dark border rounded-xl p-4 transition-all duration-300 ${
-                  step.active
-                    ? 'border-purple-500/50 bg-purple-500/5'
-                    : step.completed
-                    ? 'border-green-500/30 bg-green-500/5'
-                    : 'border-gray-700'
-                }`}
-              >
-                <div className="flex items-center space-x-4">
-                  <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center font-semibold text-sm transition-all duration-300 ${
-                      step.active
-                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                        : step.completed
-                        ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                        : 'bg-gray-700 text-gray-400'
-                    }`}
-                  >
-                    {step.completed ? (
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      step.number
-                    )}
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className={`font-medium ${step.active ? 'text-white' : step.completed ? 'text-green-300' : 'text-gray-400'}`}>
-                      {step.title}
-                    </div>
-                    <div className={`text-sm ${step.active ? 'text-gray-300' : 'text-gray-500'}`}>
-                      {step.description}
-                    </div>
-                  </div>
-                  
-                  {step.active && (
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                      <span className="text-purple-300 text-sm">Active</span>
-                    </div>
-                  )}
-                  
-                  {step.completed && (
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span className="text-green-300 text-sm">Completed</span>
-                    </div>
-                  )}
+            {/* Step 1 */}
+            <div className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+              stage === 'initial' 
+                ? 'bg-purple-50 border border-purple-200' 
+                : stage !== 'initial' 
+                ? 'bg-green-50 border border-green-200' 
+                : 'bg-gray-50 border border-gray-200'
+            }`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                stage === 'initial'
+                  ? 'bg-purple-100 text-purple-700'
+                  : stage !== 'initial'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                {stage !== 'initial' ? (
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1  1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  '1'
+                )}
+              </div>
+              <div className="flex-1">
+                <div className={`text-sm font-medium ${
+                  stage === 'initial' ? 'text-purple-900' : stage !== 'initial' ? 'text-green-900' : 'text-gray-700'
+                }`}>
+                  Create Smart Contract
+                </div>
+                <div className="text-xs text-gray-600">
+                  {stage === 'initial' ? 'Ready to sign' : stage !== 'initial' ? 'Completed' : 'Pending'}
                 </div>
               </div>
-            ))}
+            </div>
+            
+            {/* Step 2 */}
+            <div className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+              stage === 'app-created' 
+                ? 'bg-purple-50 border border-purple-200' 
+                : 'bg-gray-50 border border-gray-200'
+            }`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                stage === 'app-created'
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                2
+              </div>
+              <div className="flex-1">
+                <div className={`text-sm font-medium ${
+                  stage === 'app-created' ? 'text-purple-900' : 'text-gray-600'
+                }`}>
+                  Fund & Setup Transfer
+                </div>
+                <div className="text-xs text-gray-600">
+                  {stage === 'app-created' ? 'Ready to sign' : 'Pending'}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
       
       {/* Error display */}
       {error && (
-        <div className="glass border border-red-500/20 bg-red-500/10 rounded-xl p-4">
-          <div className="flex items-start space-x-3">
-            <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <div className="card card-compact status-error mb-4">
+          <div className="flex items-start space-x-2">
+            <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
-            <div>
-              <h4 className="text-red-300 font-semibold">Transaction Error</h4>
-              <p className="text-red-200 text-sm mt-1">{error}</p>
+            <div className="text-sm">
+              <div className="font-medium text-red-800">Transaction Error</div>
+              <div className="text-red-700 mt-1">{error}</div>
             </div>
           </div>
         </div>
       )}
       
-      {/* Action buttons - only show if wallet is connected */}
+      {/* Action buttons */}
       {isWalletConnected && (
-        <div className="flex flex-col sm:flex-row gap-4 pt-4">
-          {/* SIMPLIFIED: Only show back button if user can go back */}
+        <div className="flex space-x-3">
           {canGoBack && (
             <button
               type="button"
               onClick={prevStep}
               disabled={isLoading}
-              className="btn-secondary flex-1 py-3 px-6 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50"
+              className="btn-secondary flex-1 py-3 px-4 disabled:opacity-50"
             >
               <span className="flex items-center justify-center space-x-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -320,14 +321,14 @@ function ConfirmStep({
               type="button"
               onClick={handleSignFirstTransaction}
               disabled={isLoading}
-              className={`btn-primary py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70 ${
+              className={`btn-primary py-3 px-4 font-medium disabled:opacity-70 ${
                 !canGoBack ? 'w-full' : 'flex-1'
               }`}
             >
-              <span className="relative z-10 flex items-center justify-center space-x-2">
+              <span className="flex items-center justify-center space-x-2">
                 {isLoading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 spinner"></div>
                     <span>Processing...</span>
                   </>
                 ) : (
@@ -347,12 +348,12 @@ function ConfirmStep({
               type="button"
               onClick={handleSignGroupTransactions}
               disabled={isLoading}
-              className="btn-primary w-full py-3 px-6 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden group disabled:opacity-70"
+              className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
             >
-              <span className="relative z-10 flex items-center justify-center space-x-2">
+              <span className="flex items-center justify-center space-x-2">
                 {isLoading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 spinner"></div>
                     <span>Processing...</span>
                   </>
                 ) : (

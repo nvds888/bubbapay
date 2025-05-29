@@ -77,7 +77,7 @@ function SendFlow({ accountAddress, peraWallet }) {
       }
       
       try {
-        // Check ALGO availability (we'll update this when payRecipientFees changes)
+        // Check ALGO availability
         const algoCheck = await checkAlgoAvailability(effectiveAccountAddress, formData.payRecipientFees);
         setAlgoAvailability(algoCheck);
       } catch (error) {
@@ -89,7 +89,7 @@ function SendFlow({ accountAddress, peraWallet }) {
     };
     
     getBalances();
-  }, [effectiveAccountAddress, formData.payRecipientFees]); // Also re-check when payRecipientFees changes
+  }, [effectiveAccountAddress, formData.payRecipientFees]);
   
   // Load MCP session if present in URL
   useEffect(() => {
@@ -328,7 +328,6 @@ function SendFlow({ accountAddress, peraWallet }) {
       });
       
       // Generate claim URL ourselves to match the backend version
-      // This ensures we have the URL even if it's not stored in the database
       const generatedClaimUrl = `${window.location.origin}/claim?app=${txnData.appId}#key=${txnData.tempAccount.privateKey}`;
       
       // Navigate to success page with both the escrow ID and claim URL
@@ -342,8 +341,7 @@ function SendFlow({ accountAddress, peraWallet }) {
       console.error('Error signing group transactions:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit group transactions');
       
-      // CRITICAL FIX: Clear transaction data so user can start fresh if they try again
-      // This prevents the flow from trying to continue with a partially completed app
+      // Clear transaction data so user can start fresh if they try again
       setTxnData(null);
     } finally {
       setIsLoading(false);
@@ -401,27 +399,31 @@ function SendFlow({ accountAddress, peraWallet }) {
   };
   
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      {/* Hide step indicator for MCP users */}
-      {!mcpSessionData && <StepIndicator currentStep={currentStep} totalSteps={3} />}
+    <div className="w-full max-w-2xl mx-auto px-4 py-6">
+      {/* Compact step indicator - hide for MCP users */}
+      {!mcpSessionData && (
+        <div className="mb-6">
+          <StepIndicator currentStep={currentStep} totalSteps={3} />
+        </div>
+      )}
       
-      {/* Main card with glassmorphism effect */}
-      <div className="glass-dark border border-purple-500/20 rounded-2xl p-6 lg:p-8 card-animate">
+      {/* Main content */}
+      <div className="mb-6">
         {renderStep()}
       </div>
       
-      {/* Trust indicators */}
-      <div className="mt-8 flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8 text-sm text-gray-400">
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-          <span>Fast Transactions</span>
+      {/* Trust indicators - compact */}
+      <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500">
+        <div className="flex items-center space-x-1">
+          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+          <span>Fast</span>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-          <span>Instant Settlement</span>
+        <div className="flex items-center space-x-1">
+          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+          <span>Secure</span>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+        <div className="flex items-center space-x-1">
+          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
           <span>Low Fees</span>
         </div>
       </div>
