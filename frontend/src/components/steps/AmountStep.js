@@ -171,14 +171,14 @@ function AmountStep({
               name="amount"
               value={formData.amount}
               onChange={handleInputChange}
-              className="w-full pl-7 pr-12 py-3 text-lg font-medium compact-input"
+              className="w-full pl-7 pr-16 py-3 text-lg font-medium border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-colors"
               placeholder="0.00"
               min="0.01"
               step="0.01"
               max={usdcBalance || undefined}
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <span className="text-gray-400 text-sm font-medium">USDC</span>
+              <span className="text-gray-500 text-sm font-medium">USDC</span>
             </div>
           </div>
           
@@ -271,16 +271,28 @@ function AmountStep({
                 {algoAvailability.breakdown && (
                   <div className="pt-2 border-t border-gray-200 space-y-1 text-xs text-gray-500">
                     <div className="flex justify-between">
-                      <span>App creation:</span>
-                      <span>0.1 ALGO</span>
+                      <span>App creation fee:</span>
+                      <span>{algoAvailability.breakdown.appCreationFee} ALGO</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>App min balance:</span>
+                      <span>{algoAvailability.breakdown.appMinBalanceIncrease || '0.100000'} ALGO</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Temp account funding:</span>
+                      <span>{algoAvailability.breakdown.tempAccountFunding || '0.102000'} ALGO</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Contract funding:</span>
                       <span>{algoAvailability.breakdown.contractFunding} ALGO</span>
                     </div>
                     <div className="flex justify-between">
+                      <span>Platform fee:</span>
+                      <span>{algoAvailability.breakdown.platformFee || '0.100000'} ALGO</span>
+                    </div>
+                    <div className="flex justify-between">
                       <span>Transaction fees:</span>
-                      <span>{algoAvailability.breakdown.totalFees} ALGO</span>
+                      <span>{algoAvailability.breakdown.groupTransactionFees || algoAvailability.breakdown.totalFees} ALGO</span>
                     </div>
                     {formData.payRecipientFees && (
                       <div className="flex justify-between">

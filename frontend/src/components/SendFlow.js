@@ -411,22 +411,6 @@ function SendFlow({ accountAddress, peraWallet }) {
       <div className="mb-6">
         {renderStep()}
       </div>
-      
-      {/* Trust indicators - compact */}
-      <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500">
-        <div className="flex items-center space-x-1">
-          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-          <span>Fast</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-          <span>Secure</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-          <span>Low Fees</span>
-        </div>
-      </div>
     </div>
   );
 }
