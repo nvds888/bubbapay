@@ -305,7 +305,7 @@ function ConfirmStep({
               type="button"
               onClick={prevStep}
               disabled={isLoading}
-              className="btn-secondary flex-1 py-3 px-4 disabled:opacity-50"
+              className="btn-secondary flex-1 py-2 px-4 font-medium disabled:opacity-50"
             >
               <span className="flex items-center justify-center space-x-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -321,7 +321,7 @@ function ConfirmStep({
               type="button"
               onClick={handleSignFirstTransaction}
               disabled={isLoading}
-              className={`btn-primary py-3 px-4 font-medium disabled:opacity-70 ${
+              className={`btn-primary py-2 px-4 font-medium disabled:opacity-70 ${
                 !canGoBack ? 'w-full' : 'flex-1'
               }`}
             >
@@ -348,7 +348,7 @@ function ConfirmStep({
               type="button"
               onClick={handleSignGroupTransactions}
               disabled={isLoading}
-              className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
+              className="btn-primary w-full py-2 px-4 font-medium disabled:opacity-70"
             >
               <span className="flex items-center justify-center space-x-2">
                 {isLoading ? (
