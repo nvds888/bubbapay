@@ -7,91 +7,93 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 function SuccessPage() {
   const { escrowId } = useParams();
   const location = useLocation();
-  const [escrowData, setEscrowData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  
+  // State for escrow details
+  const [escrowDetails, setEscrowDetails] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
   
-  // Get claim URL from location state or fetch from API
+  // Get the claim URL from location state if available
   const claimUrl = location.state?.claimUrl;
   const isShareable = location.state?.isShareable;
   
+  // Fetch escrow details when component mounts
   useEffect(() => {
-    const fetchEscrowData = async () => {
+    const fetchEscrowDetails = async () => {
+      if (!escrowId) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
       try {
         const response = await axios.get(`${API_URL}/escrow/${escrowId}`);
-        setEscrowData(response.data);
-        setLoading(false);
+        // If we have a claim URL from navigation state, use that instead of what's in the database
+        setEscrowDetails({
+          ...response.data,
+          // Override with location state if available
+          claimUrl: claimUrl || response.data.claimUrl,
+          isShareable: isShareable !== undefined ? isShareable : response.data.isShareable
+        });
+        setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching escrow data:', error);
-        setError('Failed to load transaction details');
-        setLoading(false);
+        console.error('Error fetching escrow details:', error);
+        
+        // If we have a claim URL from state, create minimal escrow details
+        if (claimUrl) {
+          setEscrowDetails({
+            claimUrl,
+            isShareable: isShareable !== undefined ? isShareable : true,
+            // We don't have other details, but we have the critical claim URL
+          });
+          setIsLoading(false);
+        } else {
+          setError('Failed to fetch transfer details');
+          setIsLoading(false);
+        }
       }
     };
     
-    if (escrowId) {
-      fetchEscrowData();
-    }
-  }, [escrowId]);
+    fetchEscrowDetails();
+  }, [escrowId, claimUrl, isShareable]);
   
   // Copy claim URL to clipboard
-  const copyToClipboard = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      try {
-        document.execCommand('copy');
+  const copyToClipboard = () => {
+    if (!escrowDetails?.claimUrl) return;
+    
+    navigator.clipboard.writeText(escrowDetails.claimUrl)
+      .then(() => {
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch (fallbackErr) {
-        console.error('Fallback copy failed: ', fallbackErr);
-      }
-      document.body.removeChild(textArea);
-    }
+        // Reset "Copied" status after 3 seconds
+        setTimeout(() => setCopied(false), 3000);
+      })
+      .catch(err => {
+        console.error('Failed to copy text: ', err);
+      });
   };
   
   // Format USDC amount
   const formatAmount = (amount) => {
+    if (!amount) return '0.00';
     return parseFloat(amount).toFixed(2);
   };
   
-  // Format date
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
-  
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="max-w-md mx-auto">
         <div className="card card-normal text-center">
           <div className="flex justify-center mb-4">
             <div className="w-8 h-8 spinner"></div>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Loading Transaction Details</h2>
-          <p className="text-gray-600 text-sm">Please wait...</p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Loading Transfer Details</h2>
+          <p className="text-gray-600 text-sm">Please wait while we fetch your transaction information...</p>
         </div>
       </div>
     );
   }
   
-  if (error) {
+  // Handle error but still show claim URL if we have it from location state
+  if ((error || !escrowDetails) && !claimUrl) {
     return (
       <div className="max-w-md mx-auto">
         <div className="card card-normal status-error text-center">
@@ -102,18 +104,26 @@ function SuccessPage() {
               </svg>
             </div>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-4 text-sm">{error}</p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h2>
+          <p className="text-gray-600 mb-4 text-sm">
+            {error || 'Unable to load transfer details. Please try again.'}
+          </p>
           <Link 
             to="/"
-            className="btn-primary px-4 py-2 font-medium"
+            className="btn-primary px-4 py-2 font-medium inline-flex items-center space-x-2"
           >
-            Back to Home
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Back to Home</span>
           </Link>
         </div>
       </div>
     );
   }
+  
+  // If we don't have full escrow details but have the claim URL, render a minimal success page
+  const hasMinimalDetails = escrowDetails && escrowDetails.claimUrl && !escrowDetails.amount;
   
   return (
     <div className="max-w-md mx-auto space-y-6">
@@ -131,17 +141,25 @@ function SuccessPage() {
       </div>
       
       {/* Transaction summary */}
-      {escrowData && (
+      {escrowDetails && (
         <div className="card card-normal">
           <h3 className="font-medium text-gray-900 mb-3">Transaction Summary</h3>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Amount:</span>
-              <span className="font-semibold text-gray-900">{formatAmount(escrowData.amount)} USDC</span>
+              <span className="font-semibold text-gray-900">{formatAmount(escrowDetails.amount)} USDC</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Date:</span>
-              <span className="text-gray-900">{formatDate(escrowData.createdAt)}</span>
+              <span className="text-gray-900">
+                {escrowDetails.createdAt ? new Intl.DateTimeFormat('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }).format(new Date(escrowDetails.createdAt)) : 'Just now'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Status:</span>
@@ -149,50 +167,18 @@ function SuccessPage() {
                 Awaiting Claim
               </span>
             </div>
-            {escrowData.appId && (
+            {escrowDetails.appId && (
               <div className="flex justify-between">
                 <span className="text-gray-600">App ID:</span>
-                <span className="font-mono text-xs text-gray-900">{escrowData.appId}</span>
+                <span className="font-mono text-xs text-gray-900">{escrowDetails.appId}</span>
               </div>
             )}
           </div>
-          
-          {/* Expandable details */}
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="btn-ghost w-full mt-3 text-sm py-2"
-          >
-            {showDetails ? 'Hide Details' : 'Show Details'}
-          </button>
-          
-          {showDetails && (
-            <div className="mt-3 pt-3 border-t border-gray-200 space-y-2 text-xs text-gray-600">
-              <div className="flex justify-between">
-                <span>Network:</span>
-                <span>Algorand Testnet</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Recipient Fees:</span>
-                <span>{escrowData.coverRecipientFees ? 'Covered by sender' : 'Paid by recipient'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Smart Contract:</span>
-                <a 
-                  href={`https://lora.algokit.io/testnet/application/${escrowData.appId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-purple-600 hover:text-purple-700 underline"
-                >
-                  View on Explorer
-                </a>
-              </div>
-            </div>
-          )}
         </div>
       )}
       
       {/* Claim URL section */}
-      {claimUrl && (isShareable !== false) && (
+      {escrowDetails?.claimUrl && (escrowDetails.isShareable !== false) && (
         <div className="card card-normal">
           <h3 className="font-medium text-gray-900 mb-3">Share Claim Link</h3>
           <p className="text-gray-600 text-sm mb-4">
@@ -204,12 +190,12 @@ function SuccessPage() {
             <div className="flex items-center space-x-2">
               <input
                 type="text"
-                value={claimUrl}
+                value={escrowDetails.claimUrl}
                 readOnly
                 className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono text-gray-700"
               />
               <button
-                onClick={() => copyToClipboard(claimUrl)}
+                onClick={copyToClipboard}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
                   copied 
                     ? 'bg-green-100 text-green-700 border border-green-200' 
@@ -234,10 +220,10 @@ function SuccessPage() {
               </button>
             </div>
             
-            {/* Quick share options */}
+            {/* Quick share options - UPDATED: Only WhatsApp and Telegram */}
             <div className="flex space-x-2">
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`I've sent you ${escrowData ? formatAmount(escrowData.amount) : ''} USDC! Claim it here: ${claimUrl}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} USDC! Claim it here: ${escrowDetails.claimUrl}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
@@ -245,16 +231,12 @@ function SuccessPage() {
                 <span>WhatsApp</span>
               </a>
               <a
-                href={`sms:?body=${encodeURIComponent(`I've sent you ${escrowData ? formatAmount(escrowData.amount) : ''} USDC! Claim it here: ${claimUrl}`)}`}
+                href={`https://t.me/share/url?url=${encodeURIComponent(escrowDetails.claimUrl)}&text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} USDC! Claim it here:`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
               >
-                <span>SMS</span>
-              </a>
-              <a
-                href={`mailto:?subject=${encodeURIComponent('USDC Payment')}&body=${encodeURIComponent(`I've sent you ${escrowData ? formatAmount(escrowData.amount) : ''} USDC! Claim it here: ${claimUrl}`)}`}
-                className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
-              >
-                <span>Email</span>
+                <span>Telegram</span>
               </a>
             </div>
           </div>
@@ -281,7 +263,7 @@ function SuccessPage() {
       <div className="flex flex-col space-y-3">
         <Link 
           to="/transactions"
-          className="btn-secondary w-full py-3 px-4 font-medium flex items-center justify-center space-x-2"
+          className="btn-secondary w-full py-2 px-4 font-medium flex items-center justify-center space-x-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -291,7 +273,7 @@ function SuccessPage() {
         
         <Link 
           to="/"
-          className="btn-primary w-full py-3 px-4 font-medium flex items-center justify-center space-x-2"
+          className="btn-primary w-full py-2 px-4 font-medium flex items-center justify-center space-x-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
