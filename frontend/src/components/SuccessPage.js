@@ -14,9 +14,23 @@ function SuccessPage() {
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   
+  // SECURITY: URL revelation state
+  const [urlRevealed, setUrlRevealed] = useState(false);
+  
   // Get the claim URL from location state if available
   const claimUrl = location.state?.claimUrl;
   const isShareable = location.state?.isShareable;
+  
+  // SECURITY: Browser History Protection - Clear sensitive data from history
+  useEffect(() => {
+    if (claimUrl) {
+      window.history.replaceState(
+        { ...location.state, claimUrl: null }, 
+        '', 
+        window.location.pathname
+      );
+    }
+  }, [claimUrl, location.state]);
   
   // Fetch escrow details when component mounts
   useEffect(() => {
@@ -57,13 +71,32 @@ function SuccessPage() {
     fetchEscrowDetails();
   }, [escrowId, claimUrl, isShareable]);
   
-  // Copy claim URL to clipboard
+  // SECURITY: URL Obfuscation function
+  const obfuscateUrl = (url) => {
+    if (!url || !url.includes('#key=')) return url;
+    const [base, key] = url.split('#key=');
+    return `${base}#key=${key.slice(0, 8)}•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••${key.slice(-4)}`;
+  };
+  
+  // SECURITY: Secure copy with auto-clear
   const copyToClipboard = () => {
     if (!escrowDetails?.claimUrl) return;
     
     navigator.clipboard.writeText(escrowDetails.claimUrl)
       .then(() => {
         setCopied(true);
+        // Auto-clear clipboard after 2 minutes
+        setTimeout(async () => {
+          try {
+            const clipboardContent = await navigator.clipboard.readText();
+            if (clipboardContent === escrowDetails.claimUrl) {
+              await navigator.clipboard.writeText('');
+            }
+          } catch (error) {
+            // Silently fail - browser security prevents reading clipboard
+          }
+        }, 120000);
+        
         // Reset "Copied" status after 3 seconds
         setTimeout(() => setCopied(false), 3000);
       })
@@ -122,9 +155,6 @@ function SuccessPage() {
     );
   }
   
-  // If we don't have full escrow details but have the claim URL, render a minimal success page
-  const hasMinimalDetails = escrowDetails && escrowDetails.claimUrl && !escrowDetails.amount;
-  
   return (
     <div className="max-w-md mx-auto space-y-6">
       {/* Success header */}
@@ -177,7 +207,7 @@ function SuccessPage() {
         </div>
       )}
       
-      {/* Claim URL section */}
+      {/* ENHANCED: Claim URL section with security */}
       {escrowDetails?.claimUrl && (escrowDetails.isShareable !== false) && (
         <div className="card card-normal">
           <h3 className="font-medium text-gray-900 mb-3">Share Claim Link</h3>
@@ -185,60 +215,80 @@ function SuccessPage() {
             Send this secure link to your recipient so they can claim the USDC.
           </p>
           
-          {/* URL display and copy */}
           <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={escrowDetails.claimUrl}
-                readOnly
-                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono text-gray-700"
-              />
-              <button
-                onClick={copyToClipboard}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                  copied 
-                    ? 'bg-green-100 text-green-700 border border-green-200' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
-                }`}
-              >
-                {copied ? (
-                  <div className="flex items-center space-x-1">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span>Copied</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <span>Copy</span>
+            {!urlRevealed ? (
+              // Hidden state with obfuscated preview
+              <div className="bg-gray-50 border border-gray-300 rounded-lg p-3">
+                <div className="text-xs text-gray-500 mb-2">🔒 Link hidden for security</div>
+                <div className="font-mono text-xs text-gray-400 mb-3 break-all">
+                  {obfuscateUrl(escrowDetails.claimUrl)}
+                </div>
+                <button
+                  onClick={() => setUrlRevealed(true)}
+                  className="btn-primary w-full py-2 text-sm"
+                >
+                  Reveal Link
+                </button>
+              </div>
+            ) : (
+              // Revealed state
+              <>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800">
+                  ⚠️ Link is now visible - copy securely
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={escrowDetails.claimUrl}
+                    readOnly
+                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono text-gray-700"
+                  />
+                  <button
+                    onClick={copyToClipboard}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      copied 
+                        ? 'bg-green-100 text-green-700 border border-green-200' 
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
+                    }`}
+                  >
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                {copied && (
+                  <div className="text-xs text-blue-600">
+                    🔒 Will auto-clear from clipboard in 2 minutes
                   </div>
                 )}
-              </button>
-            </div>
+                <button
+                  onClick={() => setUrlRevealed(false)}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline"
+                >
+                  Hide link
+                </button>
+              </>
+            )}
             
-            {/* Quick share options - UPDATED: Only WhatsApp and Telegram */}
-            <div className="flex space-x-2">
-              <a
-                href={`https://wa.me/?text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} USDC! Claim it here: ${escrowDetails.claimUrl}`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
-              >
-                <span>WhatsApp</span>
-              </a>
-              <a
-                href={`https://t.me/share/url?url=${encodeURIComponent(escrowDetails.claimUrl)}&text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} USDC! Claim it here:`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
-              >
-                <span>Telegram</span>
-              </a>
-            </div>
+            {/* Quick share options */}
+            {urlRevealed && (
+              <div className="flex space-x-2">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} USDC! Claim it here: ${escrowDetails.claimUrl}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
+                >
+                  <span>WhatsApp</span>
+                </a>
+                <a
+                  href={`https://t.me/share/url?url=${encodeURIComponent(escrowDetails.claimUrl)}&text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} USDC! Claim it here:`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
+                >
+                  <span>Telegram</span>
+                </a>
+              </div>
+            )}
           </div>
         </div>
       )}
