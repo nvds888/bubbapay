@@ -1,3 +1,5 @@
+! This project is still in development
+
 # AlgoSend
 
 Send USDC instantly on Algorand. Fast, secure, and user-friendly payments for everyone.
