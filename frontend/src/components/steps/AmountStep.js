@@ -138,7 +138,7 @@ function AmountStep({
           </svg>
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-1">Send USDC</h2>
-        <p className="text-gray-600 text-sm">Fast, secure payments on Algorand</p>
+        <p className="text-gray-600 text-sm">To anyone, anywhere, anytime</p>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">

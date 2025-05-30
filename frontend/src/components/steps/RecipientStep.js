@@ -71,13 +71,13 @@ function RecipientStep({ formData, handleInputChange, nextStep, prevStep }) {
                   <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  <span>Works with WhatsApp, Telegram, SMS, etc.</span>
+                  <span>One-click sharing via WhatsApp & Telegram</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  <span>No email address required</span>
+                  <span>No personal data required</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -97,7 +97,7 @@ function RecipientStep({ formData, handleInputChange, nextStep, prevStep }) {
               </svg>
               <div className="text-sm">
                 <span className="font-medium text-amber-800">Share securely:</span>
-                <span className="text-amber-700"> Anyone with the link can claim the funds</span>
+                <span className="text-amber-700"> Anyone with the link can claim the funds!</span>
               </div>
             </div>
           </div>
@@ -151,11 +151,7 @@ function RecipientStep({ formData, handleInputChange, nextStep, prevStep }) {
               </li>
               <li className="flex items-center space-x-2">
                 <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                <span>Include recipient onboarding guide</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
-                <span>Send notifications for unclaimed funds</span>
+                <span>Include personalized message for recipient</span>
               </li>
             </ul>
           </div>

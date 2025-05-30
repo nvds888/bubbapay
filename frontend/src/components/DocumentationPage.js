@@ -254,7 +254,7 @@ Database Lookup Process:
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Claim Verification Flow</h2>
               <p>
-                The claiming process consists ofa hash validation check & opt-in check before an user can submit a claim to the App (if using our backend to access App).
+                The claiming process consists of a hash validation check & opt-in check before an user can submit a claim to the App (only if using our backend).
               </p>
 
               <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
@@ -336,12 +336,12 @@ Limited Risk Components:
          │                       │                       │
          ▼                       ▼                       ▼
    Breach Cannot       Can Deny Service        Cannot Access
-   Expose Keys         Cannot Steal Funds      User Funds, but can access claim URL`}
+   Expose Keys         Cannot Steal Funds      User Funds directly, but can potentially access claim URL`}
                 </pre>
               </div>
 
               <p>
-                The hash-based database protection means that even complete database compromise cannot expose claim credentials. The backend API can deny service but cannot steal funds since all verification logic lives in immutable smart contracts. Importantly, funds remain accessible directly through the Algorand blockchain using the claim URL even if Nomizo Pay's service becomes unavailable, as the smart contracts operate independently of our infrastructure.
+                The hash-based database protection means that even complete database compromise cannot expose claim credentials. The backend API can deny service but cannot steal funds since all verification logic lives in immutable smart contracts. Importantly, funds remain accessible directly through the Algorand blockchain using the claim URL even if NomizoPay's service becomes unavailable, as the smart contracts operate independently of our infrastructure.
               </p>
               <p>
                 The frontend UI can be compromised and potentially expose the unique claim URL, but we've implemented multiple security measures to mitigate this risk such as immediate history sanitization, smart masking, auto-clear for clipboard, and more.

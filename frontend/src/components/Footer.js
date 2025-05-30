@@ -25,7 +25,7 @@ function Footer() {
                 </span>
               </div>
               <p className="text-gray-600 max-w-md mb-4 text-sm">
-                Send USDC instantly on Algorand. Fast, secure, and user-friendly payments for everyone.
+                Send USDC to anyone, anywhere, anytime. User-friendly payments on Algorand.
               </p>
               
               {/* Social links - minimal */}
