@@ -198,9 +198,19 @@ function SuccessPage() {
               </span>
             </div>
             {escrowDetails.appId && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">App ID:</span>
-                <span className="font-mono text-xs text-gray-900">{escrowDetails.appId}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Contract:</span>
+                <a
+                  href={`https://lora.algokit.io/testnet/application/${escrowDetails.appId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1"
+                >
+                  <span className="text-xs">View Explorer</span>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
               </div>
             )}
           </div>
@@ -220,7 +230,7 @@ function SuccessPage() {
               // Hidden state with obfuscated preview
               <div className="bg-gray-50 border border-gray-300 rounded-lg p-3">
                 <div className="text-xs text-gray-500 mb-2">🔒 Link hidden for security</div>
-                <div className="font-mono text-xs text-gray-400 mb-3 break-all">
+                <div className="font-mono text-xs text-gray-400 mb-3 break-words overflow-hidden">
                   {obfuscateUrl(escrowDetails.claimUrl)}
                 </div>
                 <button

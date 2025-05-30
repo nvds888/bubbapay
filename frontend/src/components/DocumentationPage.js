@@ -12,8 +12,8 @@ function DocumentationPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-semibold text-gray-900 mb-3">Technical Documentation</h1>
-          <p className="text-gray-600">Understanding the architecture behind Nomizo Pay</p>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-3">Documentation</h1>
+          <p className="text-gray-600">The architecture behind NomizoPay</p>
         </div>
 
         {/* Documentation Content */}
@@ -23,7 +23,7 @@ function DocumentationPage() {
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Overview</h2>
               <p>
-                This application aims to solve a fundamental problem in cryptocurrency: how to send digital assets to someone who may not have a wallet or understand blockchain technology. Built on Algorand, our system creates secure escrow smart contracts that hold USDC until recipients can claim them, either through email notifications or shareable links.
+                This application aims to solve an onboarding problem for projects & tokens on L1 chains: how to send tokens to someone who may not have a wallet or understand blockchain technology. Built on Algorand, our system creates secure escrow smart contracts that hold USDC until recipients can claim them through shareable links.
               </p>
               <p>
                 The security model uses temporary accounts and hash-based database protection to ensure only legitimate recipients can access funds while preventing unauthorized claims even if backend systems are compromised.
@@ -38,7 +38,7 @@ function DocumentationPage() {
                   <div>
                     <h4 className="text-red-800 font-semibold text-lg mb-2">⚠️ CRITICAL SECURITY NOTICE</h4>
                     <p className="text-red-700 mb-3">
-                      <strong>Nomizo Pay is experimental software provided "as is" without warranty.</strong> We take no responsibility for lost, stolen, or inaccessible funds. Users assume all risks when using this service.
+                      <strong>NomizoPay is experimental software provided "as is" without warranty.</strong> We take no responsibility for lost, stolen, or inaccessible funds. Users assume all risks when using this service.
                     </p>
                     <p className="text-red-700 text-sm">
                       Always verify claim links are secure, never share private keys, and only send amounts you can afford to lose. Smart contracts are immutable - transactions cannot be reversed.
@@ -51,7 +51,7 @@ function DocumentationPage() {
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Use Cases & Applications</h2>
               <p>
-                Nomizo Pay enables seamless USDC transfers for various scenarios where traditional crypto onboarding creates friction:
+                NomizoPay enables seamless USDC transfers - and other ASAs soon - for various scenarios where traditional crypto onboarding creates friction:
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
@@ -65,7 +65,7 @@ function DocumentationPage() {
                 <div className="card card-compact bg-gray-50">
                   <h4 className="text-green-700 font-semibold mb-2">🌍 Cross-Border Payments</h4>
                   <p className="text-sm text-gray-600">
-                    Send USDC instantly across the planet, 24/7, with minimal fees. Perfect for remittances, international business, or emergency funding.
+                    Send USDC instantly across the planet, 24/7, with minimal fees. Perfect for remittances, international business, or emergency funding, when you need to send USDC to someone who doesn't have a wallet.
                   </p>
                 </div>
                 
@@ -86,9 +86,9 @@ function DocumentationPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-gray-900 mb-4">The Smart Contract Architecture</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">The Escrow Architecture</h2>
               <p>
-                At the heart of the system is a smart contract that acts as an autonomous escrow agent. When someone wants to send USDC, the system generates a unique temporary account and deploys a new smart contract instance specifically for that transfer.
+                At the heart of the system is a smart contract (Application) that acts as an autonomous escrow agent. When someone wants to send USDC, the system generates a unique temporary account and deploys a new smart contract instance specifically for that transfer.
               </p>
               
               <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
@@ -108,14 +108,14 @@ function DocumentationPage() {
               </div>
 
               <p>
-                The smart contract stores the creator's address, the transfer amount, whether funds have been claimed, and most importantly, the specific temporary account address authorized to claim the funds. This temporary account address is compiled directly into the smart contract's TEAL code, making it immutable and tamper-proof.
+                The smart contract stores the creator's address, the transfer amount, whether funds have been claimed, and most importantly, the specific temporary account address authorized to claim the funds. This temporary account address is compiled directly into the smart contract's code upon creation.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Temporary Account Security Model</h2>
               <p>
-                The core centers on unique temporary accounts generated for each transfer. These accounts serve as cryptographic authorization tokens that cannot be forged or transferred between escrows.
+                NomizoPay uses unique temporary accounts that are generated for each transfer. These accounts serve as cryptographic authorization tokens that cannot be forged or transferred between escrows.
               </p>
 
               <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Temporary Account Generation Flow</h3>
@@ -134,7 +134,7 @@ function DocumentationPage() {
               </div>
 
               <p>
-                Each temporary account is generated fresh with a new keypair that has never existed before. The account address gets embedded as a constant in the smart contract's approval program during compilation. This creates an immutable authorization mechanism where only that specific account can trigger fund release.
+                Each temporary account is generated fresh with a new keypair that has never existed before. The account address gets embedded in the smart contract's approval program during compilation. This creates an immutable authorization mechanism where only that specific account can trigger fund release.
               </p>
               <p>
                 The temporary account receives minimal funding - just enough ALGO to execute one claim transaction. After successful claiming, the account becomes effectively useless since it holds no funds and its authorization has been consumed.
@@ -211,7 +211,7 @@ Database Lookup Process:
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">The Two-Phase Transaction Process</h2>
               <p>
-                Creating an escrow requires careful orchestration across two distinct phases to ensure atomic execution and proper security setup.
+                Creating an escrow involves two distinct phases to ensure atomic execution and proper setup.
               </p>
 
               <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Phase One: Contract Deployment</h3>
@@ -254,7 +254,7 @@ Database Lookup Process:
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Claim Verification Flow</h2>
               <p>
-                The claiming process entails a hash validation check & optin check before an user can submit a claim to the App (using our backend).
+                The claiming process consists ofa hash validation check & opt-in check before an user can submit a claim to the App (if using our backend to access App).
               </p>
 
               <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
@@ -298,7 +298,7 @@ Database Lookup Process:
               </div>
 
               <p>
-                The reclaim verification mirrors the claim process but checks the creator's address instead of the temporary account. The smart contract ensures that funds haven't already been claimed before allowing reclaim, preventing double-spending scenarios.
+                The reclaim verification mirrors the claim process but checks the creator's address instead of the temporary account. The smart contract ensures that funds haven't already been claimed before allowing reclaim.
               </p>
             </section>
 
@@ -310,7 +310,7 @@ Database Lookup Process:
               
               <div className="status-error my-4">
                 <p className="text-red-700 text-sm">
-                  <strong>DISCLAIMER:</strong> Users are solely responsible for the security of their funds. Nomizo Pay cannot recover lost funds, reverse transactions, or guarantee smart contract behavior. Use at your own risk.
+                  <strong>DISCLAIMER:</strong> Users are solely responsible for the security of their funds. NomizoPay cannot recover lost funds, reverse transactions, or guarantee smart contract behavior. Use at your own risk.
                 </p>
               </div>
 
@@ -336,25 +336,28 @@ Limited Risk Components:
          │                       │                       │
          ▼                       ▼                       ▼
    Breach Cannot       Can Deny Service        Cannot Access
-   Expose Keys         Cannot Steal Funds      User Funds`}
+   Expose Keys         Cannot Steal Funds      User Funds, but can access claim URL`}
                 </pre>
               </div>
 
               <p>
                 The hash-based database protection means that even complete database compromise cannot expose claim credentials. The backend API can deny service but cannot steal funds since all verification logic lives in immutable smart contracts. Importantly, funds remain accessible directly through the Algorand blockchain using the claim URL even if Nomizo Pay's service becomes unavailable, as the smart contracts operate independently of our infrastructure.
               </p>
+              <p>
+                The frontend UI can be compromised and potentially expose the unique claim URL, but we've implemented multiple security measures to mitigate this risk such as immediate history sanitization, smart masking, auto-clear for clipboard, and more.
+              </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Remaining Security Considerations</h2>
               <p>
-                The system cannot prevent legitimate scenarios where multiple people have access to the same claim URL, such as shared links forwarded to multiple recipients. In such cases, whoever submits a valid claim first will succeed, and subsequent attempts will fail due to the smart contract's claimed flag.
+                The system cannot prevent legitimate scenarios where multiple people have access to the same claim URL, such as shared links forwarded to multiple recipients or send through insecure channels. Or if a user's browser is compromised.
               </p>
               <p>
-                <strong>Critical:</strong> The unique claim URL grants complete access to the escrowed funds. Users must store and transfer these URLs securely using encrypted channels, password managers, or other secure methods. Anyone with access to the claim URL can immediately claim the funds without additional authentication.
+                <strong>Critical:</strong> The unique claim URL grants complete access to the escrowed funds. Users must store and transfer these URLs securely using encrypted channels, or other secure methods. Anyone with access to the claim URL can immediately claim the funds without additional authentication.
               </p>
               <p>
-                The combination of temporary account authorization, hash-based database protection, creator reclaim rights, and careful separation of concerns creates a system where users can send and receive USDC with confidence, even when dealing with unfamiliar recipients or in situations where traditional payment methods would be impractical.
+                The combination of temporary account authorization, hash-based database protection, creator reclaim rights, and careful separation of concerns creates a system where users can send and receive low-value transfers with confidence, even when dealing with unfamiliar recipients or in situations where traditional payment methods would be impractical.
               </p>
               
               <div className="status-error my-6">
@@ -365,7 +368,7 @@ Limited Risk Components:
                   <div>
                     <h4 className="text-red-800 font-semibold mb-1">Final Security Warning</h4>
                     <p className="text-red-700 text-sm">
-                      Smart contracts are immutable and experimental. Nomizo Pay assumes no liability for lost funds, smart contract bugs, network failures, or user errors. Only send amounts you can afford to lose completely.
+                      Smart contracts are immutable and experimental! NomizoPay assumes no liability for lost funds, smart contract bugs, network failures, or user errors. Only send amounts you can afford to lose completely.
                     </p>
                   </div>
                 </div>

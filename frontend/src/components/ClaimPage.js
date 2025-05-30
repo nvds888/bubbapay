@@ -51,14 +51,34 @@ function ClaimPage({ peraWallet }) {
     }
   ];
   
-  // Connect to Pera Wallet
+  // Connect to Pera Wallet - ALWAYS override existing connections
   const connectWallet = async () => {
     try {
+      // First, disconnect any existing connection to ensure clean state
+      try {
+        await peraWallet.disconnect();
+      } catch (disconnectError) {
+        // Ignore disconnect errors - might not be connected
+        console.log('No existing connection to disconnect:', disconnectError.message);
+      }
+      
+      // Clear our local state
+      setAccountAddress(null);
+      setClaimStatus('initial');
+      setError(null);
+      
+      // Wait a moment for the disconnect to process
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Now connect fresh
       const accounts = await peraWallet.connect();
       setAccountAddress(accounts[0]);
+      
+      console.log('Successfully connected wallet:', accounts[0]);
+      
     } catch (error) {
       console.error('Error connecting to Pera Wallet:', error);
-      setError('Failed to connect to wallet');
+      setError('Failed to connect to wallet. Please try again.');
     }
   };
   
@@ -339,9 +359,6 @@ function ClaimPage({ peraWallet }) {
                   Transaction fees covered by sender
                 </div>
               )}
-              <div className="mt-3 text-sm text-gray-500">
-                App ID: {appId}
-              </div>
             </div>
           )}
           
