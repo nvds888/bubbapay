@@ -323,7 +323,7 @@ function AmountStep({
                 className="w-4 h-4 text-purple-600 rounded"
                 onClick={(e) => e.stopPropagation()}
               />
-              <span>Cover recipient fees</span>
+              <span>Cover recipient fees (onboarding wizard)</span>
             </div>
             <svg className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} 
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,7 +333,7 @@ function AmountStep({
           
           {showAdvanced && (
             <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
-              <p>Pay ~0.4 ALGO to cover the recipient's wallet funding and transaction costs. This makes claiming easier for new users.</p>
+              <p>Pay ~0.4 ALGO to cover the recipient's opt-in & future transaction fees. This makes onboarding easier for new users.</p>
             </div>
           )}
         </div>
