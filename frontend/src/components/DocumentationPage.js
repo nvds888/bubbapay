@@ -344,7 +344,7 @@ Limited Risk Components:
                 The hash-based database protection means that even complete database compromise cannot expose claim credentials. The backend API can deny service but cannot steal funds since all verification logic lives in immutable smart contracts. Importantly, funds remain accessible directly through the Algorand blockchain using the claim URL even if NomizoPay's service becomes unavailable, as the smart contracts operate independently of our infrastructure.
               </p>
               <p>
-                The frontend UI can be compromised and potentially expose the unique claim URL, but we've implemented multiple security measures to mitigate this risk such as immediate history sanitization, smart masking, auto-clear for clipboard, and more.
+                The frontend UI can be compromised and potentially expose the unique claim URL, but we've implemented multiple security measures to mitigate this risk such as using URL fragments, immediate history sanitization, smart masking, auto-clear for clipboard, and more.
               </p>
             </section>
 
