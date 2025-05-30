@@ -96,14 +96,53 @@ router.post('/submit-app-creation', async (req, res) => {
     if (!signedTxn || !tempAccount || !amount || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
-    
-    // Submit the signed transaction
-    const { txId } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
-    
-    // Wait for confirmation
-    const txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
+
+    let txId;
+    let txnResult;
+
+    try {
+      // Submit the signed transaction
+      const submitResponse = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      txId = submitResponse.txId;
+      
+      // Wait for confirmation
+      txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
+      
+    } catch (submitError) {
+      // Check if this is a "transaction already in ledger" error
+      if (submitError.message && submitError.message.includes('transaction already in ledger')) {
+        console.log('Transaction already in ledger, extracting txId and confirming...');
+        
+        // Extract transaction ID from error message
+        const txIdMatch = submitError.message.match(/transaction already in ledger: ([A-Z0-9]+)/);
+        if (txIdMatch && txIdMatch[1]) {
+          txId = txIdMatch[1];
+          console.log(`Extracted txId from error: ${txId}`);
+          
+          // Wait for confirmation of the existing transaction
+          try {
+            txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
+            console.log('Successfully confirmed existing transaction');
+          } catch (confirmError) {
+            console.error('Error confirming existing transaction:', confirmError);
+            throw new Error('Transaction was submitted but confirmation failed');
+          }
+        } else {
+          throw new Error('Could not extract transaction ID from duplicate submission error');
+        }
+      } else {
+        // Re-throw other errors
+        throw submitError;
+      }
+    }
+
+    // Extract app ID from transaction result
     const appId = txnResult['application-index'];
     
+    if (!appId) {
+      throw new Error('Application ID not found in transaction result');
+    }
+
     // Generate the second group of transactions
     const postAppTxns = await generatePostAppTransactions({
       appId,
@@ -119,9 +158,13 @@ router.post('/submit-app-creation', async (req, res) => {
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: postAppTxns.tempAccount
     });
+    
   } catch (error) {
     console.error('Error submitting app creation:', error);
-    res.status(500).json({ error: 'Failed to submit app creation', details: error.message });
+    res.status(500).json({ 
+      error: 'Failed to submit app creation', 
+      details: error.message 
+    });
   }
 });
 
@@ -134,13 +177,42 @@ router.post('/submit-group-transactions', async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
-    // Submit the signed transactions
-    const { txId } = await algodClient.sendRawTransaction(
-      signedTxns.map(txn => Buffer.from(txn, 'base64'))
-    ).do();
+    let txId;
     
-    // Wait for confirmation
-    await algosdk.waitForConfirmation(algodClient, txId, 5);
+    try {
+      // Submit the signed transactions
+      const submitResponse = await algodClient.sendRawTransaction(
+        signedTxns.map(txn => Buffer.from(txn, 'base64'))
+      ).do();
+      txId = submitResponse.txId;
+      
+      // Wait for confirmation
+      await algosdk.waitForConfirmation(algodClient, txId, 5);
+      
+    } catch (submitError) {
+      // Handle duplicate submission for group transactions too
+      if (submitError.message && submitError.message.includes('transaction already in ledger')) {
+        console.log('Group transaction already in ledger, extracting txId...');
+        
+        const txIdMatch = submitError.message.match(/transaction already in ledger: ([A-Z0-9]+)/);
+        if (txIdMatch && txIdMatch[1]) {
+          txId = txIdMatch[1];
+          console.log(`Extracted group txId from error: ${txId}`);
+          
+          try {
+            await algosdk.waitForConfirmation(algodClient, txId, 5);
+            console.log('Successfully confirmed existing group transaction');
+          } catch (confirmError) {
+            console.error('Error confirming existing group transaction:', confirmError);
+            throw new Error('Group transaction was submitted but confirmation failed');
+          }
+        } else {
+          throw new Error('Could not extract transaction ID from group duplicate submission error');
+        }
+      } else {
+        throw submitError;
+      }
+    }
     
     // Get the app address
     const appAddress = algosdk.getApplicationAddress(parseInt(appId));
