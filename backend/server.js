@@ -39,7 +39,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Trust proxy for rate limiting (required for Render/Heroku/etc.)
-app.set('trust proxy', true);
+if (process.env.NODE_ENV === 'production') {
+  // In production, trust specific proxy hops (adjust based on your hosting)
+  app.set('trust proxy', 1); // Trust first proxy (e.g., Render, Vercel, etc.)
+} else {
+  // In development, don't trust proxies for more accurate rate limiting
+  app.set('trust proxy', false);
+}
 
 // Set up SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
