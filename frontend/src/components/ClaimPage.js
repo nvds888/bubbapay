@@ -215,7 +215,7 @@ function ClaimPage() {
           onClick={enableWallet}
           className="btn-primary px-6 py-3 font-medium"
         >
-          Connect Wallet to Claim
+          Connect Wallet
         </button>
       </div>
     );
