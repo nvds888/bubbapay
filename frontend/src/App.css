@@ -308,3 +308,88 @@ input:focus, textarea:focus, select:focus {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gray-400);
 }
+
+/* Wallet button styling override - more specific selectors */
+.wallet-button-container > button,
+[data-wallet-ui] > button,
+button[data-testid="wallet-button"],
+button[class*="WalletButton"] {
+  background: var(--gradient-primary) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
+  font-size: 0.875rem !important;
+  transition: all 0.2s ease !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.wallet-button-container > button:hover,
+[data-wallet-ui] > button:hover,
+button[data-testid="wallet-button"]:hover,
+button[class*="WalletButton"]:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.wallet-button-container > button:active,
+[data-wallet-ui] > button:active,
+button[data-testid="wallet-button"]:active,
+button[class*="WalletButton"]:active {
+  transform: translateY(0) !important;
+}
+
+/* Main modal styling - solid white with dark overlay */
+[data-wallet-ui] [role="dialog"]:not([class*="wallet"]),
+[data-wallet-ui] .modal-content:not([class*="wallet"]),
+[data-wallet-ui] [class*="Modal"]:not([class*="wallet"]),
+[data-wallet-ui] [class*="Dialog"]:not([class*="wallet"]) {
+  background: white !important;
+  backdrop-filter: none !important;
+}
+
+/* Main modal backdrop - solid dark */
+[data-wallet-ui] [role="dialog"]:not([class*="wallet"])::backdrop,
+[data-wallet-ui] .modal-backdrop:not([class*="wallet"]),
+[data-wallet-ui] [class*="backdrop"]:not([class*="wallet"]),
+[data-wallet-ui] [class*="overlay"]:not([class*="wallet"]) {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: none !important;
+}
+
+/* Wallet connection modal - solid white */
+[data-wallet-ui] [role="dialog"][class*="wallet"],
+[data-wallet-ui] .modal-content[class*="wallet"],
+[data-wallet-ui] [class*="Modal"][class*="wallet"],
+[data-wallet-ui] [class*="Dialog"][class*="wallet"],
+[data-wallet-ui] div[class*="wallet-modal"],
+[data-wallet-ui] div[class*="WalletModal"] {
+  background: white !important;
+  backdrop-filter: none !important;
+}
+
+/* Wallet connection modal backdrop - semi-transparent */
+[data-wallet-ui] [role="dialog"][class*="wallet"]::backdrop,
+[data-wallet-ui] .modal-backdrop[class*="wallet"],
+[data-wallet-ui] [class*="backdrop"][class*="wallet"],
+[data-wallet-ui] [class*="overlay"][class*="wallet"] {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* More specific targeting for wallet modal content */
+[data-wallet-ui] > div > div,
+[data-wallet-ui] div[style*="background"] {
+  background: white !important;
+}
+
+/* Remove any transparency effects from modal content */
+[data-wallet-ui] [role="dialog"] *,
+[data-wallet-ui] .modal-content *,
+[data-wallet-ui] [class*="Modal"] *,
+[data-wallet-ui] [class*="Dialog"] * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+

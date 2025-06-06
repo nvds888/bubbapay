@@ -49,8 +49,8 @@ function AmountStep({
       
       let errorMessage = `Transaction requires ${totalCost} ALGO total. You need ${deficit} more ALGO.`;
       
-      if (formData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.400000") {
-        const costWithoutRecipientFees = (parseFloat(totalCost) - 0.401).toFixed(6);
+      if (formData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.300000") {
+        const costWithoutRecipientFees = (parseFloat(totalCost) - 0.301).toFixed(6);
         const availableBalance = parseFloat(algoAvailability.availableBalance);
         
         if (availableBalance >= parseFloat(costWithoutRecipientFees)) {
@@ -67,7 +67,7 @@ function AmountStep({
       
       let errorMessage = `You have enough ALGO to create the app, but not enough to complete the funding step. You need ${groupDeficit} more ALGO after app creation.`;
       
-      if (formData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.400000") {
+      if (formData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.300000") {
         errorMessage += ` Try unchecking "Cover recipient's transaction fees" to reduce the cost.`;
       }
       
@@ -287,10 +287,6 @@ function AmountStep({
                       <span>{algoAvailability.breakdown.contractFunding} ALGO</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Platform fee:</span>
-                      <span>{algoAvailability.breakdown.platformFee || '0.100000'} ALGO</span>
-                    </div>
-                    <div className="flex justify-between">
                       <span>Transaction fees:</span>
                       <span>{algoAvailability.breakdown.groupTransactionFees || algoAvailability.breakdown.totalFees} ALGO</span>
                     </div>
@@ -333,7 +329,7 @@ function AmountStep({
           
           {showAdvanced && (
             <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
-              <p>Pay ~0.4 ALGO to cover the recipient's opt-in & future transaction fees. This makes onboarding easier for new users.</p>
+              <p>Pay ~0.3 ALGO to cover the recipient's opt-in & future transaction fees. This makes onboarding easier for new users.</p>
             </div>
           )}
         </div>

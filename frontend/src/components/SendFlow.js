@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useWallet } from '@txnlab/use-wallet-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
 import StepIndicator from './StepIndicator';
@@ -10,14 +11,15 @@ import { fetchUSDCBalance, checkAlgoAvailability } from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-function SendFlow({ accountAddress, peraWallet }) {
+function SendFlow() {
   const navigate = useNavigate();
+  const { activeAddress, signTransactions } = useWallet();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   
   // Internal account address state for MCP users who connect wallet on confirm step
-  const [internalAccountAddress, setInternalAccountAddress] = useState(accountAddress);
+  const [internalAccountAddress, setInternalAccountAddress] = useState(activeAddress);
   
   // USDC balance state
   const [usdcBalance, setUsdcBalance] = useState(null);
@@ -45,11 +47,11 @@ function SendFlow({ accountAddress, peraWallet }) {
   
   // Update internal account address when prop changes
   useEffect(() => {
-    setInternalAccountAddress(accountAddress);
-  }, [accountAddress]);
+    setInternalAccountAddress(activeAddress);
+  }, [activeAddress]);
   
   // Use internal account address for balance and ALGO checks
-  const effectiveAccountAddress = internalAccountAddress || accountAddress;
+  const effectiveAccountAddress = internalAccountAddress || activeAddress;
   
   // Fetch USDC balance and ALGO availability when account changes
   useEffect(() => {
@@ -256,8 +258,8 @@ function SendFlow({ accountAddress, peraWallet }) {
       // Decode the transaction for proper signing
       const txn = algosdk.decodeUnsignedTransaction(txnUint8);
       
-      // Sign with Pera Wallet
-      const signedTxns = await peraWallet.signTransaction([[{ txn, signers: [effectiveAccountAddress] }]]);
+      // Sign with use-wallet (supports multiple wallets)
+      const signedTxns = await signTransactions([txn]);
       
       // Convert the signed transaction to base64
       const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
@@ -305,14 +307,14 @@ function SendFlow({ accountAddress, peraWallet }) {
       for (const base64Txn of txnData.groupTransactions) {
         const txnBytes = new Uint8Array(Buffer.from(base64Txn, 'base64'));
         const txn = algosdk.decodeUnsignedTransaction(txnBytes);
-        txnGroup.push({ txn, signers: [effectiveAccountAddress] });
+        txnGroup.push(txn);
       }
       
-      // Sign with Pera Wallet
-      const signedTxns = await peraWallet.signTransaction([txnGroup]);
+      // Sign with use-wallet (supports multiple wallets)
+      const signedTxns = await signTransactions(txnGroup);
       
       // Convert signed transactions to base64 array
-      const signedTxnsBase64 = Array.from(signedTxns).map(
+      const signedTxnsBase64 = signedTxns.map(
         txn => Buffer.from(txn).toString('base64')
       );
       
@@ -389,7 +391,6 @@ function SendFlow({ accountAddress, peraWallet }) {
             handleSignFirstTransaction={handleSignFirstTransaction}
             handleSignGroupTransactions={handleSignGroupTransactions}
             mcpSessionData={mcpSessionData}
-            peraWallet={peraWallet}
             onWalletConnect={handleMCPWalletConnect}
           />
         );

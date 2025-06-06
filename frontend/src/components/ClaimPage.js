@@ -1,30 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useWallet } from '@txnlab/use-wallet-react';
+import { WalletButton } from '@txnlab/use-wallet-ui-react';
+import { 
+  NetworkId,
+  WalletId,
+  WalletManager,
+  WalletProvider,
+} from '@txnlab/use-wallet-react';
+import { WalletUIProvider } from '@txnlab/use-wallet-ui-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-function ClaimPage({ peraWallet }) {
-  // Read parameters from URL
-  const [searchParams] = useSearchParams();
-  const appId = searchParams.get('app'); // Keep appId in query params
+// Create a fresh wallet manager for claim page only
+const createClaimWalletManager = () => new WalletManager({
+  wallets: [
+    WalletId.PERA,
+    WalletId.DEFLY,
+    WalletId.LUTE,
+  ],
+  defaultNetwork: NetworkId.TESTNET,
+});
 
-  // Read private key from URL fragment (#key=...)
+// Main ClaimPage component - no wallet functionality initially
+function ClaimPage() {
+  const [searchParams] = useSearchParams();
+  const appId = searchParams.get('app');
+  
   const getPrivateKeyFromFragment = () => {
-    const fragment = window.location.hash.substring(1); // Remove #
+    const fragment = window.location.hash.substring(1);
     const fragmentParams = new URLSearchParams(fragment);
     return fragmentParams.get('key');
   };
 
   const tempPrivateKey = getPrivateKeyFromFragment();
   
-  const [accountAddress, setAccountAddress] = useState(null);
   const [escrowDetails, setEscrowDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [claimStatus, setClaimStatus] = useState('initial'); // initial, checking, need-optin, claiming, success
-  const [isFunding, setIsFunding] = useState(false);
+  const [walletEnabled, setWalletEnabled] = useState(false);
   
   // Ecosystem projects data
   const ecosystemProjects = [
@@ -51,37 +67,6 @@ function ClaimPage({ peraWallet }) {
     }
   ];
   
-  // Connect to Pera Wallet - ALWAYS override existing connections
-  const connectWallet = async () => {
-    try {
-      // First, disconnect any existing connection to ensure clean state
-      try {
-        await peraWallet.disconnect();
-      } catch (disconnectError) {
-        // Ignore disconnect errors - might not be connected
-        console.log('No existing connection to disconnect:', disconnectError.message);
-      }
-      
-      // Clear our local state
-      setAccountAddress(null);
-      setClaimStatus('initial');
-      setError(null);
-      
-      // Wait a moment for the disconnect to process
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Now connect fresh
-      const accounts = await peraWallet.connect();
-      setAccountAddress(accounts[0]);
-      
-      console.log('Successfully connected wallet:', accounts[0]);
-      
-    } catch (error) {
-      console.error('Error connecting to Pera Wallet:', error);
-      setError('Failed to connect to wallet. Please try again.');
-    }
-  };
-  
   // Load escrow details when component mounts
   useEffect(() => {
     const fetchEscrowDetails = async () => {
@@ -94,7 +79,6 @@ function ClaimPage({ peraWallet }) {
         const response = await axios.get(`${API_URL}/escrow/${appId}`);
         setEscrowDetails(response.data);
         
-        // Check if funds already claimed
         if (response.data.claimed) {
           setError('These funds have already been claimed');
         }
@@ -109,6 +93,216 @@ function ClaimPage({ peraWallet }) {
     
     fetchEscrowDetails();
   }, [tempPrivateKey, appId]);
+  
+  // Enable wallet functionality
+  const enableWallet = () => {
+    // Clear wallet-related storage before mounting WalletProvider
+    // This ensures we get a fresh wallet selection menu
+    const clearWalletStorage = () => {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key.includes('wallet') || 
+          key.includes('pera') || 
+          key.includes('defly') || 
+          key.includes('exodus') || 
+          key.includes('lute') ||
+          key.includes('use-wallet') ||
+          key.includes('walletconnect') ||
+          key.includes('WCM_VERSION')
+        )) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Clear sessionStorage as well
+      sessionStorage.clear();
+      
+      console.log('Cleared wallet storage for fresh connection choice');
+    };
+    
+    clearWalletStorage();
+    setWalletEnabled(true);
+  };
+  
+  // Format USDC amount
+  const formatAmount = (amount) => {
+    return parseFloat(amount).toFixed(2);
+  };
+  
+  // Render content without wallet
+  const renderContentWithoutWallet = () => {
+    if (!tempPrivateKey || !appId) {
+      return (
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Invalid Claim Link</h3>
+          <p className="text-gray-600 text-sm">Please check the URL and try again. Both private key and app ID are required.</p>
+        </div>
+      );
+    }
+    
+    if (isLoading && !escrowDetails) {
+      return (
+        <div className="text-center py-6">
+          <div className="flex justify-center mb-4">
+            <div className="w-8 h-8 spinner"></div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Transfer Details</h3>
+          <p className="text-gray-600 text-sm">Please wait while we fetch your transfer information...</p>
+        </div>
+      );
+    }
+    
+    if (error && !escrowDetails) {
+      return (
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error</h3>
+          <p className="text-red-600 mb-4 text-sm">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-primary px-4 py-2 font-medium"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    
+    // Show claim details and connect wallet button
+    return (
+      <div className="text-center">
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+          </div>
+        </div>
+        
+        {escrowDetails && (
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+              You've received {formatAmount(escrowDetails.amount)} USDC! 🎉
+            </h2>
+            <p className="text-gray-600">
+              Connect your Algorand wallet to claim the funds
+            </p>
+            {escrowDetails.payRecipientFees && (
+              <div className="mt-2 text-xs text-gray-500">
+                Transaction fees covered by sender
+              </div>
+            )}
+          </div>
+        )}
+        
+        <button
+          onClick={enableWallet}
+          className="btn-primary px-6 py-3 font-medium"
+        >
+          Connect Wallet to Claim
+        </button>
+      </div>
+    );
+  };
+  
+  // If wallet is not enabled, show the non-wallet UI
+  if (!walletEnabled) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 right-10 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-30"></div>
+          <div className="absolute bottom-32 left-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-20"></div>
+        </div>
+        
+        <div className="w-full max-w-lg mx-auto relative z-10">
+          <div className="card card-normal">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
+                   style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
+                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim USDC</h1>
+              <p className="text-gray-600 text-sm">Secure and instant USDC transfer on Algorand</p>
+            </div>
+            
+            {renderContentWithoutWallet()}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // If wallet is enabled, render with wallet functionality
+  return (
+    <WalletProvider manager={createClaimWalletManager()}>
+      <WalletUIProvider>
+        <ClaimPageWithWallet 
+          appId={appId}
+          tempPrivateKey={tempPrivateKey}
+          escrowDetails={escrowDetails}
+          ecosystemProjects={ecosystemProjects}
+        />
+      </WalletUIProvider>
+    </WalletProvider>
+  );
+}
+
+// Component with wallet functionality
+function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemProjects }) {
+  const { activeAddress, signTransactions } = useWallet();
+  const [accountAddress, setAccountAddress] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [claimStatus, setClaimStatus] = useState('initial');
+  const [isFunding, setIsFunding] = useState(false);
+  const [autoClickTriggered, setAutoClickTriggered] = useState(false);
+  
+  // Auto-trigger wallet button click when component mounts
+  useEffect(() => {
+    if (!autoClickTriggered) {
+      // Small delay to ensure WalletButton has rendered
+      const timer = setTimeout(() => {
+        const walletButton = document.querySelector('[data-wallet-ui] button');
+        if (walletButton) {
+          walletButton.click();
+          setAutoClickTriggered(true);
+          console.log('Auto-triggered wallet selection modal');
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [autoClickTriggered]);
+  
+  // Handle wallet connection
+  useEffect(() => {
+    if (activeAddress) {
+      setAccountAddress(activeAddress);
+      console.log('Fresh wallet connected on claim page:', activeAddress);
+    } else {
+      setAccountAddress(null);
+      setClaimStatus('initial');
+      setError(null);
+    }
+  }, [activeAddress]);
   
   // Check wallet status when connected
   useEffect(() => {
@@ -176,16 +370,20 @@ function ClaimPage({ peraWallet }) {
       
       console.log("Fee coverage response:", fundResponse.data);
       
-      if (fundResponse.data.success && fundResponse.data.fundingAmount > 0) {
-        console.log(`Received ${fundResponse.data.fundingAmount} ALGO for transaction fees`);
-        
-        // Wait a moment for the transaction to propagate
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+      if (fundResponse.data.success) {
+        if (fundResponse.data.alreadyFunded) {
+          console.log("Fee coverage was already provided for this escrow");
+        } else if (fundResponse.data.fundingAmount > 0) {
+          console.log(`Received ${fundResponse.data.fundingAmount} ALGO for transaction fees`);
+          // Wait a moment for the transaction to propagate only if we actually sent funds
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+          console.log("No fee coverage needed for this escrow");
+        }
         setIsFunding(false);
         return true;
       } else {
-        console.log("No fee coverage needed for this escrow");
+        console.log("Unexpected response from funding endpoint");
         setIsFunding(false);
         return true;
       }
@@ -211,7 +409,8 @@ function ClaimPage({ peraWallet }) {
       
       const txnUint8 = new Uint8Array(Buffer.from(response.data.transaction, 'base64'));
       const txn = algosdk.decodeUnsignedTransaction(txnUint8);
-      const signedTxns = await peraWallet.signTransaction([[{ txn, signers: [accountAddress] }]]);
+      
+      const signedTxns = await signTransactions([txn]);
       const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
       
       await axios.post(`${API_URL}/submit-optin`, {
@@ -272,69 +471,15 @@ function ClaimPage({ peraWallet }) {
     }
   };
   
-  // Format USDC amount
-  const formatAmount = (amount) => {
-    return parseFloat(amount).toFixed(2);
-  };
-  
-  // Format wallet address
+  // Format functions
+  const formatAmount = (amount) => parseFloat(amount).toFixed(2);
   const formatAddress = (address) => {
     if (!address) return '';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
   
-  // Render content based on claim status
-  const renderContent = () => {
-    if (!tempPrivateKey || !appId) {
-      return (
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Invalid Claim Link</h3>
-          <p className="text-gray-600 text-sm">Please check the URL and try again. Both private key and app ID are required.</p>
-        </div>
-      );
-    }
-    
-    if (isLoading && !escrowDetails) {
-      return (
-        <div className="text-center py-6">
-          <div className="flex justify-center mb-4">
-            <div className="w-8 h-8 spinner"></div>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Transfer Details</h3>
-          <p className="text-gray-600 text-sm">Please wait while we fetch your transfer information...</p>
-        </div>
-      );
-    }
-    
-    if (error && !accountAddress) {
-      return (
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error</h3>
-          <p className="text-red-600 mb-4 text-sm">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="btn-primary px-4 py-2 font-medium"
-          >
-            Try Again
-          </button>
-        </div>
-      );
-    }
-    
+  // Render wallet-connected content
+  const renderWalletContent = () => {
     if (!accountAddress) {
       return (
         <div className="text-center">
@@ -362,17 +507,9 @@ function ClaimPage({ peraWallet }) {
             </div>
           )}
           
-          <button
-            onClick={connectWallet}
-            className="btn-primary px-6 py-3 font-medium"
-          >
-            <span className="flex items-center space-x-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span>Connect Wallet</span>
-            </span>
-          </button>
+          <div data-wallet-ui className="wallet-button-container">
+            <WalletButton className="btn-primary px-6 py-3 font-medium" />
+          </div>
         </div>
       );
     }
@@ -398,7 +535,6 @@ function ClaimPage({ peraWallet }) {
                   : 'Setting up your wallet for USDC')}
           </p>
           
-          {/* Connected wallet display */}
           <div className="mt-4 card card-compact inline-block">
             <div className="flex items-center space-x-3">
               <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -509,7 +645,6 @@ function ClaimPage({ peraWallet }) {
     if (claimStatus === 'success') {
       return (
         <div className="space-y-6">
-          {/* Success header */}
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
@@ -533,14 +668,12 @@ function ClaimPage({ peraWallet }) {
             </p>
           </div>
           
-          {/* What's next section */}
           <div className="space-y-4">
             <div className="text-center">
               <h3 className="text-lg font-medium text-gray-900 mb-2">What's Next?</h3>
               <p className="text-gray-600 text-sm">Put your USDC to work in the Algorand ecosystem</p>
             </div>
             
-            {/* Ecosystem project cards */}
             <div className="grid grid-cols-1 gap-3">
               {ecosystemProjects.map((project, index) => (
                 <div
@@ -573,7 +706,6 @@ function ClaimPage({ peraWallet }) {
               ))}
             </div>
             
-            {/* Send your own USDC */}
             <div className="text-center pt-3">
               <button
                 onClick={() => window.open(window.location.origin, '_blank')}
@@ -597,7 +729,6 @@ function ClaimPage({ peraWallet }) {
   
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      {/* Clean background decoration */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 right-10 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-30"></div>
         <div className="absolute bottom-32 left-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-20"></div>
@@ -616,7 +747,7 @@ function ClaimPage({ peraWallet }) {
             <p className="text-gray-600 text-sm">Secure and instant USDC transfer on Algorand</p>
           </div>
           
-          {renderContent()}
+          {renderWalletContent()}
         </div>
       </div>
     </div>

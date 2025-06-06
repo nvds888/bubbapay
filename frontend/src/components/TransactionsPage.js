@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useWallet } from '@txnlab/use-wallet-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
 import api from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-function TransactionsPage({ accountAddress, peraWallet }) {
+function TransactionsPage() {
+  const { activeAddress, signTransactions } = useWallet();
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,13 +18,13 @@ function TransactionsPage({ accountAddress, peraWallet }) {
   // Fetch user transactions when component mounts
   useEffect(() => {
     const fetchTransactions = async () => {
-      if (!accountAddress) return;
+      if (!activeAddress) return;
       
       setIsLoading(true);
       setError(null);
       
       try {
-        const response = await axios.get(`${API_URL}/user-escrows/${accountAddress}`);
+        const response = await axios.get(`${API_URL}/user-escrows/${activeAddress}`);
         setTransactions(response.data);
         setIsLoading(false);
       } catch (error) {
@@ -33,7 +35,7 @@ function TransactionsPage({ accountAddress, peraWallet }) {
     };
     
     fetchTransactions();
-  }, [accountAddress]);
+  }, [activeAddress]);
   
   // Format USDC amount
   const formatAmount = (amount) => {
@@ -65,7 +67,7 @@ function TransactionsPage({ accountAddress, peraWallet }) {
       // Generate the reclaim transaction
       const txnData = await api.generateReclaimTransaction({
         appId,
-        senderAddress: accountAddress
+        senderAddress: activeAddress
       });
       
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
@@ -76,8 +78,8 @@ function TransactionsPage({ accountAddress, peraWallet }) {
       // Decode the transaction for proper signing
       const txn = algosdk.decodeUnsignedTransaction(txnUint8);
       
-      // Sign with Pera Wallet
-      const signedTxns = await peraWallet.signTransaction([[{ txn, signers: [accountAddress] }]]);
+      // Sign with use-wallet (supports multiple wallets)
+      const signedTxns = await signTransactions([txn]);
       
       // Convert the signed transaction to base64
       const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
@@ -88,7 +90,7 @@ function TransactionsPage({ accountAddress, peraWallet }) {
       const result = await api.submitReclaimTransaction({
         signedTxn: signedTxnBase64,
         appId,
-        senderAddress: accountAddress
+        senderAddress: activeAddress
       });
       
       // Update the local transactions state to reflect the reclaim

@@ -1,7 +1,13 @@
-// src/App.js - Updated with clean white theme
+// src/App.js - Updated with use-wallet integration
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { PeraWalletConnect } from '@perawallet/connect';
+import {
+  NetworkId,
+  WalletId,
+  WalletManager,
+  WalletProvider,
+} from '@txnlab/use-wallet-react';
+import { WalletUIProvider } from '@txnlab/use-wallet-ui-react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import SendFlow from './components/SendFlow';
@@ -10,164 +16,76 @@ import TransactionsPage from './components/TransactionsPage';
 import SuccessPage from './components/SuccessPage';
 import SigningPage from './components/SigningPage';
 import DocumentationPage from './components/DocumentationPage';
+import '@txnlab/use-wallet-ui-react/dist/style.css';
 import './App.css';
 
-// Initialize Pera Wallet connector
-const peraWallet = new PeraWalletConnect({
-  shouldShowSignTxnToast: true
+// Configure the wallets you want to support
+const walletManager = new WalletManager({
+  wallets: [
+    WalletId.PERA,
+    WalletId.DEFLY,
+    WalletId.LUTE,
+    // Add more wallets as needed
+  ],
+  defaultNetwork: NetworkId.TESTNET, // Change to MAINNET for production
 });
 
 // Component to handle location-based logic
 function AppContent() {
   const location = useLocation();
-  const [accountAddress, setAccountAddress] = React.useState(null);
-  
-  // Check if we're on pages that handle their own wallet connection
   const isClaimPage = location.pathname === '/claim';
-  const isSigningPage = location.pathname.startsWith('/sign/');
-  const handlesOwnWallet = isClaimPage || isSigningPage;
   
-  // Handle wallet connection on app load
-  React.useEffect(() => {
-    // Only reconnect session if not on pages that handle their own wallet connection
-    if (!handlesOwnWallet) {
-      peraWallet.reconnectSession().then((accounts) => {
-        if (accounts.length) {
-          setAccountAddress(accounts[0]);
-        }
-      });
-    }
-
-    // Handle disconnect event
-    peraWallet.connector?.on('disconnect', () => {
-      setAccountAddress(null);
-    });
-  }, [handlesOwnWallet]);
-  
-  // Handle connect wallet button click
-  const handleConnectWalletClick = async () => {
-    try {
-      const newAccounts = await peraWallet.connect();
-      setAccountAddress(newAccounts[0]);
-    } catch (error) {
-      console.error('Error connecting to Pera Wallet:', error);
-    }
-  };
-  
-  // Handle disconnect wallet
-  const handleDisconnectWalletClick = async () => {
-    await peraWallet.disconnect();
-    setAccountAddress(null);
-  };
-  
-  return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* Clean background - minimal decoration */}
-      {!isSigningPage && (
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 right-10 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-30"></div>
-          <div className="absolute bottom-32 left-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-20"></div>
+  if (isClaimPage) {
+    // Claim page handles its own wallet connection
+    return (
+      <div className="min-h-screen flex flex-col bg-white">
+        <div className="max-w-2xl mx-auto px-4">
+          <ClaimPage />
         </div>
-      )}
+      </div>
+    );
+  }
+  
+  // All other pages get normal wallet functionality
+  return (
+    <WalletProvider manager={walletManager}>
+      <WalletUIProvider>
+        <div className="min-h-screen flex flex-col bg-white">
+          {/* Clean background - minimal decoration */}
+          <div className="fixed inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-20 right-10 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-30"></div>
+            <div className="absolute bottom-32 left-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-20"></div>
+          </div>
 
-      {/* Navigation - hide on claim and signing pages */}
-      {!handlesOwnWallet && (
-        <Navbar 
-          accountAddress={accountAddress}
-          onConnectWallet={handleConnectWalletClick}
-          onDisconnectWallet={handleDisconnectWalletClick}
-          hideWalletConnection={false}
-        />
-      )}
-      
-      {/* Main content */}
-      <main className={`flex-grow relative z-10 ${
-        isSigningPage ? '' : 'py-4 sm:py-6 lg:py-8'
-      }`}>
-        <Routes>
-          {/* Main send flow */}
-          <Route 
-            path="/" 
-            element={
-              <SendFlow 
-                accountAddress={accountAddress} 
-                peraWallet={peraWallet}
-              />
-            } 
-          />
-
-          {/* Send flow with MCP session support */}
-          <Route 
-            path="/send" 
-            element={
-              <SendFlow 
-                accountAddress={accountAddress} 
-                peraWallet={peraWallet}
-              />
-            } 
-          />
+          <Navbar hideWalletConnection={false} />
           
-          {/* Claim page (handles own wallet connection) */}
-          <Route 
-            path="/claim" 
-            element={
-              <div className="max-w-2xl mx-auto px-4">
-                <ClaimPage peraWallet={peraWallet} />
-              </div>
-            } 
-          />
-          
-          {/* MCP Signing page (full screen, handles own wallet connection) */}
-          <Route 
-            path="/sign/:sessionToken" 
-            element={<SigningPage />} 
-          />
-          
-          {/* Transactions page (requires wallet connection) */}
-          <Route 
-            path="/transactions" 
-            element={
-              accountAddress ? (
+          <main className="flex-grow relative z-10 py-4 sm:py-6 lg:py-8">
+            <Routes>
+              <Route path="/" element={<SendFlow />} />
+              <Route path="/send" element={<SendFlow />} />
+              <Route path="/transactions" element={
                 <div className="max-w-6xl mx-auto px-4">
-                  <TransactionsPage 
-                    accountAddress={accountAddress} 
-                    peraWallet={peraWallet} 
-                  />
+                  <TransactionsPage />
                 </div>
-              ) : (
-                <Navigate to="/" replace />
-              )
-            } 
-          />
+              } />
+              <Route path="/success/:escrowId" element={
+                <div className="max-w-2xl mx-auto px-4">
+                  <SuccessPage />
+                </div>
+              } />
+              <Route path="/docs" element={
+                <div className="max-w-4xl mx-auto px-4">
+                  <DocumentationPage />
+                </div>
+              } />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
           
-          {/* Success page */}
-          <Route 
-            path="/success/:escrowId" 
-            element={
-              <div className="max-w-2xl mx-auto px-4">
-                <SuccessPage />
-              </div>
-            } 
-          />
-          
-          {/* Documentation */}
-          <Route 
-            path="/docs" 
-            element={
-              <div className="max-w-4xl mx-auto px-4">
-                <DocumentationPage />
-              </div>
-            } 
-          />
-          
-          {/* 404 redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-      
-      {/* Footer - hide on signing page */}
-      {!isSigningPage && <Footer />}
-    </div>
+          <Footer />
+        </div>
+      </WalletUIProvider>
+    </WalletProvider>
   );
 }
 

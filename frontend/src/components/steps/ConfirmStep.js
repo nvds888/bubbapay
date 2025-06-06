@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useWallet } from '@txnlab/use-wallet-react';
+import { WalletButton } from '@txnlab/use-wallet-ui-react';
 
 function ConfirmStep({
   formData,
@@ -11,13 +13,16 @@ function ConfirmStep({
   handleSignFirstTransaction,
   handleSignGroupTransactions,
   mcpSessionData = null,
-  peraWallet = null,
   onWalletConnect = null
 }) {
   const [stage, setStage] = useState('initial'); // initial, app-created, funded
-  const [connectingWallet, setConnectingWallet] = useState(false);
-  const [walletError, setWalletError] = useState(null);
   const [showTransactionDetails, setShowTransactionDetails] = useState(false);
+  
+  // Get wallet functionality from use-wallet
+  const { activeAddress } = useWallet();
+  
+  // Use the effective account address (for MCP compatibility)
+  const effectiveAccountAddress = accountAddress || activeAddress;
   
   // Update stage based on transaction data
   useEffect(() => {
@@ -29,30 +34,19 @@ function ConfirmStep({
   }, [txnData]);
   
   // Handle wallet connection for MCP users
-  const handleConnectWallet = async () => {
-    if (!peraWallet) {
-      setWalletError('Wallet connection not available');
-      return;
+  const handleWalletConnection = (walletAddress) => {
+    if (onWalletConnect) {
+      onWalletConnect(walletAddress);
     }
-    
-    setConnectingWallet(true);
-    setWalletError(null);
-    
-    try {
-      const accounts = await peraWallet.connect();
-      if (accounts && accounts.length > 0) {
-        if (onWalletConnect) {
-          onWalletConnect(accounts[0]);
-        }
-        console.log('Wallet connected for MCP user:', accounts[0]);
-      }
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      setWalletError('Failed to connect wallet. Please try again.');
-    } finally {
-      setConnectingWallet(false);
-    }
+    console.log('Wallet connected for MCP user:', walletAddress);
   };
+  
+  // Monitor wallet connection changes for MCP
+  useEffect(() => {
+    if (activeAddress && onWalletConnect && !effectiveAccountAddress) {
+      handleWalletConnection(activeAddress);
+    }
+  }, [activeAddress, onWalletConnect, effectiveAccountAddress]);
   
   // Format USDC amount with 2 decimal places
   const formatAmount = (amount) => {
@@ -66,7 +60,7 @@ function ConfirmStep({
   };
   
   // Check if wallet is connected
-  const isWalletConnected = !!accountAddress;
+  const isWalletConnected = !!effectiveAccountAddress;
   
   // Determine if back button should be shown
   const canGoBack = !mcpSessionData && stage === 'initial';
@@ -109,7 +103,7 @@ function ConfirmStep({
           <div className="flex justify-between items-center">
             <span className="text-gray-600">From:</span>
             <span className="font-mono text-sm text-purple-600">
-              {isWalletConnected ? formatAddress(accountAddress) : 'Connect wallet'}
+              {isWalletConnected ? formatAddress(effectiveAccountAddress) : 'Connect wallet'}
             </span>
           </div>
           
@@ -177,35 +171,11 @@ function ConfirmStep({
             <div>
               <h3 className="font-medium text-gray-900">Connect Your Wallet</h3>
               <p className="text-gray-600 text-sm mt-1">
-                Connect Pera Wallet to sign this transaction
+                Connect your wallet to sign this transaction
               </p>
             </div>
             
-            {walletError && (
-              <div className="card card-compact status-error">
-                <span className="text-sm">{walletError}</span>
-              </div>
-            )}
-            
-            <button
-              onClick={handleConnectWallet}
-              disabled={connectingWallet}
-              className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
-            >
-              {connectingWallet ? (
-                <span className="flex items-center justify-center space-x-2">
-                  <div className="w-4 h-4 spinner"></div>
-                  <span>Connecting...</span>
-                </span>
-              ) : (
-                <span className="flex items-center justify-center space-x-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  <span>Connect Pera Wallet</span>
-                </span>
-              )}
-            </button>
+            <WalletButton />
           </div>
         </div>
       )}
@@ -215,7 +185,7 @@ function ConfirmStep({
         <div className="card card-normal mb-4">
           <h3 className="font-medium text-gray-900 mb-3">Transaction Steps</h3>
           <p className="text-gray-600 text-sm mb-4">
-            Sign two transactions with your Pera Wallet:
+            Sign two transactions with your wallet:
           </p>
           
           <div className="space-y-3">

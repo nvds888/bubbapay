@@ -555,8 +555,14 @@ router.post('/fund-wallet', async (req, res) => {
       return res.status(404).json({ error: 'Escrow not found' });
     }
     
+    // FIXED: If already funded, return success instead of error
     if (escrow.funded) {
-      return res.status(400).json({ error: 'This escrow has already been funded once' });
+      return res.status(200).json({
+        success: true,
+        fundingAmount: 0,
+        message: 'Wallet funding was already provided for this escrow',
+        alreadyFunded: true
+      });
     }
     
     // Validate the recipient address
@@ -601,7 +607,7 @@ router.post('/fund-wallet', async (req, res) => {
     const maxTransferAmount = tempBalance - fundingTransactionFee - minimumTempBalance - claimTransactionReserve;
     
     // The target funding amount is 0.4 ALGO, but we'll send what's available up to that amount
-    const targetFundingAmount = 400000; // 0.4 ALGO
+    const targetFundingAmount = 300000; // 0.3 ALGO
     const actualFundingAmount = Math.min(maxTransferAmount, targetFundingAmount);
     
     console.log(`Calculated funding amount: ${actualFundingAmount / 1e6} ALGO`);

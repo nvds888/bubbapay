@@ -1,7 +1,8 @@
-// components/SigningPage.js - Updated to match minimalistic white theme
+// components/SigningPage.js - Updated to use use-wallet
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PeraWalletConnect } from '@perawallet/connect';
+import { useWallet } from '@txnlab/use-wallet-react';
+import { WalletButton } from '@txnlab/use-wallet-ui-react';
 import algosdk from 'algosdk';
 import axios from 'axios';
 
@@ -10,17 +11,15 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 function SigningPage() {
   const { sessionToken } = useParams();
   const navigate = useNavigate();
+  const { activeAddress, signTransactions } = useWallet();
   
   // State
   const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [accountAddress, setAccountAddress] = useState(null);
   const [signingStep, setSigningStep] = useState('connect'); // connect, deployment, funding, complete
   const [txnInProgress, setTxnInProgress] = useState(false);
   const [deploymentCompleted, setDeploymentCompleted] = useState(false);
-  const [peraWallet] = useState(new PeraWalletConnect({ shouldShowSignTxnToast: true }));
   
   // Load session data on mount
   useEffect(() => {
@@ -58,30 +57,21 @@ function SigningPage() {
     }
   }, [sessionToken]);
   
-  // Check for existing wallet connection
+  // Check wallet connection status
   useEffect(() => {
-    peraWallet.reconnectSession().then((accounts) => {
-      if (accounts.length && sessionData) {
-        setAccountAddress(accounts[0]);
-        setWalletConnected(true);
-        
-        // If session doesn't have wallet address yet, update it
-        if (!sessionData.userAddress) {
-          updateSessionWithWallet(accounts[0]);
-        } else if (accounts[0] === sessionData.userAddress) {
-          setSigningStep(sessionData.reclaimTransaction ? 'reclaim' : 'deployment');
-        } else {
-          setError(`Please connect the correct wallet address: ${sessionData.userAddress}`);
-        }
+    if (activeAddress && sessionData) {
+      // If session doesn't have wallet address yet, update it
+      if (!sessionData.userAddress) {
+        updateSessionWithWallet(activeAddress);
+      } else if (activeAddress === sessionData.userAddress) {
+        setSigningStep(sessionData.reclaimTransaction ? 'reclaim' : 'deployment');
+      } else {
+        setError(`Please connect the correct wallet address: ${sessionData.userAddress}`);
       }
-    });
-    
-    peraWallet.connector?.on('disconnect', () => {
-      setAccountAddress(null);
-      setWalletConnected(false);
+    } else if (!activeAddress && sessionData && sessionData.userAddress) {
       setSigningStep('connect');
-    });
-  }, [sessionData]);
+    }
+  }, [activeAddress, sessionData]);
   
   // Update session with wallet address
   const updateSessionWithWallet = async (walletAddress) => {
@@ -104,24 +94,6 @@ function SigningPage() {
     }
   };
   
-  // Connect wallet
-  const connectWallet = async () => {
-    try {
-      setTxnInProgress(true);
-      const newAccounts = await peraWallet.connect();
-      setAccountAddress(newAccounts[0]);
-      setWalletConnected(true);
-      
-      await updateSessionWithWallet(newAccounts[0]);
-      setError(null);
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      setError('Failed to connect wallet: ' + error.message);
-    } finally {
-      setTxnInProgress(false);
-    }
-  };
-  
   // Sign deployment transaction
   const signDeploymentTransaction = async () => {
     if (txnInProgress || deploymentCompleted) return;
@@ -133,7 +105,7 @@ function SigningPage() {
       const txnUint8 = new Uint8Array(Buffer.from(sessionData.deployTransaction, 'base64'));
       const txn = algosdk.decodeUnsignedTransaction(txnUint8);
       
-      const signedTxns = await peraWallet.signTransaction([[{ txn, signers: [accountAddress] }]]);
+      const signedTxns = await signTransactions([txn]);
       const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
       
       const response = await axios.post(`${API_URL}/mcp/submit-deployment/${sessionToken}`, {
@@ -175,11 +147,11 @@ function SigningPage() {
       for (const base64Txn of sessionData.groupTransactions) {
         const txnBytes = new Uint8Array(Buffer.from(base64Txn, 'base64'));
         const txn = algosdk.decodeUnsignedTransaction(txnBytes);
-        txnGroup.push({ txn, signers: [accountAddress] });
+        txnGroup.push(txn);
       }
       
-      const signedTxns = await peraWallet.signTransaction([txnGroup]);
-      const signedTxnsBase64 = Array.from(signedTxns).map(
+      const signedTxns = await signTransactions(txnGroup);
+      const signedTxnsBase64 = signedTxns.map(
         txn => Buffer.from(txn).toString('base64')
       );
       
@@ -216,7 +188,7 @@ function SigningPage() {
       const txnUint8 = new Uint8Array(Buffer.from(sessionData.reclaimTransaction, 'base64'));
       const txn = algosdk.decodeUnsignedTransaction(txnUint8);
       
-      const signedTxns = await peraWallet.signTransaction([[{ txn, signers: [accountAddress] }]]);
+      const signedTxns = await signTransactions([txn]);
       const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
       
       const response = await axios.post(`${API_URL}/mcp/submit-reclaim/${sessionToken}`, {
@@ -313,10 +285,10 @@ function SigningPage() {
             </div>
             
             {/* Wallet Display */}
-            {walletConnected && accountAddress && (
+            {activeAddress && (
               <div className="px-3 py-1.5 bg-gray-100 rounded-lg border">
                 <span className="text-purple-600 text-sm font-mono">
-                  {formatAddress(accountAddress)}
+                  {formatAddress(activeAddress)}
                 </span>
               </div>
             )}
@@ -411,30 +383,10 @@ function SigningPage() {
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Connect Your Wallet</h3>
                   <p className="text-gray-600 text-sm">
-                    Connect your Pera Wallet to sign the transaction and complete your transfer.
+                    Connect your wallet to sign the transaction and complete your transfer.
                   </p>
                 </div>
-                <button
-                  onClick={connectWallet}
-                  disabled={txnInProgress}
-                  className="btn-primary px-6 py-3 font-medium disabled:opacity-50"
-                >
-                  <span className="flex items-center justify-center space-x-2">
-                    {txnInProgress ? (
-                      <>
-                        <div className="w-4 h-4 spinner"></div>
-                        <span>Connecting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                        <span>Connect Pera Wallet</span>
-                      </>
-                    )}
-                  </span>
-                </button>
+                <WalletButton />
               </div>
             )}
             

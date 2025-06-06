@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useWallet } from '@txnlab/use-wallet-react';
+import { WalletButton } from '@txnlab/use-wallet-ui-react';
 
-function Navbar({ accountAddress, onConnectWallet, onDisconnectWallet, hideWalletConnection = false }) {
+function Navbar({ hideWalletConnection = false }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // Format account address for display
-  const formatAddress = (address) => {
-    if (!address) return '';
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-  };
+  const { activeAddress } = useWallet();
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14">
           {/* Logo */}
@@ -48,7 +45,7 @@ function Navbar({ accountAddress, onConnectWallet, onDisconnectWallet, hideWalle
             </Link>
 
             {/* My Transactions Link - Only when wallet connected */}
-            {!hideWalletConnection && accountAddress && (
+            {!hideWalletConnection && activeAddress && (
               <Link 
                 to="/transactions" 
                 className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium text-sm flex items-center space-x-1 px-3 py-2 rounded-lg hover:bg-gray-50"
@@ -61,33 +58,12 @@ function Navbar({ accountAddress, onConnectWallet, onDisconnectWallet, hideWalle
             )}
             
             {!hideWalletConnection && (
-              <>
-                {accountAddress ? (
-                  <div className="flex items-center space-x-3">
-                    {/* Address display */}
-                    <div className="px-3 py-1.5 bg-gray-100 rounded-lg border">
-                      <span className="text-purple-600 text-sm font-mono">
-                        {formatAddress(accountAddress)}
-                      </span>
-                    </div>
-                    
-                    {/* Disconnect button */}
-                    <button
-                      onClick={onDisconnectWallet}
-                      className="btn-secondary px-3 py-1.5 text-sm"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={onConnectWallet}
-                    className="btn-primary px-4 py-2 text-sm font-medium"
-                  >
-                    Connect Wallet
-                  </button>
-                )}
-              </>
+              <div className="flex items-center">
+                {/* Use-wallet button with explicit styling */}
+                <div data-wallet-ui className="wallet-button-container">
+                  <WalletButton className="btn-primary px-4 py-2 text-sm font-medium" />
+                </div>
+              </div>
             )}
           </div>
 
@@ -124,7 +100,7 @@ function Navbar({ accountAddress, onConnectWallet, onDisconnectWallet, hideWalle
             </Link>
 
             {/* My Transactions Link */}
-            {!hideWalletConnection && accountAddress && (
+            {!hideWalletConnection && activeAddress && (
               <Link 
                 to="/transactions" 
                 className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-200 font-medium py-2 px-3 rounded-lg"
@@ -138,37 +114,12 @@ function Navbar({ accountAddress, onConnectWallet, onDisconnectWallet, hideWalle
             )}
             
             {!hideWalletConnection && (
-              <>
-                {accountAddress ? (
-                  <div className="space-y-2 pt-2">
-                    <div className="px-3 py-2 bg-gray-100 rounded-lg border">
-                      <span className="text-purple-600 text-sm font-mono">
-                        {formatAddress(accountAddress)}
-                      </span>
-                    </div>
-                    
-                    <button
-                      onClick={() => {
-                        onDisconnectWallet();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="block w-full btn-secondary px-3 py-2 text-sm font-medium text-left"
-                    >
-                      Disconnect Wallet
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      onConnectWallet();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="block w-full btn-primary px-4 py-2 text-sm font-medium"
-                  >
-                    Connect Wallet
-                  </button>
-                )}
-              </>
+              <div className="pt-2">
+                {/* Mobile wallet button */}
+                <div data-wallet-ui className="w-full">
+                  <WalletButton />
+                </div>
+              </div>
             )}
           </div>
         </div>

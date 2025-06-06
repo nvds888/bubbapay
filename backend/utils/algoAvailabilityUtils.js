@@ -20,7 +20,6 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
     GROUP_TXN_3_FEE: 1000,              // 0.001 ALGO - Payment (temp funding)
     GROUP_TXN_4_FEE: 2000,              // 0.002 ALGO - Application Call (opt-in with inner txn)
     GROUP_TXN_5_FEE: 1000,              // 0.001 ALGO - Application Call (set amount)
-    GROUP_TXN_6_FEE: 1000,              // 0.001 ALGO - Asset Transfer (send USDC)
     
     // Optional recipient funding fee (if enabled)
     RECIPIENT_FUNDING_FEE: 1000,        // 0.001 ALGO - Payment (recipient fee funding)
@@ -28,8 +27,7 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
     // ALGO Transfers (actual ALGO sent out, not fees)
     TEMP_ACCOUNT_FUNDING: 102000,       // 0.102 ALGO - fund temp account
     CONTRACT_FUNDING: 200000,           // 0.2 ALGO - fund smart contract
-    PLATFORM_FEE: 100000,               // 0.1 ALGO - platform fee
-    RECIPIENT_FEE_FUNDING: 400000,      // 0.4 ALGO - recipient fee coverage (if enabled)
+    RECIPIENT_FEE_FUNDING: 300000,      // 0.3 ALGO - recipient fee coverage (if enabled)
   };
   
   // Calculate total fees for both phases
@@ -39,16 +37,14 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
                    TRANSACTION_COSTS.GROUP_TXN_2_FEE + 
                    TRANSACTION_COSTS.GROUP_TXN_3_FEE + 
                    TRANSACTION_COSTS.GROUP_TXN_4_FEE + 
-                   TRANSACTION_COSTS.GROUP_TXN_5_FEE + 
-                   TRANSACTION_COSTS.GROUP_TXN_6_FEE;
+                   TRANSACTION_COSTS.GROUP_TXN_5_FEE;
   
   const recipientFundingFee = payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FUNDING_FEE : 0;
   const totalFees = appCreationFee + groupFees + recipientFundingFee;
   
   // Calculate total ALGO sent out (only in group transactions)
   const baseAlgoSentOut = TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING + 
-                         TRANSACTION_COSTS.CONTRACT_FUNDING + 
-                         TRANSACTION_COSTS.PLATFORM_FEE;
+                         TRANSACTION_COSTS.CONTRACT_FUNDING;
   
   const recipientFunding = payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0;
   const totalAlgoSentOut = baseAlgoSentOut + recipientFunding;
@@ -114,7 +110,6 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
       // ALGO transfers
       tempAccountFunding: microAlgoToAlgo(TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING),
       contractFunding: microAlgoToAlgo(TRANSACTION_COSTS.CONTRACT_FUNDING),
-      platformFee: microAlgoToAlgo(TRANSACTION_COSTS.PLATFORM_FEE),
       recipientFunding: microAlgoToAlgo(payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0),
       totalAlgoSent: microAlgoToAlgo(totalAlgoSentOut),
       
@@ -229,8 +224,8 @@ function getAlgoRequirementSummary(payRecipientFees = false) {
   const recipientFundingFee = payRecipientFees ? 1000 : 0; // 0.001 ALGO if enabled
   const totalFees = baseFees + recipientFundingFee;
   
-  const baseTransfers = 402000; // 0.402 ALGO (temp: 0.102 + contract: 0.2 + platform: 0.1)
-  const recipientFees = payRecipientFees ? 400000 : 0; // 0.4 ALGO if enabled
+  const baseTransfers = 302000; // 0.302 ALGO (temp: 0.102 + contract: 0.2)
+  const recipientFees = payRecipientFees ? 300000 : 0; // 0.3 ALGO if enabled
   const totalTransfers = baseTransfers + recipientFees;
   
   const minBalanceIncrease = 100000; // 0.1 ALGO for app creation
@@ -241,15 +236,14 @@ function getAlgoRequirementSummary(payRecipientFees = false) {
   return {
     fees: microAlgoToAlgo(totalFees),
     baseTransfers: microAlgoToAlgo(baseTransfers),
-    platformFee: microAlgoToAlgo(100000), // 0.1 ALGO platform fee
     contractFunding: microAlgoToAlgo(200000), // 0.2 ALGO contract funding
     minBalanceIncrease: microAlgoToAlgo(minBalanceIncrease), // 0.1 ALGO app creation
     recipientFees: microAlgoToAlgo(recipientFees),
     subtotal: microAlgoToAlgo(total),
     withBuffer: microAlgoToAlgo(withBuffer),
     description: payRecipientFees 
-      ? "~1.0 ALGO (includes recipient fees + platform fee + app min balance + 10% buffer)"
-      : "~0.6 ALGO (includes platform fee + app min balance + 10% buffer, no recipient fees)"
+      ? "~0.9 ALGO (includes recipient fees + app min balance + 10% buffer)"
+      : "~0.5 ALGO (includes app min balance + 10% buffer, no recipient fees)"
   };
 }
 

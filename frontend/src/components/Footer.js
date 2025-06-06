@@ -21,7 +21,7 @@ function Footer() {
                   </svg>
                 </div>
                 <span className="text-lg font-semibold text-gray-900">
-                  Nomizo <span className="gradient-text">Pay</span>
+                  Nomizo<span className="gradient-text">Pay</span>
                 </span>
               </div>
               <p className="text-gray-600 max-w-md mb-4 text-sm">

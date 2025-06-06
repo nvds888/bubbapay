@@ -12,9 +12,6 @@ const ALGOD_PORT = '';
 // Initialize Algorand client
 const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
 
-// Platform fee configuration - hardcoded address
-const PLATFORM_FEE_ADDRESS = 'U4QBS4W2IEVB6TE4BCWMP5OQ3NZ3UCDMP4I6DEDZII5PK2IQVKCN54ITIQ';
-
 // Fee calculation helper
 function calculateTransactionFee(hasInnerTxn = false, innerTxnCount = 1) {
   const baseFee = 1000; // 0.001 ALGO
@@ -22,10 +19,9 @@ function calculateTransactionFee(hasInnerTxn = false, innerTxnCount = 1) {
   return baseFee + innerFee;
 }
 
-// EXACT FEE CONTROL - Updated with platform fee
+// EXACT FEE CONTROL - Updated without platform fee
 const EXACT_FEES = {
   FUNDING: 1000,           // Payment to fund app (reduced amount)
-  PLATFORM_FEE: 1000,     // Platform fee transaction
   TEMP_FUNDING: 1000,      // Payment to fund temp account
   RECIPIENT_FUNDING: 1000, // Payment for recipient fees (if enabled)
   OPT_IN: 2000,           // App call with inner transaction
@@ -156,11 +152,6 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
       throw new Error("Invalid temporary account");
     }
     
-    // Validate platform fee address
-    if (!PLATFORM_FEE_ADDRESS || !algosdk.isValidAddress(PLATFORM_FEE_ADDRESS)) {
-      throw new Error("Platform fee address is not valid.");
-    }
-    
     const appIdInt = parseInt(appId);
     const appAddress = algosdk.getApplicationAddress(appIdInt);
     console.log(`App address: ${appAddress}`);
@@ -168,9 +159,8 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
     // Get suggested parameters
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Calculate total fee budget (now includes platform fee)
+    // Calculate total fee budget (no platform fee)
     const totalFeeNeeded = EXACT_FEES.FUNDING + 
-                          EXACT_FEES.PLATFORM_FEE +
                           EXACT_FEES.TEMP_FUNDING +
                           (payRecipientFees ? EXACT_FEES.RECIPIENT_FUNDING : 0) +
                           EXACT_FEES.OPT_IN + 
@@ -188,28 +178,17 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
       flatFee: true
     };
     
-    // 1. Fund the app with ALGO (reduced to 0.2 ALGO)
+    // 1. Fund the app with ALGO (back to 0.3 ALGO since no platform fee)
     const fundingTxn = new algosdk.Transaction({
       from: senderAddress,
       to: appAddress,
-      amount: 200000, // 0.2 ALGO (reduced from 0.3)
+      amount: 300000, // 0.3 ALGO 
       fee: EXACT_FEES.FUNDING,
       ...baseParams,
       type: 'pay'
     });
     
-    // 2. Platform fee transaction (0.1 ALGO)
-    const platformFeeTxn = new algosdk.Transaction({
-      from: senderAddress,
-      to: PLATFORM_FEE_ADDRESS,
-      amount: 100000, // 0.1 ALGO platform fee
-      fee: EXACT_FEES.PLATFORM_FEE,
-      ...baseParams,
-      type: 'pay',
-      note: new Uint8Array(Buffer.from('AlgoSend platform fee'))
-    });
-    
-    // 3. Fund the temporary account with minimal ALGO for claim transaction
+    // 2. Fund the temporary account with minimal ALGO for claim transaction
     const tempFundingTxn = new algosdk.Transaction({
       from: senderAddress,
       to: tempAccount.address,
@@ -219,13 +198,13 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
       type: 'pay'
     });
     
-    // 4. Send cover fee to temporary account (if enabled)
+    // 3. Send cover fee to temporary account (if enabled)
     let recipientFundingTxn = null;
     if (payRecipientFees) {
       recipientFundingTxn = new algosdk.Transaction({
         from: senderAddress,
-        to: tempAccount.address, // Send to temp address instead of funder
-        amount: 400000, // 0.4 ALGO for recipient fees
+        to: tempAccount.address,
+        amount: 300000, // 0.3 ALGO for recipient fees
         fee: EXACT_FEES.RECIPIENT_FUNDING,
         ...baseParams,
         type: 'pay',
@@ -233,7 +212,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
       });
     }
     
-    // 5. Opt the app into USDC
+    // 4. Opt the app into USDC
     const optInTxn = new algosdk.Transaction({
       from: senderAddress,
       appIndex: appIdInt,
@@ -244,7 +223,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
       type: 'appl'
     });
     
-    // 6. Set the amount
+    // 5. Set the amount
     const setAmountTxn = new algosdk.Transaction({
       from: senderAddress,
       appIndex: appIdInt,
@@ -257,7 +236,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
       type: 'appl'
     });
     
-    // 7. Send USDC to the app
+    // 6. Send USDC to the app
     const sendUSDCTxn = new algosdk.Transaction({
       from: senderAddress,
       to: appAddress,
@@ -268,10 +247,10 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
       type: 'axfer'
     });
     
-    // Group transactions (now includes platform fee)
+    // Group transactions (no platform fee)
     const txnGroup = recipientFundingTxn 
-      ? [fundingTxn, platformFeeTxn, tempFundingTxn, recipientFundingTxn, optInTxn, setAmountTxn, sendUSDCTxn]
-      : [fundingTxn, platformFeeTxn, tempFundingTxn, optInTxn, setAmountTxn, sendUSDCTxn];
+      ? [fundingTxn, tempFundingTxn, recipientFundingTxn, optInTxn, setAmountTxn, sendUSDCTxn]
+      : [fundingTxn, tempFundingTxn, optInTxn, setAmountTxn, sendUSDCTxn];
     
     // Assign group ID
     algosdk.assignGroupID(txnGroup);
