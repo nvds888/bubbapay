@@ -162,6 +162,33 @@ function ClaimPage() {
       );
     }
     
+    if (escrowDetails?.claimed || (error && error.includes('already been claimed'))) {
+      return (
+        <div className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Already Claimed</h3>
+          <p className="text-red-600 mb-4 text-sm">These funds have already been claimed</p>
+          {escrowDetails && (
+            <p className="text-gray-500 text-sm mb-4">
+              Amount: {formatAmount(escrowDetails.amount)} USDC
+            </p>
+          )}
+          <button
+            onClick={() => window.open(window.location.origin, '_blank')}
+            className="btn-primary px-4 py-2 font-medium"
+          >
+            Send Your Own USDC
+          </button>
+        </div>
+      );
+    }
+    
     if (error && !escrowDetails) {
       return (
         <div className="text-center">
