@@ -10,7 +10,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 function TransactionsPage() {
   const { activeAddress, signTransactions } = useWallet();
   const [transactions, setTransactions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isReclaiming, setIsReclaiming] = useState(false);
   const [reclaimStatus, setReclaimStatus] = useState({ appId: null, status: '' });
@@ -18,7 +18,10 @@ function TransactionsPage() {
   // Fetch user transactions when component mounts
   useEffect(() => {
     const fetchTransactions = async () => {
-      if (!activeAddress) return;
+      if (!activeAddress) {
+        setIsLoading(false);
+        return;
+      }
       
       setIsLoading(true);
       setError(null);
@@ -116,6 +119,30 @@ function TransactionsPage() {
       }, 3000);
     }
   };
+  
+  if (!activeAddress) {
+    return (
+      <div className="w-full max-w-4xl mx-auto">
+        <div className="card card-normal text-center">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Wallet Not Connected</h2>
+          <p className="text-gray-600 mb-4 text-sm">Please connect your wallet to view your transaction history.</p>
+          <Link 
+            to="/"
+            className="btn-primary px-4 py-2 font-medium"
+          >
+            Go to Home & Connect Wallet
+          </Link>
+        </div>
+      </div>
+    );
+  }
   
   if (isLoading) {
     return (
