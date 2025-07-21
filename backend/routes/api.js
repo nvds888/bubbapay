@@ -22,6 +22,16 @@ const ALGOD_PORT = process.env.ALGOD_PORT || '';
 
 const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
 
+// Temporary debugging - add at the very top of api.js
+const originalRoute = require('express').Router().route;
+require('express').Router.prototype.route = function(path) {
+  console.log('Registering route:', path);
+  if (path.includes('?')) {
+    console.error('❌ PROBLEMATIC ROUTE FOUND:', path);
+  }
+  return originalRoute.call(this, path);
+};
+
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
   // Create a hash using the private key and app ID for uniqueness
@@ -691,8 +701,8 @@ router.post('/fund-wallet', async (req, res) => {
   }
 });
 
-// Asset balance endpoint
-router.get('/asset-balance/:address/:assetId?', async (req, res) => {
+// Asset balance endpoint (with assetId)
+router.get('/asset-balance/:address/:assetId', async (req, res) => {
   try {
     const address = req.params.address;
     
@@ -708,6 +718,50 @@ router.get('/asset-balance/:address/:assetId?', async (req, res) => {
     
     // Find asset among user's assets
     const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
+    const assetInfo = getAssetInfo(targetAssetId);
+
+    let assetBalance = '0.00';
+    const assets = accountInfo.assets || [];
+
+    for (const asset of assets) {
+      if (asset['asset-id'] === targetAssetId) {
+        const microBalance = asset.amount;
+        assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
+        break;
+      }
+    }
+    
+    // Return the balance
+    res.status(200).json({
+      address,
+      assetId: targetAssetId,
+      balance: assetBalance,
+      assetInfo: assetInfo
+    });
+    
+  } catch (error) {
+    console.error('Error fetching USDC balance:', error);
+    res.status(500).json({ error: 'Failed to fetch USDC balance', details: error.message });
+  }
+});
+
+// Asset balance endpoint (without assetId)
+router.get('/asset-balance/:address', async (req, res) => {
+  try {
+    const address = req.params.address;
+    
+    // Validate the Algorand address
+    try {
+      algosdk.decodeAddress(address);
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid Algorand address format' });
+    }
+    
+    // Query account info including assets
+    const accountInfo = await algodClient.accountInformation(address).do();
+    
+    // Find asset among user's assets
+    const targetAssetId = getDefaultAssetId();
     const assetInfo = getAssetInfo(targetAssetId);
 
     let assetBalance = '0.00';
