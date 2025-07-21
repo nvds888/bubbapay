@@ -1,9 +1,13 @@
 // teal-programs.js - TEAL Program Generation
 
+// CHANGE 1: Add this import at the top
+const { getDefaultAssetId } = require('./assetConfig');
+
 // USDC Asset ID
 const USDC_ASSET_ID = 10458941; // Testnet USDC asset ID
 
-function createApprovalProgram(senderAddress, authorizedClaimerAddress) {
+function createApprovalProgram(senderAddress, authorizedClaimerAddress, assetId = null) {
+  const targetAssetId = assetId || getDefaultAssetId();
   return `#pragma version 8
 // Global state variables
 byte "creator"           // Creator address
@@ -244,9 +248,9 @@ return
 
 // Handle asset transfers
 handle_transfer:
-// Check if this is USDC
+// Check if this is the correct asset
 txn XferAsset
-int ${USDC_ASSET_ID}
+int ${targetAssetId}
 ==
 bz reject
 
@@ -297,5 +301,5 @@ return`;
 module.exports = {
   createApprovalProgram,
   createClearProgram,
-  USDC_ASSET_ID
+  USDC_ASSET_ID: getDefaultAssetId() // For backwards compatibility
 };

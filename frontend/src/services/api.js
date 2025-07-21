@@ -13,7 +13,12 @@ const apiClient = axios.create({
 // Transaction APIs
 export const generateTransactions = async (data) => {
   try {
-    const response = await apiClient.post('/generate-transactions', data);
+    // Add default assetId if not provided
+    const payload = {
+      ...data,
+      assetId: data.assetId || DEFAULT_ASSET_ID
+    };
+    const response = await apiClient.post('/generate-transactions', payload);
     return response.data;
   } catch (error) {
     throw error.response?.data?.error || 'Failed to generate transaction';
@@ -22,7 +27,12 @@ export const generateTransactions = async (data) => {
 
 export const submitAppCreation = async (data) => {
   try {
-    const response = await apiClient.post('/submit-app-creation', data);
+    // Add default assetId if not provided
+    const payload = {
+      ...data,
+      assetId: data.assetId || DEFAULT_ASSET_ID
+    };
+    const response = await apiClient.post('/submit-app-creation', payload);
     return response.data;
   } catch (error) {
     throw error.response?.data?.error || 'Failed to submit app creation transaction';
@@ -31,7 +41,12 @@ export const submitAppCreation = async (data) => {
 
 export const submitGroupTransactions = async (data) => {
   try {
-    const response = await apiClient.post('/submit-group-transactions', data);
+    // Add default assetId if not provided
+    const payload = {
+      ...data,
+      assetId: data.assetId || DEFAULT_ASSET_ID
+    };
+    const response = await apiClient.post('/submit-group-transactions', payload);
     return response.data;
   } catch (error) {
     throw error.response?.data?.error || 'Failed to submit group transactions';
@@ -58,9 +73,9 @@ export const getUserEscrows = async (address) => {
 };
 
 // Claim APIs
-export const checkOptInStatus = async (address) => {
+export const checkOptInStatus = async (address, assetId = DEFAULT_ASSET_ID) => {
   try {
-    const response = await apiClient.get(`/check-optin/${address}`);
+    const response = await apiClient.get(`/check-optin/${address}/${assetId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data?.error || 'Failed to check opt-in status';
@@ -69,7 +84,11 @@ export const checkOptInStatus = async (address) => {
 
 export const generateOptInTransaction = async (data) => {
   try {
-    const response = await apiClient.post('/generate-optin', data);
+    const payload = {
+      ...data,
+      assetId: data.assetId || DEFAULT_ASSET_ID
+    };
+    const response = await apiClient.post('/generate-optin', payload);
     return response.data;
   } catch (error) {
     throw error.response?.data?.error || 'Failed to generate opt-in transaction';
@@ -123,17 +142,18 @@ export const submitReclaimTransaction = async (data) => {
   }
 };
 
-export const fetchUSDCBalance = async (address) => {
+export const fetchAssetBalance = async (address, assetId = DEFAULT_ASSET_ID) => {
   try {
-    // Use our own backend endpoint to fetch USDC balance
-    const response = await apiClient.get(`/usdc-balance/${address}`);
+    const response = await apiClient.get(`/asset-balance/${address}/${assetId}`);
     return response.data.balance;
   } catch (error) {
-    console.error('Error fetching USDC balance:', error);
+    console.error('Error fetching asset balance:', error);
     // Return a default balance instead of throwing error for better UX
     return '0.00';
   }
 };
+
+export const fetchUSDCBalance = (address) => fetchAssetBalance(address, DEFAULT_ASSET_ID);
 
 export const checkAlgoAvailability = async (address, payRecipientFees = false) => {
   try {
@@ -146,6 +166,19 @@ export const checkAlgoAvailability = async (address, payRecipientFees = false) =
     throw error.response?.data?.error || 'Failed to check ALGO availability';
   }
 };
+
+// CHANGE 1: Add supported assets constant at the top (after imports)
+const SUPPORTED_ASSETS = {
+  10458941: { id: 10458941, name: 'USDC', symbol: 'USDC', decimals: 6 },
+  31566704: { id: 31566704, name: 'Tether USDt', symbol: 'USDT', decimals: 6 }
+};
+
+const DEFAULT_ASSET_ID = 10458941; // USDC
+
+// CHANGE 2: Add helper functions after the constants
+export const getSupportedAssets = () => Object.values(SUPPORTED_ASSETS);
+export const getAssetInfo = (assetId) => SUPPORTED_ASSETS[parseInt(assetId)] || null;
+export const getDefaultAssetId = () => DEFAULT_ASSET_ID;
 
 export default {
   generateTransactions,
@@ -161,5 +194,10 @@ export default {
   generateReclaimTransaction,
   submitReclaimTransaction,
   fetchUSDCBalance,
-  checkAlgoAvailability
+  checkAlgoAvailability,
+  // New exports for asset support
+  getSupportedAssets,
+  getAssetInfo,
+  getDefaultAssetId,
+  fetchAssetBalance
 };

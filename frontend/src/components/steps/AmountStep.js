@@ -6,7 +6,8 @@ function AmountStep({
   nextStep, 
   isConnected, 
   onConnectWallet,
-  usdcBalance,
+  assetBalance,
+  selectedAssetInfo,
   balanceLoading,
   balanceError,
   algoAvailability,
@@ -31,8 +32,9 @@ function AmountStep({
     }
     
     // Check if amount exceeds balance
-    if (usdcBalance !== null && parseFloat(formData.amount) > parseFloat(usdcBalance)) {
-      setError(`Amount exceeds your available balance of ${parseFloat(usdcBalance).toFixed(2)} USDC`);
+    if (assetBalance !== null && parseFloat(formData.amount) > parseFloat(assetBalance)) {
+      const symbol = selectedAssetInfo?.symbol || 'tokens';
+      setError(`Amount exceeds your available balance of ${parseFloat(assetBalance).toFixed(2)} ${symbol}`);
       return;
     }
     
@@ -92,9 +94,9 @@ function AmountStep({
   
   // Set max amount based on balance
   const setMaxAmount = () => {
-    if (usdcBalance) {
+    if (assetBalance) {
       setError('');
-      const balanceStr = String(usdcBalance);
+      const balanceStr = String(assetBalance);
       handleInputChange({
         target: {
           name: 'amount',
@@ -137,7 +139,9 @@ function AmountStep({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Send USDC</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-1">
+          Send {selectedAssetInfo?.symbol || 'Asset'}
+        </h2>
         <p className="text-gray-600 text-sm">To anyone, anywhere, anytime</p>
       </div>
       
@@ -145,14 +149,14 @@ function AmountStep({
         {/* Amount input section */}
         <div className="card card-normal">
           <div className="flex justify-between items-center mb-3">
-            <label className="text-sm font-medium text-gray-700">Amount (USDC)</label>
-            {isConnected && usdcBalance !== null && (
+            <label className="text-sm font-medium text-gray-700">Amount ({selectedAssetInfo?.symbol || 'Asset'})</label>
+            {isConnected && assetBalance !== null && (
               <button 
                 type="button"
                 onClick={() => setShowBalanceDetails(!showBalanceDetails)}
                 className="text-xs text-gray-500 hover:text-purple-600 flex items-center space-x-1"
               >
-                <span>Balance: {parseFloat(usdcBalance).toFixed(2)} USDC</span>
+                <span>Balance: {parseFloat(assetBalance).toFixed(2)} {selectedAssetInfo?.symbol || 'tokens'}</span>
                 <svg className={`w-3 h-3 transition-transform ${showBalanceDetails ? 'rotate-180' : ''}`} 
                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -175,10 +179,10 @@ function AmountStep({
               placeholder="0.00"
               min="0.01"
               step="0.01"
-              max={usdcBalance || undefined}
+              max={assetBalance || undefined}
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <span className="text-gray-500 text-sm font-medium">USDC</span>
+              <span className="text-gray-500 text-sm font-medium">{selectedAssetInfo?.symbol || 'Asset'}</span>
             </div>
           </div>
           
@@ -189,7 +193,7 @@ function AmountStep({
                 key={amount}
                 type="button"
                 onClick={() => setQuickAmount(amount)}
-                disabled={usdcBalance !== null && amount > parseFloat(usdcBalance)}
+                disabled={assetBalance !== null && amount > parseFloat(assetBalance)}
                 className="btn-secondary compact-button disabled:opacity-50"
               >
                 ${amount}
@@ -197,7 +201,7 @@ function AmountStep({
             ))}
           </div>
           
-          {usdcBalance !== null && (
+          {assetBalance !== null && (
             <button 
               type="button"
               onClick={setMaxAmount}
@@ -250,10 +254,10 @@ function AmountStep({
           <div className="card card-compact space-y-2 text-sm">
             <h4 className="font-medium text-gray-700">Balance Details</h4>
             
-            {usdcBalance !== null && (
+            {assetBalance !== null && (
               <div className="flex justify-between">
-                <span className="text-gray-600">USDC Balance:</span>
-                <span className="font-medium">{parseFloat(usdcBalance).toFixed(2)} USDC</span>
+                <span className="text-gray-600">{selectedAssetInfo?.symbol || 'Asset'} Balance:</span>
+                <span className="font-medium">{parseFloat(assetBalance).toFixed(2)} {selectedAssetInfo?.symbol || 'tokens'}</span>
               </div>
             )}
             

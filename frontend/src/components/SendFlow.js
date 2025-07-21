@@ -7,7 +7,7 @@ import StepIndicator from './StepIndicator';
 import AmountStep from './steps/AmountStep';
 import RecipientStep from './steps/RecipientStep';
 import ConfirmStep from './steps/ConfirmStep';
-import { fetchUSDCBalance, checkAlgoAvailability } from '../services/api';
+import { fetchAssetBalance, checkAlgoAvailability, getDefaultAssetId, getAssetInfo } from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -45,6 +45,10 @@ function SendFlow() {
   // MCP session data
   const [mcpSessionData, setMcpSessionData] = useState(null);
   
+  // Asset state
+  const [selectedAssetId, setSelectedAssetId] = useState(getDefaultAssetId());
+  const [selectedAssetInfo, setSelectedAssetInfo] = useState(() => getAssetInfo(getDefaultAssetId()));
+  
   // Update internal account address when prop changes
   useEffect(() => {
     setInternalAccountAddress(activeAddress);
@@ -69,7 +73,7 @@ function SendFlow() {
       
       try {
         // Fetch USDC balance
-        const balance = await fetchUSDCBalance(effectiveAccountAddress);
+        const balance = await fetchAssetBalance(effectiveAccountAddress, selectedAssetId);
         setUsdcBalance(balance);
       } catch (error) {
         console.error('Error fetching USDC balance:', error);
@@ -91,7 +95,7 @@ function SendFlow() {
     };
     
     getBalances();
-  }, [effectiveAccountAddress, formData.payRecipientFees]);
+  }, [effectiveAccountAddress, formData.payRecipientFees, selectedAssetId]);
   
   // Load MCP session if present in URL
   useEffect(() => {
@@ -218,7 +222,8 @@ function SendFlow() {
         amount: formData.amount,
         recipientEmail: formData.isShareableLink ? null : formData.recipientEmail,
         senderAddress: effectiveAccountAddress,
-        payRecipientFees: formData.payRecipientFees
+        payRecipientFees: formData.payRecipientFees,
+        assetId: selectedAssetId
       });
       
       setTxnData(response.data);
@@ -272,7 +277,8 @@ function SendFlow() {
         microAmount: currentTxnData.microAmount,
         recipientEmail: formData.isShareableLink ? null : formData.recipientEmail,
         senderAddress: effectiveAccountAddress,
-        payRecipientFees: formData.payRecipientFees
+        payRecipientFees: formData.payRecipientFees,
+        assetId: selectedAssetId
       });
       
       // Save the app ID for the next step
@@ -326,7 +332,8 @@ function SendFlow() {
         amount: txnData.amount,
         recipientEmail: formData.isShareableLink ? null : formData.recipientEmail,
         senderAddress: effectiveAccountAddress,
-        payRecipientFees: formData.payRecipientFees
+        payRecipientFees: formData.payRecipientFees,
+        assetId: selectedAssetId
       });
       
       // Generate claim URL ourselves to match the backend version
@@ -361,7 +368,8 @@ function SendFlow() {
             nextStep={nextStep}
             isConnected={!!effectiveAccountAddress}
             onConnectWallet={() => {}} // This would be passed from parent
-            usdcBalance={usdcBalance}
+            assetBalance={usdcBalance}
+            selectedAssetInfo={selectedAssetInfo}
             balanceLoading={balanceLoading}
             balanceError={balanceError}
             algoAvailability={algoAvailability}

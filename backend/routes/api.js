@@ -13,6 +13,7 @@ const {
 } = require('../atomic-deploy-email-escrow');
 const algosdk = require('algosdk');
 const { checkAlgoAvailabilityForEscrow } = require('../utils/algoAvailabilityUtils');
+const { getDefaultAssetId, getAssetInfo, isAssetSupported, toMicroUnits, fromMicroUnits } = require('../assetConfig');
 
 // Initialize Algorand client
 const ALGOD_TOKEN = process.env.ALGOD_TOKEN || '';
@@ -20,9 +21,6 @@ const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://testnet-api.algonode.c
 const ALGOD_PORT = process.env.ALGOD_PORT || '';
 
 const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
-
-// USDC Asset ID
-const USDC_ASSET_ID = parseInt(process.env.USDC_ASSET_ID) || 10458941;
 
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
@@ -50,7 +48,7 @@ function validateClaimParameters(tempPrivateKey, appId, claimHash) {
 // Generate unsigned transactions for app creation
 router.post('/generate-transactions', async (req, res) => {
   try {
-    const { amount, recipientEmail, senderAddress } = req.body;
+    const { amount, recipientEmail, senderAddress, assetId } = req.body;
     
     console.log("API received parameters:", {
       amount,
@@ -73,12 +71,19 @@ router.post('/generate-transactions', async (req, res) => {
       console.error("Invalid address format:", senderAddress);
       return res.status(400).json({ error: 'Invalid sender address format' });
     }
+
+    // Validate asset
+    const targetAssetId = assetId || getDefaultAssetId();
+    if (!isAssetSupported(targetAssetId)) {
+      return res.status(400).json({ error: 'Unsupported asset selected' });
+    }
     
     // Generate the transactions
     const txnData = await generateUnsignedDeployTransactions({
-      usdcAmount: parseFloat(amount),
+      amount: parseFloat(amount),
       recipientEmail: recipientEmail || 'shareable@link.com',
-      senderAddress
+      senderAddress,
+      assetId: targetAssetId
     });
     
     res.status(200).json(txnData);
@@ -91,7 +96,7 @@ router.post('/generate-transactions', async (req, res) => {
 // Submit signed app creation transaction
 router.post('/submit-app-creation', async (req, res) => {
   try {
-    const { signedTxn, tempAccount, amount, microAmount, recipientEmail, senderAddress, payRecipientFees } = req.body;
+    const { signedTxn, tempAccount, amount, microAmount, recipientEmail, senderAddress, payRecipientFees, assetId } = req.body;
     
     if (!signedTxn || !tempAccount || !amount || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
@@ -147,9 +152,10 @@ router.post('/submit-app-creation', async (req, res) => {
     const postAppTxns = await generatePostAppTransactions({
       appId,
       senderAddress,
-      microUSDCAmount: microAmount,
+      microAmount: microAmount,
       tempAccount,
-      payRecipientFees
+      payRecipientFees,
+      assetId: assetId || getDefaultAssetId()
     });
     
     res.status(200).json({
@@ -171,7 +177,7 @@ router.post('/submit-app-creation', async (req, res) => {
 // Submit signed group transactions
 router.post('/submit-group-transactions', async (req, res) => {
   try {
-    const { signedTxns, appId, tempAccount, amount, recipientEmail, senderAddress, payRecipientFees } = req.body;
+    const { signedTxns, appId, tempAccount, amount, recipientEmail, senderAddress, payRecipientFees, assetId } = req.body;
     
     if (!signedTxns || !appId || !tempAccount || !amount || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
@@ -231,7 +237,7 @@ router.post('/submit-group-transactions', async (req, res) => {
       appId: parseInt(appId),
       appAddress,
       network: 'testnet',
-      assetId: USDC_ASSET_ID,
+      assetId: assetId || getDefaultAssetId(),
       recipientEmail: recipientEmail || null,
       isShareable: !recipientEmail,
       authorizedClaimer: tempAccount.address,
@@ -249,18 +255,20 @@ router.post('/submit-group-transactions', async (req, res) => {
     
     // Send email if recipient email is provided
     if (recipientEmail) {
+      const assetInfo = getAssetInfo(assetId || getDefaultAssetId());
+      const symbol = assetInfo?.symbol || 'tokens';
       const msg = {
         to: recipientEmail,
         from: process.env.FROM_EMAIL,
-        subject: `You've received ${amount} USDC via AlgoSend!`,
+        subject: `You've received ${amount} ${symbol} via AlgoSend!`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>You've received ${amount} USDC!</h2>
-            <p>Someone has sent you ${amount} USDC using AlgoSend. Click the button below to claim your funds:</p>
+            <h2>You've received ${amount} ${symbol}!</h2>
+            <p>Someone has sent you ${amount} ${symbol} using AlgoSend. Click the button below to claim your funds:</p>
             <div style="text-align: center; margin: 30px 0;">
               <a href="${claimUrl}" 
                  style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
-                 Claim Your USDC
+                 Claim Your ${symbol}
               </a>
             </div>
             <p>This link will expire once the funds are claimed.</p>
@@ -343,11 +351,12 @@ router.get('/user-escrows/:address', async (req, res) => {
 });
 
 // Check if user has opted into USDC
-router.get('/check-optin/:address', async (req, res) => {
+router.get('/check-optin/:address/:assetId?', async (req, res) => {
   try {
     const accountInfo = await algodClient.accountInformation(req.params.address).do();
-    const hasOptedIn = accountInfo.assets?.some(asset => asset['asset-id'] === USDC_ASSET_ID) || false;
-    res.status(200).json({ hasOptedIn });
+    const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
+    const hasOptedIn = accountInfo.assets?.some(asset => asset['asset-id'] === targetAssetId) || false;
+    res.status(200).json({ hasOptedIn, assetId: targetAssetId });
   } catch (error) {
     console.error('Error checking opt-in status:', error);
     res.status(500).json({ error: 'Failed to check opt-in status', details: error.message });
@@ -357,7 +366,7 @@ router.get('/check-optin/:address', async (req, res) => {
 // Generate opt-in transaction
 router.post('/generate-optin', async (req, res) => {
   try {
-    const { recipientAddress } = req.body;
+    const { recipientAddress, assetId } = req.body;
     
     if (!recipientAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
@@ -373,7 +382,7 @@ router.post('/generate-optin', async (req, res) => {
       undefined, // revocationTarget
       0, // amount (0 for opt-in)
       undefined, // note
-      USDC_ASSET_ID, // assetIndex
+      assetId || getDefaultAssetId(), // assetIndex
       suggestedParams // suggestedParams
     );
     
@@ -444,7 +453,8 @@ router.post('/generate-claim', async (req, res) => {
     const txnData = await generateClaimTransaction({
       appId: parseInt(appId),
       tempPrivateKey,
-      recipientAddress
+      recipientAddress,
+      assetId: escrow.assetId
     });
     
     res.status(200).json(txnData);
@@ -502,7 +512,8 @@ router.post('/claim-usdc', async (req, res) => {
         }
       );
       
-      let message = `Successfully claimed ${escrow.amount} USDC`;
+      const assetInfo = getAssetInfo(escrow.assetId);
+      let message = `Successfully claimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}`;
       if (escrow.payRecipientFees) {
         message += '. Fee coverage was provided for all transactions.';
       }
@@ -667,8 +678,8 @@ router.post('/fund-wallet', async (req, res) => {
   }
 });
 
-// USDC balance endpoint
-router.get('/usdc-balance/:address', async (req, res) => {
+// Asset balance endpoint
+router.get('/asset-balance/:address/:assetId?', async (req, res) => {
   try {
     const address = req.params.address;
     
@@ -682,24 +693,27 @@ router.get('/usdc-balance/:address', async (req, res) => {
     // Query account info including assets
     const accountInfo = await algodClient.accountInformation(address).do();
     
-    // Find USDC among assets
-    let usdcBalance = '0.00';
+    // Find asset among user's assets
+    const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
+    const assetInfo = getAssetInfo(targetAssetId);
+
+    let assetBalance = '0.00';
     const assets = accountInfo.assets || [];
-    
+
     for (const asset of assets) {
-      if (asset['asset-id'] === USDC_ASSET_ID) {
-        // Convert from micro-USDC to USDC (assuming 6 decimal places)
-        const microUsdcBalance = asset.amount;
-        usdcBalance = (microUsdcBalance / 1000000).toFixed(2);
+      if (asset['asset-id'] === targetAssetId) {
+        const microBalance = asset.amount;
+        assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
       }
     }
     
     // Return the balance
-    res.status(200).json({ 
+    res.status(200).json({
       address,
-      assetId: USDC_ASSET_ID,
-      balance: usdcBalance
+      assetId: targetAssetId,
+      balance: assetBalance,
+      assetInfo: assetInfo
     });
     
   } catch (error) {
@@ -791,7 +805,8 @@ router.post('/generate-reclaim', async (req, res) => {
     // Generate the reclaim transaction
     const txnData = await generateReclaimTransaction({
       appId: parseInt(appId),
-      senderAddress
+      senderAddress,
+      assetId: escrow.assetId
     });
     
     res.status(200).json(txnData);
@@ -861,14 +876,15 @@ router.post('/submit-reclaim', async (req, res) => {
       // If the escrow had a recipient email, send notification about reclaim
       if (escrow.recipientEmail) {
         try {
+          const assetInfo = getAssetInfo(escrow.assetId);
           const msg = {
             to: escrow.recipientEmail,
             from: process.env.FROM_EMAIL,
-            subject: 'USDC Transfer Cancelled',
+            subject: `${assetInfo?.symbol || 'Token'} Transfer Cancelled`,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>USDC Transfer Cancelled</h2>
-                <p>We're writing to let you know that the ${escrow.amount} USDC transfer that was sent to you has been cancelled by the sender and is no longer available to claim.</p>
+                <h2>${assetInfo?.symbol || 'Token'} Transfer Cancelled</h2>
+                <p>We're writing to let you know that the ${escrow.amount} ${assetInfo?.symbol || 'tokens'} transfer that was sent to you has been cancelled by the sender and is no longer available to claim.</p>
                 <p>If you believe this is a mistake, please contact the sender directly.</p>
               </div>
             `
@@ -881,10 +897,11 @@ router.post('/submit-reclaim', async (req, res) => {
         }
       }
       
+      const assetInfo = getAssetInfo(escrow.assetId);
       res.status(200).json({
         success: true,
         amount: escrow.amount,
-        message: `Successfully reclaimed ${escrow.amount} USDC`
+        message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}`
       });
     } catch (error) {
       console.error('Error submitting reclaim transaction:', error);
@@ -905,6 +922,18 @@ router.post('/submit-reclaim', async (req, res) => {
       error: 'Failed to reclaim USDC', 
       details: error.message 
     });
+  }
+});
+
+// Get supported assets
+router.get('/supported-assets', async (req, res) => {
+  try {
+    const { getSupportedAssets } = require('../assetConfig');
+    const assets = getSupportedAssets();
+    res.status(200).json({ assets });
+  } catch (error) {
+    console.error('Error fetching supported assets:', error);
+    res.status(500).json({ error: 'Failed to fetch supported assets' });
   }
 });
 

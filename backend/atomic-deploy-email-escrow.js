@@ -2,7 +2,8 @@
 
 const algosdk = require('algosdk');
 const crypto = require('crypto');
-const { createApprovalProgram, createClearProgram, USDC_ASSET_ID } = require('./teal-programs');
+const { createApprovalProgram, createClearProgram } = require('./teal-programs');
+const { getDefaultAssetId, toMicroUnits, getAssetInfo } = require('./assetConfig');
 
 // Configuration
 const ALGOD_TOKEN = '';
@@ -26,11 +27,13 @@ const EXACT_FEES = {
   RECIPIENT_FUNDING: 1000, // Payment for recipient fees (if enabled)
   OPT_IN: 2000,           // App call with inner transaction
   SET_AMOUNT: 1000,       // App call (no inner transaction)
-  SEND_USDC: 1000         // Asset transfer
+  SEND_ASSET: 1000        // Asset transfer (was SEND_USDC)
 };
 
 // Generate unsigned transaction for app creation
-async function generateUnsignedDeployTransactions({ usdcAmount, recipientEmail, senderAddress }) {
+async function generateUnsignedDeployTransactions({ amount, recipientEmail, senderAddress, assetId = null }) {
+  const targetAssetId = assetId || getDefaultAssetId();
+
   try {
     console.log("Generating deployment transaction for sender:", senderAddress);
     
@@ -44,10 +47,10 @@ async function generateUnsignedDeployTransactions({ usdcAmount, recipientEmail, 
     }
     
     // Convert string amount to number if needed
-    usdcAmount = typeof usdcAmount === 'string' ? parseFloat(usdcAmount) : usdcAmount;
+    amount = typeof amount === 'string' ? parseFloat(amount) : amount;
     
-    if (typeof usdcAmount !== 'number' || isNaN(usdcAmount) || usdcAmount <= 0) {
-      throw new Error("Invalid 'usdcAmount'. Must be a positive number.");
+    if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
+      throw new Error("Invalid 'amount'. Must be a positive number.");
     }
     
     // Generate temporary account for authorization
@@ -58,7 +61,7 @@ async function generateUnsignedDeployTransactions({ usdcAmount, recipientEmail, 
     console.log(`Generated temporary account: ${tempAddress}`);
     
     // Convert to microUnits
-    const microUSDCAmount = Math.floor(usdcAmount * 1e6);
+    const microAmount = toMicroUnits(amount, targetAssetId);
     
     // Get suggested parameters
     console.log("Fetching suggested parameters...");
@@ -77,7 +80,7 @@ async function generateUnsignedDeployTransactions({ usdcAmount, recipientEmail, 
     console.log("Processing parameters complete. Generating TEAL programs...");
     
     // Compile the TEAL programs - now using imported functions
-    const approvalProgramSource = createApprovalProgram(senderAddress, tempAddress);
+    const approvalProgramSource = createApprovalProgram(senderAddress, tempAddress, targetAssetId);
     const approvalProgram = await compileProgram(approvalProgramSource);
     
     const clearProgramSource = createClearProgram();
@@ -99,7 +102,7 @@ async function generateUnsignedDeployTransactions({ usdcAmount, recipientEmail, 
         appGlobalByteSlices: 2,
         appApprovalProgram: approvalProgram,
         appClearProgram: clearProgram,
-        appForeignAssets: [USDC_ASSET_ID],
+        appForeignAssets: [targetAssetId],
         type: 'appl',
         fee: processedParams.fee,
         flatFee: true,
@@ -120,8 +123,8 @@ async function generateUnsignedDeployTransactions({ usdcAmount, recipientEmail, 
           address: tempAddress,
           privateKey: tempPrivateKey
         },
-        amount: usdcAmount,
-        microAmount: microUSDCAmount
+        amount: amount,
+        microAmount: microAmount
       };
     } catch (txnError) {
       console.error("Transaction creation failed:", txnError);
@@ -135,7 +138,9 @@ async function generateUnsignedDeployTransactions({ usdcAmount, recipientEmail, 
 }
 
 // Generate transactions after app creation for funding and setup
-async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmount, tempAccount, payRecipientFees = false }) {
+async function generatePostAppTransactions({ appId, senderAddress, microAmount, tempAccount, payRecipientFees = false, assetId = null }) {
+  const targetAssetId = assetId || getDefaultAssetId();
+
   try {
     console.log("Generating post-app transactions for appId:", appId);
     
@@ -165,7 +170,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
                           (payRecipientFees ? EXACT_FEES.RECIPIENT_FUNDING : 0) +
                           EXACT_FEES.OPT_IN + 
                           EXACT_FEES.SET_AMOUNT + 
-                          EXACT_FEES.SEND_USDC;
+                          EXACT_FEES.SEND_ASSET;
     
     console.log(`Group transaction total fee budget: ${totalFeeNeeded / 1e6} ALGO`);
     
@@ -212,12 +217,12 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
       });
     }
     
-    // 4. Opt the app into USDC
+    // 4. Opt the app into asset
     const optInTxn = new algosdk.Transaction({
       from: senderAddress,
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("opt_in_asset"))],
-      appForeignAssets: [USDC_ASSET_ID],
+      appForeignAssets: [targetAssetId],
       fee: EXACT_FEES.OPT_IN,
       ...baseParams,
       type: 'appl'
@@ -229,28 +234,28 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
       appIndex: appIdInt,
       appArgs: [
         new Uint8Array(Buffer.from("set_amount")),
-        algosdk.encodeUint64(microUSDCAmount)
+        algosdk.encodeUint64(microAmount)
       ],
       fee: EXACT_FEES.SET_AMOUNT,
       ...baseParams,
       type: 'appl'
     });
     
-    // 6. Send USDC to the app
-    const sendUSDCTxn = new algosdk.Transaction({
+    // 6. Send asset to the app
+    const sendAssetTxn = new algosdk.Transaction({
       from: senderAddress,
       to: appAddress,
-      assetIndex: USDC_ASSET_ID,
-      amount: microUSDCAmount,
-      fee: EXACT_FEES.SEND_USDC,
+      assetIndex: targetAssetId,
+      amount: microAmount,
+      fee: EXACT_FEES.SEND_ASSET,
       ...baseParams,
       type: 'axfer'
     });
     
     // Group transactions (no platform fee)
     const txnGroup = recipientFundingTxn 
-      ? [fundingTxn, tempFundingTxn, recipientFundingTxn, optInTxn, setAmountTxn, sendUSDCTxn]
-      : [fundingTxn, tempFundingTxn, optInTxn, setAmountTxn, sendUSDCTxn];
+      ? [fundingTxn, tempFundingTxn, recipientFundingTxn, optInTxn, setAmountTxn, sendAssetTxn]
+      : [fundingTxn, tempFundingTxn, optInTxn, setAmountTxn, sendAssetTxn];
     
     // Assign group ID
     algosdk.assignGroupID(txnGroup);
@@ -277,7 +282,9 @@ async function generatePostAppTransactions({ appId, senderAddress, microUSDCAmou
 }
 
 // Generate claim transaction using temporary account (SIMPLIFIED - NO fee transfer)
-async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddress }) {
+async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddress, assetId = null }) {
+  const targetAssetId = assetId || getDefaultAssetId();
+
   try {
     console.log("Generating claim transaction for app:", appId);
     
@@ -318,8 +325,8 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
       from: tempAccountObj.addr,
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("claim"))],
-      appAccounts: [recipientAddress], // Where to send USDC
-      appForeignAssets: [USDC_ASSET_ID],
+      appAccounts: [recipientAddress], // Where to send asset
+      appForeignAssets: [targetAssetId],
       fee: calculateTransactionFee(true, 1), // 2000 microALGO
       flatFee: true,
       firstRound: suggestedParams.firstRound,
@@ -359,7 +366,9 @@ async function compileProgram(programSource) {
   }
 }
 
-async function generateReclaimTransaction({ appId, senderAddress }) {
+async function generateReclaimTransaction({ appId, senderAddress, assetId = null }) {
+  const targetAssetId = assetId || getDefaultAssetId();
+
   try {
     console.log("Generating reclaim transaction for app:", appId);
     
@@ -381,7 +390,7 @@ async function generateReclaimTransaction({ appId, senderAddress }) {
       from: senderAddress,
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("reclaim"))],
-      appForeignAssets: [USDC_ASSET_ID],
+      appForeignAssets: [targetAssetId],
       fee: exactFee,
       flatFee: true, // CRITICAL: Prevents network fee estimation
       firstRound: suggestedParams.firstRound,

@@ -12,6 +12,20 @@ import { WalletUIProvider } from '@txnlab/use-wallet-ui-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
 
+// CHANGE 1: Add asset info helper at the top (after imports, around line 10)
+const getAssetInfo = (assetId) => {
+  const assets = {
+    10458941: { id: 10458941, name: 'USDC', symbol: 'USDC', decimals: 6 },
+    31566704: { id: 31566704, name: 'Tether USDt', symbol: 'USDT', decimals: 6 }
+  };
+  return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
+};
+
+// CHANGE 19: Add fallback for when assetInfo is not yet loaded
+const getDisplaySymbol = (assetInfo) => {
+  return assetInfo?.symbol || 'USDC'; // Fallback to USDC for backwards compatibility
+};
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 // Create a fresh wallet manager for claim page only
@@ -41,7 +55,9 @@ function ClaimPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [walletEnabled, setWalletEnabled] = useState(false);
-  
+  // CHANGE 13: Add asset state management in main ClaimPage component
+  const [assetInfo, setAssetInfo] = useState(null);
+
   // Ecosystem projects data
   const ecosystemProjects = [
     {
@@ -78,6 +94,10 @@ function ClaimPage() {
       try {
         const response = await axios.get(`${API_URL}/escrow/${appId}`);
         setEscrowDetails(response.data);
+        
+        // Set asset info based on escrow data
+        const escrowAssetInfo = getAssetInfo(response.data.assetId);
+        setAssetInfo(escrowAssetInfo);
         
         if (response.data.claimed) {
           setError('These funds have already been claimed');
@@ -133,7 +153,7 @@ function ClaimPage() {
   };
   
   // Render content without wallet
-  const renderContentWithoutWallet = () => {
+  const renderContentWithoutWallet = (assetInfo) => {
     if (!tempPrivateKey || !appId) {
       return (
         <div className="text-center">
@@ -175,15 +195,17 @@ function ClaimPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Already Claimed</h3>
           <p className="text-red-600 mb-4 text-sm">These funds have already been claimed</p>
           {escrowDetails && (
+            // CHANGE 15a: Already claimed section
             <p className="text-gray-500 text-sm mb-4">
-              Amount: {formatAmount(escrowDetails.amount)} USDC
+              Amount: {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}
             </p>
           )}
           <button
             onClick={() => window.open(window.location.origin, '_blank')}
             className="btn-primary px-4 py-2 font-medium"
           >
-            Send Your Own USDC
+            {/* CHANGE 15c: Success page button */}
+            Send Your Own {assetInfo?.symbol || 'Assets'}
           </button>
         </div>
       );
@@ -224,8 +246,9 @@ function ClaimPage() {
         
         {escrowDetails && (
           <div className="mb-6">
+            {/* CHANGE 15b: Main display section */}
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-              You've received {formatAmount(escrowDetails.amount)} USDC! 🎉
+              You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
             </h2>
             <p className="text-gray-600">
               Connect your Algorand wallet to claim the funds
@@ -270,7 +293,7 @@ function ClaimPage() {
               <p className="text-gray-600 text-sm">Secure and instant USDC transfer on Algorand</p>
             </div>
             
-            {renderContentWithoutWallet()}
+            {renderContentWithoutWallet(assetInfo)}
           </div>
         </div>
       </div>
@@ -286,14 +309,15 @@ function ClaimPage() {
           tempPrivateKey={tempPrivateKey}
           escrowDetails={escrowDetails}
           ecosystemProjects={ecosystemProjects}
+          assetInfo={assetInfo}
         />
       </WalletUIProvider>
     </WalletProvider>
   );
 }
 
-// Component with wallet functionality
-function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemProjects }) {
+// CHANGE 12: Update ClaimPageWithWallet function signature
+function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemProjects, assetInfo }) {
   const { activeAddress, signTransactions } = useWallet();
   const [accountAddress, setAccountAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -301,7 +325,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
   const [claimStatus, setClaimStatus] = useState('initial');
   const [isFunding, setIsFunding] = useState(false);
   const [autoClickTriggered, setAutoClickTriggered] = useState(false);
-  
+  // CHANGE 16: Remove the duplicate assetInfo state from ClaimPageWithWallet
+
   // Auto-trigger wallet button click when component mounts
   useEffect(() => {
     if (!autoClickTriggered) {
@@ -352,8 +377,9 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           console.log("Wallet funded successfully with fee coverage");
         }
         
-        // STEP 2: Check if user has opted into USDC
-        const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}`);
+        // CHANGE 4: Update opt-in status check
+        const targetAssetId = escrowDetails.assetId || 10458941; // Default to USDC
+        const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
         const hasOptedIn = optInResponse.data.hasOptedIn;
         
         // STEP 3: Determine next step based on opt-in status
@@ -430,8 +456,10 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
     setError(null);
     
     try {
+      // CHANGE 5: Update opt-in transaction generation
       const response = await axios.post(`${API_URL}/generate-optin`, {
-        recipientAddress: accountAddress
+        recipientAddress: accountAddress,
+        assetId: escrowDetails.assetId || 10458941
       });
       
       const txnUint8 = new Uint8Array(Buffer.from(response.data.transaction, 'base64'));
@@ -446,9 +474,10 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
       
       setClaimStatus('ready-to-claim');
       setIsLoading(false);
+    // CHANGE 8: Update error handling for asset-specific errors
     } catch (error) {
-      console.error('Error opting into USDC:', error);
-      setError('Failed to opt into USDC. Please try again.');
+      console.error(`Error opting into ${assetInfo?.symbol || 'asset'}:`, error);
+      setError(`Failed to opt into ${assetInfo?.symbol || 'asset'}. Please try again.`);
       setIsLoading(false);
     }
   };
@@ -464,10 +493,12 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
     try {
       console.log("Generating claim transaction...");
       
+      // CHANGE 6: Update claim transaction generation
       const response = await axios.post(`${API_URL}/generate-claim`, {
         tempPrivateKey,
         appId,
-        recipientAddress: accountAddress
+        recipientAddress: accountAddress,
+        assetId: escrowDetails.assetId
       });
       
       console.log("Submitting claim transaction...");
@@ -482,7 +513,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
       const claimResponse = await axios.post(`${API_URL}/claim-usdc`, submitData);
       
       if (claimResponse.data.success) {
-        console.log("USDC claimed successfully!");
+        // CHANGE 17: Update console.log messages to be asset-agnostic
+        console.log(`${assetInfo?.symbol || 'Asset'} claimed successfully!`);
         setClaimStatus('success');
       } else {
         setError(claimResponse.data.error || 'Failed to claim USDC');
@@ -490,9 +522,10 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
       }
       
       setIsLoading(false);
+    // CHANGE 9: Update claim error handling
     } catch (error) {
-      console.error('Error claiming USDC:', error);
-      setError(error.response?.data?.error || 'Failed to claim USDC. Please try again.');
+      console.error(`Error claiming ${assetInfo?.symbol || 'asset'}:`, error);
+      setError(error.response?.data?.error || `Failed to claim ${assetInfo?.symbol || 'asset'}. Please try again.`);
       setClaimStatus('ready-to-claim');
       setIsLoading(false);
     }
@@ -520,8 +553,9 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           
           {escrowDetails && (
             <div className="mb-6">
+              {/* CHANGE 7e: Another "You've received" message in wallet content */}
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                You've received {formatAmount(escrowDetails.amount)} USDC! 🎉
+                You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
               </h2>
               <p className="text-gray-600">
                 Connect your Algorand wallet to claim the funds
@@ -547,19 +581,21 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           <div className="flex justify-center mb-4">
             <div className="w-8 h-8 spinner"></div>
           </div>
+          {/* CHANGE 7f: Claiming status message */}
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             {claimStatus === 'claiming' 
-              ? 'Claiming Your USDC...' 
+              ? `Claiming Your ${assetInfo?.symbol || 'Asset'}...` 
               : (isFunding 
                   ? 'Receiving Fee Coverage...' 
-                  : 'Preparing Your Wallet...')}
+                  // CHANGE 20: Use the helper in loading states where assetInfo might be null
+                  : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
           </h3>
           <p className="text-gray-600 text-sm">
             {claimStatus === 'claiming' 
-              ? 'Please wait while we process your claim' 
+              ? `Please wait while we process your claim` 
               : (isFunding 
                   ? 'Transferring ALGO for transaction fees from escrow' 
-                  : 'Setting up your wallet for USDC')}
+                  : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
           </p>
           
           <div className="mt-4 card card-compact inline-block">
@@ -590,9 +626,13 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             </div>
           </div>
           
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">USDC Opt-in Required</h3>
+          {/* CHANGE 7g: Opt-in section title */}
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            {assetInfo?.symbol || 'Asset'} Opt-in Required
+          </h3>
+          {/* CHANGE 7h: Opt-in description */}
           <p className="text-gray-600 mb-4 text-sm">
-            Your wallet needs to opt-in to the USDC token before you can receive the funds.
+            Your wallet needs to opt-in to the {assetInfo?.name || 'asset'} token before you can receive the funds.
             This is a one-time setup step.
           </p>
           
@@ -607,7 +647,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                 <span>Processing...</span>
               </span>
             ) : (
-              'Opt-in to USDC'
+              // CHANGE 7i: Opt-in button text
+              `Opt-in to ${assetInfo?.symbol || 'Asset'}`
             )}
           </button>
           
@@ -630,8 +671,9 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           </div>
           
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Ready to Claim!</h2>
+          {/* CHANGE 7j: Ready to claim message */}
           <p className="text-gray-600 mb-6">
-            Claim your <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} USDC</span> now
+            Claim your <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> now
           </p>
           
           {escrowDetails?.payRecipientFees && (
@@ -655,7 +697,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
-                <span>Claim USDC</span>
+                {/* CHANGE 7k: Claim button text */}
+                <span>Claim {assetInfo?.symbol || 'Asset'}</span>
               </span>
             )}
           </button>
@@ -682,8 +725,9 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             </div>
             
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">Successfully Claimed! 🎉</h2>
+            {/* CHANGE 7l: Success message */}
             <p className="text-gray-600 mb-2">
-              <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} USDC</span> has been transferred to your wallet
+              <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been transferred to your wallet
             </p>
             {escrowDetails?.payRecipientFees && (
               <p className="text-gray-500 text-xs mb-2">
@@ -698,7 +742,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           <div className="space-y-4">
             <div className="text-center">
               <h3 className="text-lg font-medium text-gray-900 mb-2">What's Next?</h3>
-              <p className="text-gray-600 text-sm">Put your USDC to work in the Algorand ecosystem</p>
+              {/* CHANGE 18: Update ecosystem projects description to be more generic */}
+              <p className="text-gray-600 text-sm">Put your {assetInfo?.symbol || 'crypto'} to work in the Algorand ecosystem</p>
             </div>
             
             <div className="grid grid-cols-1 gap-3">
@@ -742,7 +787,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  <span>Send Your Own USDC</span>
+                  {/* CHANGE 7n: Bottom button text */}
+                  <span>Send Your Own {assetInfo?.symbol || 'Assets'}</span>
                 </span>
               </button>
             </div>
@@ -754,6 +800,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
     return null;
   };
   
+  // CHANGE 7c: Line ~130 - Page title
+  // CHANGE 7d: Line ~135 - Page description  
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -770,8 +818,12 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                 <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
             </div>
-            <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim USDC</h1>
-            <p className="text-gray-600 text-sm">Secure and instant USDC transfer on Algorand</p>
+            <h1 className="text-xl font-semibold text-gray-900 mb-1">
+              Claim {assetInfo?.symbol || 'Asset'}
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Secure and instant {assetInfo?.symbol || 'asset'} transfer on Algorand
+            </p>
           </div>
           
           {renderWalletContent()}

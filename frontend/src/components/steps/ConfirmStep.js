@@ -13,7 +13,8 @@ function ConfirmStep({
   handleSignFirstTransaction,
   handleSignGroupTransactions,
   mcpSessionData = null,
-  onWalletConnect = null
+  onWalletConnect = null,
+  selectedAssetInfo = { symbol: 'USDC', name: 'USDC' } // Default to USDC for now
 }) {
   const [stage, setStage] = useState('initial'); // initial, app-created, funded
   const [showTransactionDetails, setShowTransactionDetails] = useState(false);
@@ -97,7 +98,7 @@ function ConfirmStep({
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Amount:</span>
-            <span className="font-semibold text-lg">{formatAmount(formData.amount)} USDC</span>
+            <span className="font-semibold text-lg">{formatAmount(formData.amount)} {selectedAssetInfo?.symbol || 'tokens'}</span>
           </div>
           
           <div className="flex justify-between items-center">
