@@ -4,7 +4,7 @@
 const { getDefaultAssetId } = require('./assetConfig');
 
 // USDC Asset ID
-const USDC_ASSET_ID = 10458941; // Testnet USDC asset ID
+const USDC_ASSET_ID = 31566704; // Mainnet USDC asset ID
 
 function createApprovalProgram(senderAddress, authorizedClaimerAddress, assetId = null) {
   const targetAssetId = assetId || getDefaultAssetId();

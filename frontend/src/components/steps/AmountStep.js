@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import AssetSelectionModal from '../AssetSelectionModal';
+import { getSupportedAssets, getAssetInfo } from '../../services/api';
 
 function AmountStep({ 
   formData, 
@@ -12,11 +14,15 @@ function AmountStep({
   balanceError,
   algoAvailability,
   algoLoading,
-  algoError
+  algoError,
+  // NEW: Add these props
+  selectedAssetId,
+  onAssetSelect
 }) {
   const [error, setError] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showBalanceDetails, setShowBalanceDetails] = useState(false);
+  const [showAssetModal, setShowAssetModal] = useState(false);
   
   // Quick amount options
   const quickAmounts = [10, 25, 50, 100];
@@ -149,20 +155,19 @@ function AmountStep({
         {/* Amount input section */}
         <div className="card card-normal">
           <div className="flex justify-between items-center mb-3">
-            <label className="text-sm font-medium text-gray-700">Amount ({selectedAssetInfo?.symbol || 'Asset'})</label>
-            {isConnected && assetBalance !== null && (
-              <button 
-                type="button"
-                onClick={() => setShowBalanceDetails(!showBalanceDetails)}
-                className="text-xs text-gray-500 hover:text-purple-600 flex items-center space-x-1"
-              >
-                <span>Balance: {parseFloat(assetBalance).toFixed(2)} {selectedAssetInfo?.symbol || 'tokens'}</span>
-                <svg className={`w-3 h-3 transition-transform ${showBalanceDetails ? 'rotate-180' : ''}`} 
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            )}
+            <label className="text-sm font-medium text-gray-700">Amount</label>
+            
+            {/* NEW: Asset selector button */}
+            <button
+              type="button"
+              onClick={() => setShowAssetModal(true)}
+              className="flex items-center space-x-2 px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <span className="text-sm font-medium text-gray-700">{selectedAssetInfo?.symbol || 'Select Asset'}</span>
+              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
           </div>
           
           {/* Amount input */}
@@ -367,6 +372,14 @@ function AmountStep({
           </button>
         </div>
       </form>
+
+      {/* NEW: Asset Selection Modal */}
+      <AssetSelectionModal
+        isOpen={showAssetModal}
+        onClose={() => setShowAssetModal(false)}
+        selectedAssetId={selectedAssetId}
+        onAssetSelect={onAssetSelect}
+      />
     </div>
   );
 }

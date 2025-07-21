@@ -7,7 +7,8 @@ const { getDefaultAssetId, toMicroUnits, getAssetInfo } = require('./assetConfig
 
 // Configuration
 const ALGOD_TOKEN = '';
-const ALGOD_SERVER = 'https://testnet-api.algonode.cloud';
+// CHANGE: Update to mainnet
+const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://mainnet-api.algonode.cloud';
 const ALGOD_PORT = '';
 
 // Initialize Algorand client

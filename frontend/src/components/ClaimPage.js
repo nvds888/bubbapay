@@ -15,8 +15,8 @@ import algosdk from 'algosdk';
 // CHANGE 1: Add asset info helper at the top (after imports, around line 10)
 const getAssetInfo = (assetId) => {
   const assets = {
-    10458941: { id: 10458941, name: 'USDC', symbol: 'USDC', decimals: 6 },
-    31566704: { id: 31566704, name: 'Tether USDt', symbol: 'USDT', decimals: 6 }
+    31566704: { id: 31566704, name: 'USDC', symbol: 'USDC', decimals: 6 },
+    760037151: { id: 760037151, name: 'xUSD', symbol: 'xUSD', decimals: 6 }
   };
   return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
 };

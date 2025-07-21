@@ -357,6 +357,16 @@ function SendFlow() {
     }
   };
   
+  // NEW: Handle asset selection
+  const handleAssetSelect = (assetId, assetInfo) => {
+    setSelectedAssetId(assetId);
+    setSelectedAssetInfo(assetInfo);
+
+    // Reset balance when asset changes
+    setUsdcBalance(null);
+    setBalanceError(null);
+  };
+
   // Render current step
   const renderStep = () => {
     switch(currentStep) {
@@ -375,6 +385,9 @@ function SendFlow() {
             algoAvailability={algoAvailability}
             algoLoading={algoLoading}
             algoError={algoError}
+            // NEW: Add these props
+            selectedAssetId={selectedAssetId}
+            onAssetSelect={handleAssetSelect}
           />
         );
       case 2:

@@ -2,8 +2,8 @@
 
 // Supported assets for testnet
 const SUPPORTED_ASSETS = {
-    10458941: {
-      id: 10458941,
+    31566704: {
+      id: 31566704,
       name: 'USDC',
       unitName: 'USDC',
       decimals: 6,
@@ -11,14 +11,14 @@ const SUPPORTED_ASSETS = {
       isDefault: true,
       description: 'USD Coin'
     },
-    31566704: {
-      id: 31566704,
-      name: 'Tether USDt',
-      unitName: 'USDt', 
+    760037151: {
+      id: 760037151,
+      name: 'xUSD',
+      unitName: 'xUSD', 
       decimals: 6,
-      symbol: 'USDT',
+      symbol: 'xUSD',
       isDefault: false,
-      description: 'Tether USD'
+      description: 'xUSD'
     }
     // Add more assets here as needed
   };
@@ -26,7 +26,7 @@ const SUPPORTED_ASSETS = {
   // Get default asset ID (USDC)
   function getDefaultAssetId() {
     const defaultAsset = Object.values(SUPPORTED_ASSETS).find(asset => asset.isDefault);
-    return defaultAsset ? defaultAsset.id : 10458941;
+    return defaultAsset ? defaultAsset.id : 31566704; // Mainnet USDC
   }
   
   // Get asset info

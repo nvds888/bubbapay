@@ -27,7 +27,7 @@ const walletManager = new WalletManager({
     WalletId.LUTE,
     // Add more wallets as needed
   ],
-  defaultNetwork: NetworkId.TESTNET, // Change to MAINNET for production
+  defaultNetwork: NetworkId.MAINNET, // Change to MAINNET for production
 });
 
 // Component to handle location-based logic
