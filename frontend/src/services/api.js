@@ -169,11 +169,11 @@ export const checkAlgoAvailability = async (address, payRecipientFees = false) =
 
 // CHANGE 1: Add supported assets constant at the top (after imports)
 const SUPPORTED_ASSETS = {
-  10458941: { id: 10458941, name: 'USDC', symbol: 'USDC', decimals: 6 },
-  31566704: { id: 31566704, name: 'Tether USDt', symbol: 'USDT', decimals: 6 }
+  31566704: { id: 31566704, name: 'USDC', symbol: 'USDC', decimals: 6, description: 'USD Coin' },
+  760037151: { id: 760037151, name: 'xUSD', symbol: 'xUSD', decimals: 6, description: 'Liquid Governance xUSD' }
 };
 
-const DEFAULT_ASSET_ID = 10458941; // USDC
+const DEFAULT_ASSET_ID = 31566704; // USDC
 
 // CHANGE 2: Add helper functions after the constants
 export const getSupportedAssets = () => Object.values(SUPPORTED_ASSETS);
