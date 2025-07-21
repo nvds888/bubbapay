@@ -350,11 +350,24 @@ router.get('/user-escrows/:address', async (req, res) => {
   }
 });
 
-// Check if user has opted into USDC
-router.get('/check-optin/:address/:assetId?', async (req, res) => {
+// Check if user has opted into USDC (with assetId)
+router.get('/check-optin/:address/:assetId', async (req, res) => {
   try {
     const accountInfo = await algodClient.accountInformation(req.params.address).do();
     const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
+    const hasOptedIn = accountInfo.assets?.some(asset => asset['asset-id'] === targetAssetId) || false;
+    res.status(200).json({ hasOptedIn, assetId: targetAssetId });
+  } catch (error) {
+    console.error('Error checking opt-in status:', error);
+    res.status(500).json({ error: 'Failed to check opt-in status', details: error.message });
+  }
+});
+
+// Check if user has opted into USDC (without assetId)
+router.get('/check-optin/:address', async (req, res) => {
+  try {
+    const accountInfo = await algodClient.accountInformation(req.params.address).do();
+    const targetAssetId = getDefaultAssetId();
     const hasOptedIn = accountInfo.assets?.some(asset => asset['asset-id'] === targetAssetId) || false;
     res.status(200).json({ hasOptedIn, assetId: targetAssetId });
   } catch (error) {
