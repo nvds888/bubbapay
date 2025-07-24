@@ -338,7 +338,7 @@ function AmountStep({
           
           {showAdvanced && (
             <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
-              <p>Pay ~0.12 ALGO to cover the recipient's opt-in & future transaction fees. This makes onboarding easier for new users.</p>
+              <p>Pay ~0.21 ALGO to cover the recipient's opt-in & future transaction fees. This makes onboarding easier for new users.</p>
             </div>
           )}
         </div>
