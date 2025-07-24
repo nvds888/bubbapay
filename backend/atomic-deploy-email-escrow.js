@@ -188,7 +188,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     const fundingTxn = new algosdk.Transaction({
       from: senderAddress,
       to: appAddress,
-      amount: 102000, 
+      amount: 210000, 
       fee: EXACT_FEES.FUNDING,
       ...baseParams,
       type: 'pay'
