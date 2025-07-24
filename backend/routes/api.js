@@ -641,7 +641,7 @@ router.post('/fund-wallet', async (req, res) => {
     const maxTransferAmount = tempBalance - fundingTransactionFee - minimumTempBalance - claimTransactionReserve;
     
     // The target funding amount is 0.4 ALGO, but we'll send what's available up to that amount
-    const targetFundingAmount = 300000; // 0.3 ALGO
+    const targetFundingAmount = 120000; 
     const actualFundingAmount = Math.min(maxTransferAmount, targetFundingAmount);
     
     console.log(`Calculated funding amount: ${actualFundingAmount / 1e6} ALGO`);

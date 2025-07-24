@@ -24,10 +24,10 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
     // Optional recipient funding fee (if enabled)
     RECIPIENT_FUNDING_FEE: 1000,        // 0.001 ALGO - Payment (recipient fee funding)
     
-    // ALGO Transfers (actual ALGO sent out, not fees)
-    TEMP_ACCOUNT_FUNDING: 102000,       // 0.102 ALGO - fund temp account
-    CONTRACT_FUNDING: 200000,           // 0.2 ALGO - fund smart contract
-    RECIPIENT_FEE_FUNDING: 300000,      // 0.3 ALGO - recipient fee coverage (if enabled)
+   // ALGO Transfers (actual ALGO sent out, not fees)
+TEMP_ACCOUNT_FUNDING: 20000,        // 0.02 ALGO - fund temp account
+CONTRACT_FUNDING: 120000,           // 0.12 ALGO - fund smart contract
+RECIPIENT_FEE_FUNDING: 120000,      // 0.12 ALGO - recipient fee coverage (if enabled)
   };
   
   // Calculate total fees for both phases
@@ -242,8 +242,8 @@ function getAlgoRequirementSummary(payRecipientFees = false) {
     subtotal: microAlgoToAlgo(total),
     withBuffer: microAlgoToAlgo(withBuffer),
     description: payRecipientFees 
-      ? "~0.9 ALGO (includes recipient fees + app min balance + 10% buffer)"
-      : "~0.5 ALGO (includes app min balance + 10% buffer, no recipient fees)"
+      ? "~0.4 ALGO (includes recipient fees + app min balance + 10% buffer)"
+      : "~0.25 ALGO (includes app min balance + 10% buffer, no recipient fees)"
   };
 }
 

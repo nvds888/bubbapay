@@ -188,7 +188,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     const fundingTxn = new algosdk.Transaction({
       from: senderAddress,
       to: appAddress,
-      amount: 300000, // 0.3 ALGO 
+      amount: 102000, 
       fee: EXACT_FEES.FUNDING,
       ...baseParams,
       type: 'pay'
@@ -198,7 +198,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     const tempFundingTxn = new algosdk.Transaction({
       from: senderAddress,
       to: tempAccount.address,
-      amount: 102000, 
+      amount: 20000, 
       fee: EXACT_FEES.TEMP_FUNDING,
       ...baseParams,
       type: 'pay'
@@ -210,7 +210,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       recipientFundingTxn = new algosdk.Transaction({
         from: senderAddress,
         to: tempAccount.address,
-        amount: 300000, // 0.3 ALGO for recipient fees
+        amount: 120000, 
         fee: EXACT_FEES.RECIPIENT_FUNDING,
         ...baseParams,
         type: 'pay',

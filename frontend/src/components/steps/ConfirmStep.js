@@ -124,7 +124,7 @@ function ConfirmStep({
           {formData.payRecipientFees && (
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Fee Coverage:</span>
-              <span className="text-green-600 font-medium">0.3 ALGO</span>
+              <span className="text-green-600 font-medium">0.12 ALGO</span>
             </div>
           )}
         </div>
