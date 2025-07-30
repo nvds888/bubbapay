@@ -234,6 +234,11 @@ router.post('/connect-wallet/:escrowId', async (req, res) => {
       });
     }
 
+    console.log('DEBUG - Amount type:', typeof amount);
+console.log('DEBUG - Amount value:', amount);
+console.log('DEBUG - Amount parsed:', parseFloat(amount));
+console.log('DEBUG - Is NaN?:', isNaN(parseFloat(amount)));
+
     // Generate deployment transaction now that we have address
     const deployTxnData = await generateUnsignedDeployTransactions({
       usdcAmount: escrow.amount,

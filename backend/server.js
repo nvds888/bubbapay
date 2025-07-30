@@ -151,7 +151,7 @@ app.use(cors({
   origin: [
     'http://localhost:3000', 
     'https://localhost:3000',
-    'https://nomizopay.vercel.app'  // Hardcode your Vercel URL
+    'https://nompay.vercel.app'  // Hardcode your Vercel URL
   ],
   credentials: true
 }));
