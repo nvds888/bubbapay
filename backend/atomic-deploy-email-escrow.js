@@ -442,7 +442,8 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
       lastRound: suggestedParams.lastRound,
       genesisID: suggestedParams.genesisID,
       genesisHash: suggestedParams.genesisHash,
-      type: 'appl'
+      type: 'appl',
+      appOnComplete: algosdk.OnApplicationComplete.NoOpOC
     });
     
     // Transaction 2: Delete the application
@@ -486,5 +487,5 @@ module.exports = {
   generatePostAppTransactions,
   generateClaimTransaction,
   generateReclaimTransaction,
-  generateCleanupTransaction  // ADD this line
+  generateCleanupTransaction  
 };
