@@ -1089,7 +1089,7 @@ router.post('/cleanup-contract', async (req, res) => {
     
     res.json({
       success: true,
-      transaction: cleanupTxn.transaction,
+      transactions: cleanupTxn.transactions,
       estimatedRecovery: cleanupTxn.estimatedRecovery,
       appId: appIdInt
     });
@@ -1113,17 +1113,19 @@ async function generateCleanupTransaction(senderAddress, appId) {
     const suggestedParams = await algodClient.getTransactionParams().do();
     const targetAssetId = getDefaultAssetId();
     
-    // Single transaction to delete the application
-    // This will automatically:
-    // 1. Close out any remaining ALGO balance to creator
-    // 2. Close out asset opt-in (if still opted in)  
-    // 3. Recover all minimum balance increases
-    const deleteAppTxn = new algosdk.Transaction({
+    // Create a group of 3 transactions:
+    // 1. Call reclaim to withdraw any remaining ALGO and assets
+    // 2. Close asset opt-in by sending 0 assets with AssetCloseTo  
+    // 3. Delete the application
+    
+    // Transaction 1: Call reclaim to withdraw any remaining ALGO and assets
+    // This uses your existing TEAL "reclaim" function
+    const reclaimTxn = new algosdk.Transaction({
       from: senderAddress,
       appIndex: appId,
-      appOnComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
-      appForeignAssets: [targetAssetId], // Include asset in case we need to close it
-      fee: 2000, // Higher fee in case there are inner transactions during deletion
+      appArgs: [new Uint8Array(Buffer.from("reclaim"))],
+      appForeignAssets: [targetAssetId],
+      fee: 2000, // May have inner transaction
       flatFee: true,
       firstRound: suggestedParams.firstRound,
       lastRound: suggestedParams.lastRound,
@@ -1132,14 +1134,50 @@ async function generateCleanupTransaction(senderAddress, appId) {
       type: 'appl'
     });
     
-    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(deleteAppTxn)).toString('base64');
+    // Transaction 2: Close out of asset (opt-out) using direct asset transfer
+    const closeAssetTxn = new algosdk.Transaction({
+      from: senderAddress,
+      to: senderAddress, // Send to self
+      assetIndex: targetAssetId,
+      amount: 0, // Zero amount
+      closeRemainderTo: senderAddress, // Close remainder to self (opts out)
+      fee: 1000,
+      flatFee: true,
+      firstRound: suggestedParams.firstRound,
+      lastRound: suggestedParams.lastRound,
+      genesisID: suggestedParams.genesisID,
+      genesisHash: suggestedParams.genesisHash,
+      type: 'axfer'
+    });
     
-    console.log(`Cleanup transaction generated for app ${appId}`);
+    // Transaction 3: Delete the application (now should work)
+    const deleteAppTxn = new algosdk.Transaction({
+      from: senderAddress,
+      appIndex: appId,
+      appOnComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
+      fee: 1000,
+      flatFee: true,
+      firstRound: suggestedParams.firstRound,
+      lastRound: suggestedParams.lastRound,
+      genesisID: suggestedParams.genesisID,
+      genesisHash: suggestedParams.genesisHash,
+      type: 'appl'
+    });
+    
+    // Group the transactions
+    const txnGroup = [reclaimTxn, closeAssetTxn, deleteAppTxn];
+    algosdk.assignGroupID(txnGroup);
+    
+    const encodedTxns = txnGroup.map(txn => 
+      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
+    );
+    
+    console.log(`Cleanup transaction group generated for app ${appId}`);
     
     return {
-      transaction: encodedTxn,
-      estimatedRecovery: "~0.594 ALGO", // Estimated total recovery
-      description: "Delete contract and recover all locked ALGO"
+      transactions: encodedTxns, // Note: plural, it's now an array
+      estimatedRecovery: "~0.594 ALGO",
+      description: "Reclaim assets, close opt-ins, and delete contract"
     };
     
   } catch (error) {
@@ -1154,29 +1192,29 @@ async function generateCleanupTransaction(senderAddress, appId) {
  */
 router.post('/submit-cleanup', async (req, res) => {
   try {
-    const { signedTxn, appId, senderAddress } = req.body;
+    const { signedTxns, appId, senderAddress } = req.body; // Note: plural
     
-    console.log(`Submitting cleanup transaction for app ${appId}`);
+    console.log(`Submitting cleanup transaction group for app ${appId}`);
     
-    if (!signedTxn || !appId || !senderAddress) {
+    if (!signedTxns || !Array.isArray(signedTxns) || !appId || !senderAddress) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameters'
+        error: 'Missing required parameters or invalid format'
       });
     }
 
-    // Submit the signed transaction
-    const txnBytes = Buffer.from(signedTxn, 'base64');
+    // Submit the signed transaction group
+    const txnBytes = signedTxns.map(signedTxn => Buffer.from(signedTxn, 'base64'));
     const txnResponse = await algodClient.sendRawTransaction(txnBytes).do();
     const txId = txnResponse.txid;
     
-    console.log(`Cleanup transaction submitted with ID: ${txId}`);
+    console.log(`Cleanup transaction group submitted with ID: ${txId}`);
     
     // Wait for confirmation
     let txInfo;
     try {
       txInfo = await waitForConfirmation(algodClient, txId, 10);
-      console.log('Cleanup transaction confirmed successfully');
+      console.log('Cleanup transaction group confirmed successfully');
     } catch (confirmError) {
       console.error('Cleanup transaction confirmation failed:', confirmError);
       return res.status(500).json({
@@ -1202,7 +1240,6 @@ router.post('/submit-cleanup', async (req, res) => {
       }
     } catch (dbError) {
       console.warn('Failed to update database after cleanup:', dbError);
-      // Don't fail the request if DB update fails
     }
     
     res.json({
@@ -1213,10 +1250,10 @@ router.post('/submit-cleanup', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error submitting cleanup transaction:', error);
+    console.error('Error submitting cleanup transaction group:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to submit cleanup transaction'
+      error: error.message || 'Failed to submit cleanup transaction group'
     });
   }
 });

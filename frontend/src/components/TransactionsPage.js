@@ -143,18 +143,18 @@ function TransactionsPage() {
     }
   };
   
-  // ADD: handleCleanup function
-  // Handle cleaning up completed contracts
+  // CHANGE 4: Update the handleCleanup function in TransactionsPage.js
+  // REPLACE THE ENTIRE handleCleanup function with:
   const handleCleanup = async (appId) => {
     if (!window.confirm("Clean up this contract to recover locked ALGO? This will permanently delete the contract.")) {
       return;
     }
     
     setIsCleaningUp(true);
-    setCleanupStatus({ appId, status: 'Generating cleanup transaction...' });
+    setCleanupStatus({ appId, status: 'Generating cleanup transactions...' });
     
     try {
-      // Generate the cleanup transaction
+      // Generate the cleanup transactions
       const response = await axios.post(`${API_URL}/cleanup-contract`, {
         appId,
         senderAddress: activeAddress
@@ -167,23 +167,25 @@ function TransactionsPage() {
       const txnData = response.data;
       setCleanupStatus({ appId, status: 'Waiting for signature...' });
       
-      // Convert base64 transaction to Uint8Array
-      const txnUint8 = new Uint8Array(Buffer.from(txnData.transaction, 'base64'));
+      // Convert base64 transactions to Uint8Array and decode
+      const txns = txnData.transactions.map(txnBase64 => {
+        const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
+        return algosdk.decodeUnsignedTransaction(txnUint8);
+      });
       
-      // Decode the transaction for proper signing
-      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+      // Sign with use-wallet (group of transactions)
+      const signedTxns = await signTransactions(txns);
       
-      // Sign with use-wallet
-      const signedTxns = await signTransactions([txn]);
+      // Convert the signed transactions to base64
+      const signedTxnsBase64 = signedTxns.map(signedTxn => 
+        Buffer.from(signedTxn).toString('base64')
+      );
       
-      // Convert the signed transaction to base64
-      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
+      setCleanupStatus({ appId, status: 'Submitting transactions...' });
       
-      setCleanupStatus({ appId, status: 'Submitting transaction...' });
-      
-      // Submit the signed transaction
+      // Submit the signed transactions
       const submitResponse = await axios.post(`${API_URL}/submit-cleanup`, {
-        signedTxn: signedTxnBase64,
+        signedTxns: signedTxnsBase64, // Note: plural
         appId,
         senderAddress: activeAddress
       });
