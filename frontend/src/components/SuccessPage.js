@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
+// Add asset info import
+import { getAssetInfo } from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -13,6 +15,9 @@ function SuccessPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  
+  // Add asset info state
+  const [assetInfo, setAssetInfo] = useState(null);
   
   // SECURITY: URL revelation state
   const [urlRevealed, setUrlRevealed] = useState(false);
@@ -43,12 +48,21 @@ function SuccessPage() {
       try {
         const response = await axios.get(`${API_URL}/escrow/${escrowId}`);
         // If we have a claim URL from navigation state, use that instead of what's in the database
-        setEscrowDetails({
+        const escrowData = {
           ...response.data,
           // Override with location state if available
           claimUrl: claimUrl || response.data.claimUrl,
           isShareable: isShareable !== undefined ? isShareable : response.data.isShareable
-        });
+        };
+        
+        setEscrowDetails(escrowData);
+        
+        // GET ASSET INFO
+        if (escrowData.assetId) {
+          const asset = getAssetInfo(escrowData.assetId);
+          setAssetInfo(asset);
+        }
+        
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching escrow details:', error);
@@ -111,6 +125,11 @@ function SuccessPage() {
     return parseFloat(amount).toFixed(2);
   };
   
+  // Add asset symbol helper function
+  const getAssetSymbol = () => {
+    return assetInfo?.symbol || 'tokens';
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-md mx-auto">
@@ -166,7 +185,7 @@ function SuccessPage() {
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 mb-2">Payment Sent Successfully!</h1>
         <p className="text-gray-600 text-sm">
-          Your USDC transfer has been completed and is ready to be claimed.
+          Your {getAssetSymbol()} transfer has been completed and is ready to be claimed.
         </p>
       </div>
       
@@ -177,7 +196,7 @@ function SuccessPage() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Amount:</span>
-              <span className="font-semibold text-gray-900">{formatAmount(escrowDetails.amount)} USDC</span>
+              <span className="font-semibold text-gray-900">{formatAmount(escrowDetails.amount)} {getAssetSymbol()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Date:</span>
@@ -222,7 +241,7 @@ function SuccessPage() {
         <div className="card card-normal">
           <h3 className="font-medium text-gray-900 mb-3">Share Claim Link</h3>
           <p className="text-gray-600 text-sm mb-4">
-            Send this secure link to your recipient so they can claim the USDC.
+            Send this secure link to your recipient so they can claim the {getAssetSymbol()}.
           </p>
           
           <div className="space-y-3">
@@ -282,7 +301,7 @@ function SuccessPage() {
             {urlRevealed && (
               <div className="flex space-x-2">
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} USDC! Claim it here: ${escrowDetails.claimUrl}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} ${getAssetSymbol()}! Claim it here: ${escrowDetails.claimUrl}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
@@ -290,7 +309,7 @@ function SuccessPage() {
                   <span>WhatsApp</span>
                 </a>
                 <a
-                  href={`https://t.me/share/url?url=${encodeURIComponent(escrowDetails.claimUrl)}&text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} USDC! Claim it here:`)}`}
+                  href={`https://t.me/share/url?url=${encodeURIComponent(escrowDetails.claimUrl)}&text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} ${getAssetSymbol()}! Claim it here:`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"

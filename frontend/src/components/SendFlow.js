@@ -365,6 +365,16 @@ function SendFlow() {
     // Reset balance when asset changes
     setUsdcBalance(null);
     setBalanceError(null);
+    
+    // CRITICAL FIX: Reset amount to prevent accidental transactions
+    setFormData(prev => ({
+      ...prev,
+      amount: '' // Clear the amount field when switching assets
+    }));
+    
+    // Also reset ALGO availability since amount changed
+    setAlgoAvailability(null);
+    setAlgoError(null);
   };
 
   // Render current step
@@ -413,6 +423,7 @@ function SendFlow() {
             handleSignGroupTransactions={handleSignGroupTransactions}
             mcpSessionData={mcpSessionData}
             onWalletConnect={handleMCPWalletConnect}
+            selectedAssetInfo={selectedAssetInfo}
           />
         );
       default:

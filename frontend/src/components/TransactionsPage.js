@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useWallet } from '@txnlab/use-wallet-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
-import api from '../services/api';
+import api, { getAssetInfo } from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -14,6 +14,25 @@ function TransactionsPage() {
   const [error, setError] = useState(null);
   const [isReclaiming, setIsReclaiming] = useState(false);
   const [reclaimStatus, setReclaimStatus] = useState({ appId: null, status: '' });
+  
+  // ADD: Helper function to get asset symbol from transaction
+  const getAssetSymbol = (transaction) => {
+    if (transaction.assetId) {
+      const assetInfo = getAssetInfo(transaction.assetId);
+      return assetInfo?.symbol || 'tokens';
+    }
+    // Fallback for older transactions without assetId
+    return 'USDC';
+  };
+
+  // ADD: Helper function to get asset info
+  const getTransactionAssetInfo = (transaction) => {
+    if (transaction.assetId) {
+      return getAssetInfo(transaction.assetId);
+    }
+    // Fallback for older transactions
+    return { symbol: 'USDC', name: 'USDC' };
+  };
   
   // Fetch user transactions when component mounts
   useEffect(() => {
@@ -105,7 +124,8 @@ function TransactionsPage() {
       }));
       
       setReclaimStatus({ appId, status: 'Success' });
-      alert(`Successfully reclaimed ${result.amount} USDC`);
+      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
+      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}`);
       
     } catch (error) {
       console.error('Error reclaiming funds:', error);
@@ -194,7 +214,7 @@ function TransactionsPage() {
           </div>
           <div>
             <h2 className="text-xl font-semibold text-gray-900">My Transactions</h2>
-            <p className="text-gray-600 text-sm">View and manage your USDC transfers</p>
+            <p className="text-gray-600 text-sm">View and manage your crypto transfers</p>
           </div>
         </div>
         
@@ -223,12 +243,12 @@ function TransactionsPage() {
             </div>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Transactions Yet</h3>
-          <p className="text-gray-600 mb-4 text-sm">You haven't sent any USDC yet. Create your first transfer!</p>
+          <p className="text-gray-600 mb-4 text-sm">You haven't sent any crypto yet. Create your first transfer!</p>
           <Link 
             to="/"
             className="btn-primary px-4 py-2 font-medium"
           >
-            Send USDC
+            Send Crypto
           </Link>
         </div>
       ) : (
@@ -263,7 +283,7 @@ function TransactionsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-semibold text-gray-900">
-                        {formatAmount(transaction.amount)} USDC
+                        {formatAmount(transaction.amount)} {getAssetSymbol(transaction)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -337,7 +357,7 @@ function TransactionsPage() {
                       </svg>
                     </div>
                     <div>
-                      <div className="text-gray-900 font-semibold">{formatAmount(transaction.amount)} USDC</div>
+                      <div className="text-gray-900 font-semibold">{formatAmount(transaction.amount)} {getAssetSymbol(transaction)}</div>
                       <div className="text-gray-500 text-sm">{formatDate(transaction.createdAt)}</div>
                     </div>
                   </div>
@@ -403,7 +423,7 @@ function TransactionsPage() {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span>Send More USDC</span>
+          <span>Send More Crypto</span>
         </Link>
       </div>
     </div>

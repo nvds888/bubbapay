@@ -5,6 +5,7 @@ import { useWallet } from '@txnlab/use-wallet-react';
 import { WalletButton } from '@txnlab/use-wallet-ui-react';
 import algosdk from 'algosdk';
 import axios from 'axios';
+import { getAssetInfo } from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -20,6 +21,7 @@ function SigningPage() {
   const [signingStep, setSigningStep] = useState('connect'); // connect, deployment, funding, complete
   const [txnInProgress, setTxnInProgress] = useState(false);
   const [deploymentCompleted, setDeploymentCompleted] = useState(false);
+  const [assetInfo, setAssetInfo] = useState(null);
   
   // Load session data on mount
   useEffect(() => {
@@ -32,15 +34,22 @@ function SigningPage() {
           throw new Error(response.data.error);
         }
         
-        setSessionData(response.data.session);
+        const session = response.data.session;
+        setSessionData(session);
+        
+        // GET ASSET INFO
+        if (session.assetId) {
+          const asset = getAssetInfo(session.assetId);
+          setAssetInfo(asset);
+        }
         
         // Check if deployment is already completed
-        if (response.data.session.appId) {
+        if (session.appId) {
           setDeploymentCompleted(true);
           setSigningStep('funding');
-        } else if (response.data.session.reclaimTransaction) {
+        } else if (session.reclaimTransaction) {
           setSigningStep('reclaim');
-        } else if (response.data.session.userAddress) {
+        } else if (session.userAddress) {
           setSigningStep('deployment');
         }
         
@@ -218,6 +227,11 @@ function SigningPage() {
     if (!address) return '';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
+
+  // Add helper function
+  const getAssetSymbol = () => {
+    return assetInfo?.symbol || 'tokens';
+  };
   
   // Render loading state
   if (loading) {
@@ -309,12 +323,12 @@ function SigningPage() {
               </svg>
             </div>
             <h1 className="text-2xl font-semibold text-gray-900">
-              {sessionData?.reclaimTransaction ? 'Reclaim USDC' : 'Complete USDC Transfer'}
+              {sessionData?.reclaimTransaction ? `Reclaim ${getAssetSymbol()}` : `Complete ${getAssetSymbol()} Transfer`}
             </h1>
             <p className="text-gray-600 max-w-md mx-auto text-sm">
               {sessionData?.reclaimTransaction 
-                ? 'Sign the transaction to reclaim your USDC' 
-                : 'Sign transactions to complete your USDC transfer'
+                ? `Sign the transaction to reclaim your ${getAssetSymbol()}` 
+                : `Sign transactions to complete your ${getAssetSymbol()} transfer`
               }
             </p>
           </div>
@@ -326,7 +340,7 @@ function SigningPage() {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Amount:</span>
-                <span className="font-semibold text-gray-900">{sessionData?.amount} USDC</span>
+                <span className="font-semibold text-gray-900">{sessionData?.amount} {getAssetSymbol()}</span>
               </div>
               
               {sessionData?.recipientEmail && (
@@ -446,7 +460,7 @@ function SigningPage() {
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Fund & Setup Transfer</h3>
                   <p className="text-gray-600 text-sm">
-                    Sign the final transactions to fund your transfer with {sessionData?.amount} USDC.
+                    Sign the final transactions to fund your transfer with {sessionData?.amount} {getAssetSymbol()}.
                   </p>
                 </div>
                 <button
@@ -482,9 +496,9 @@ function SigningPage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Reclaim Your USDC</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Reclaim Your {getAssetSymbol()}</h3>
                   <p className="text-gray-600 text-sm">
-                    Sign the transaction to reclaim your {sessionData?.amount} USDC from the transfer.
+                    Sign the transaction to reclaim your {sessionData?.amount} {getAssetSymbol()} from the transfer.
                   </p>
                 </div>
                 <button
@@ -525,8 +539,8 @@ function SigningPage() {
                   </h3>
                   <p className="text-gray-600 text-sm">
                     {sessionData?.reclaimTransaction 
-                      ? `You've successfully reclaimed ${sessionData?.amount} USDC to your wallet.`
-                      : `Your ${sessionData?.amount} USDC transfer has been created successfully. ${
+                      ? `You've successfully reclaimed ${sessionData?.amount} ${getAssetSymbol()} to your wallet.`
+                      : `Your ${sessionData?.amount} ${getAssetSymbol()} transfer has been created successfully. ${
                           sessionData?.recipientEmail 
                             ? `${sessionData.recipientEmail} will receive an email with claim instructions.`
                             : 'You can now share the claim link with your recipient.'

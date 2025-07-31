@@ -14,7 +14,7 @@ function ConfirmStep({
   handleSignGroupTransactions,
   mcpSessionData = null,
   onWalletConnect = null,
-  selectedAssetInfo = { symbol: 'USDC', name: 'USDC' } // Default to USDC for now
+  selectedAssetInfo // Remove the hardcoded default
 }) {
   const [stage, setStage] = useState('initial'); // initial, app-created, funded
   const [showTransactionDetails, setShowTransactionDetails] = useState(false);
