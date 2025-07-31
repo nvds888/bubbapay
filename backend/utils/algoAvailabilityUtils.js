@@ -25,7 +25,7 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
     RECIPIENT_FUNDING_FEE: 1000,        // 0.001 ALGO - Payment (recipient fee funding)
     
    // ALGO Transfers (actual ALGO sent out, not fees)
-TEMP_ACCOUNT_FUNDING: 100000,        // 0.1 ALGO - fund temp account
+TEMP_ACCOUNT_FUNDING: 102000,        // 0.102 ALGO - fund temp account
 CONTRACT_FUNDING: 210000,           // 0.21 ALGO - fund smart contract
 RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if enabled)
   };

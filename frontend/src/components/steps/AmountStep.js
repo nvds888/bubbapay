@@ -33,16 +33,18 @@ function AmountStep({
     
     // Validate amount
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      setError('Please enter a valid amount');
+      setError('Please enter a valid amount greater than 0');
       return;
     }
     
     // Check if amount exceeds balance
     if (assetBalance !== null && parseFloat(formData.amount) > parseFloat(assetBalance)) {
       const symbol = selectedAssetInfo?.symbol || 'tokens';
-      setError(`Amount exceeds your available balance of ${parseFloat(assetBalance).toFixed(2)} ${symbol}`);
+      const maxBalance = parseFloat(assetBalance).toFixed(2);
+      setError(`Amount exceeds your available balance of ${maxBalance} ${symbol}`);
       return;
     }
+
     
     // Check if wallet is connected
     if (!isConnected) {
@@ -100,13 +102,14 @@ function AmountStep({
   
   // Set max amount based on balance
   const setMaxAmount = () => {
-    if (assetBalance) {
+    if (assetBalance && parseFloat(assetBalance) > 0) {
       setError('');
-      const balanceStr = String(assetBalance);
+      // Use the exact balance, but ensure it doesn't exceed what the user actually has
+      const maxAmount = parseFloat(assetBalance).toFixed(2);
       handleInputChange({
         target: {
           name: 'amount',
-          value: balanceStr
+          value: maxAmount
         }
       });
     }
@@ -184,7 +187,7 @@ function AmountStep({
               placeholder="0.00"
               min="0.01"
               step="0.01"
-              max={assetBalance || undefined}
+              max={assetBalance ? parseFloat(assetBalance).toString() : undefined}
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
               <span className="text-gray-500 text-sm font-medium">{selectedAssetInfo?.symbol || 'Asset'}</span>
@@ -198,7 +201,7 @@ function AmountStep({
                 key={amount}
                 type="button"
                 onClick={() => setQuickAmount(amount)}
-                disabled={assetBalance !== null && amount > parseFloat(assetBalance)}
+                disabled={assetBalance !== null && (parseFloat(assetBalance) === 0 || amount > parseFloat(assetBalance))}
                 className="btn-secondary compact-button disabled:opacity-50"
               >
                 ${amount}
@@ -206,13 +209,13 @@ function AmountStep({
             ))}
           </div>
           
-          {assetBalance !== null && (
+          {assetBalance !== null && parseFloat(assetBalance) > 0 && (
             <button 
               type="button"
               onClick={setMaxAmount}
               className="btn-ghost text-xs mt-2 w-full"
             >
-              Use max balance
+              Use max balance ({parseFloat(assetBalance).toFixed(2)} {selectedAssetInfo?.symbol || 'tokens'})
             </button>
           )}
         </div>
@@ -288,8 +291,8 @@ function AmountStep({
                       <span>{algoAvailability.breakdown.appMinBalanceIncrease || '0.100000'} ALGO</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Temp account funding:</span>
-                      <span>{algoAvailability.breakdown.tempAccountFunding || '0.102000'} ALGO</span>
+                    <span>Temp account funding:</span>
+                    <span>{algoAvailability.breakdown.tempAccountFunding || '0.102000'} ALGO</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Contract funding:</span>
