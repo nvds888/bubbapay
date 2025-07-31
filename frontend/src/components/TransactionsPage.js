@@ -14,6 +14,9 @@ function TransactionsPage() {
   const [error, setError] = useState(null);
   const [isReclaiming, setIsReclaiming] = useState(false);
   const [reclaimStatus, setReclaimStatus] = useState({ appId: null, status: '' });
+  // ADD: Cleanup state
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [cleanupStatus, setCleanupStatus] = useState({ appId: null, status: '' });
   
   // ADD: Helper function to get asset symbol from transaction
   const getAssetSymbol = (transaction) => {
@@ -140,6 +143,79 @@ function TransactionsPage() {
     }
   };
   
+  // ADD: handleCleanup function
+  // Handle cleaning up completed contracts
+  const handleCleanup = async (appId) => {
+    if (!window.confirm("Clean up this contract to recover locked ALGO? This will permanently delete the contract.")) {
+      return;
+    }
+    
+    setIsCleaningUp(true);
+    setCleanupStatus({ appId, status: 'Generating cleanup transaction...' });
+    
+    try {
+      // Generate the cleanup transaction
+      const response = await axios.post(`${API_URL}/cleanup-contract`, {
+        appId,
+        senderAddress: activeAddress
+      });
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error);
+      }
+      
+      const txnData = response.data;
+      setCleanupStatus({ appId, status: 'Waiting for signature...' });
+      
+      // Convert base64 transaction to Uint8Array
+      const txnUint8 = new Uint8Array(Buffer.from(txnData.transaction, 'base64'));
+      
+      // Decode the transaction for proper signing
+      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+      
+      // Sign with use-wallet
+      const signedTxns = await signTransactions([txn]);
+      
+      // Convert the signed transaction to base64
+      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
+      
+      setCleanupStatus({ appId, status: 'Submitting transaction...' });
+      
+      // Submit the signed transaction
+      const submitResponse = await axios.post(`${API_URL}/submit-cleanup`, {
+        signedTxn: signedTxnBase64,
+        appId,
+        senderAddress: activeAddress
+      });
+      
+      if (!submitResponse.data.success) {
+        throw new Error(submitResponse.data.error);
+      }
+      
+      // Update the local transactions state to reflect the cleanup
+      setTransactions(prev => prev.map(tx => {
+        if (tx.appId === parseInt(appId)) {
+          return { ...tx, cleanedUp: true, cleanedUpAt: new Date() };
+        }
+        return tx;
+      }));
+      
+      setCleanupStatus({ appId, status: 'Success' });
+      alert(`Successfully cleaned up contract and recovered ${txnData.estimatedRecovery}!`);
+      
+    } catch (error) {
+      console.error('Error cleaning up contract:', error);
+      setCleanupStatus({ appId, status: 'Failed' });
+      alert(`Failed to clean up contract: ${error.message || error}`);
+    } finally {
+      setIsCleaningUp(false);
+      // Reset status after a delay
+      setTimeout(() => {
+        setCleanupStatus({ appId: null, status: '' });
+      }, 3000);
+    }
+  };
+  
   if (!activeAddress) {
     return (
       <div className="w-full max-w-4xl mx-auto">
@@ -230,6 +306,22 @@ function TransactionsPage() {
             </div>
           </div>
         </div>
+        {/* Cleanup summary section */}
+        {transactions.some(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp) && (
+          <div className="status-success">
+            <div className="flex items-start space-x-3">
+              <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <div className="text-sm">
+                <p className="font-medium text-green-800">Contracts Ready for Cleanup:</p>
+                <p className="text-green-700 mt-1">
+                  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} completed contracts can be cleaned up to recover ~{(transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.594).toFixed(3)} ALGO in locked funds.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Transactions list */}
@@ -315,6 +407,11 @@ function TransactionsPage() {
                           {reclaimStatus.status}
                         </span>
                       )}
+                      {cleanupStatus.appId === transaction.appId && (
+                        <span className="text-xs text-green-600 mr-3">
+                          {cleanupStatus.status}
+                        </span>
+                      )}
                       
                       {/* Action buttons */}
                       {!transaction.claimed && !transaction.reclaimed ? (
@@ -325,18 +422,29 @@ function TransactionsPage() {
                         >
                           Reclaim Funds
                         </button>
+                      ) : transaction.cleanedUp ? (
+                        <span className="text-gray-500 text-sm">Cleaned Up</span>
                       ) : (
-                        <a
-                          href={`https://lora.algokit.io/testnet/application/${transaction.appId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1 text-sm"
-                        >
-                          <span>View Explorer</span>
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => handleCleanup(transaction.appId)}
+                            disabled={isCleaningUp}
+                            className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+                          >
+                            Clean Up (~0.594 ALGO)
+                          </button>
+                          <a
+                            href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1 text-sm"
+                          >
+                            <span>View Explorer</span>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -383,30 +491,50 @@ function TransactionsPage() {
                 
                 {/* Mobile actions */}
                 <div className="flex justify-between items-center pt-2">
-                  {reclaimStatus.appId === transaction.appId && (
-                    <span className="text-xs text-blue-600">
-                      {reclaimStatus.status}
-                    </span>
-                  )}
+                  <div className="space-y-1">
+                    {reclaimStatus.appId === transaction.appId && (
+                      <span className="text-xs text-blue-600 block">
+                        {reclaimStatus.status}
+                      </span>
+                    )}
+                    {cleanupStatus.appId === transaction.appId && (
+                      <span className="text-xs text-green-600 block">
+                        {cleanupStatus.status}
+                      </span>
+                    )}
+                  </div>
                   
-                  {!transaction.claimed && !transaction.reclaimed ? (
-                    <button
-                      onClick={() => handleReclaim(transaction.appId)}
-                      disabled={isReclaiming}
-                      className="btn-secondary px-3 py-1.5 text-sm font-medium"
-                    >
-                      Reclaim Funds
-                    </button>
-                  ) : (
-                    <a
-                      href={`https://lora.algokit.io/testnet/application/${transaction.appId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-secondary px-3 py-1.5 text-sm font-medium"
-                    >
-                      View Explorer
-                    </a>
-                  )}
+                  <div className="space-y-2">
+                    {!transaction.claimed && !transaction.reclaimed ? (
+                      <button
+                        onClick={() => handleReclaim(transaction.appId)}
+                        disabled={isReclaiming}
+                        className="btn-secondary px-3 py-1.5 text-sm font-medium w-full"
+                      >
+                        Reclaim Funds
+                      </button>
+                    ) : transaction.cleanedUp ? (
+                      <span className="text-gray-500 text-sm">Cleaned Up</span>
+                    ) : (
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => handleCleanup(transaction.appId)}
+                          disabled={isCleaningUp}
+                          className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
+                        >
+                          Clean Up (~0.594 ALGO)
+                        </button>
+                        <a
+                          href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-secondary px-3 py-1.5 text-sm font-medium w-full text-center block"
+                        >
+                          View Explorer
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

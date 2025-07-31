@@ -258,7 +258,10 @@ router.post('/submit-group-transactions', async (req, res) => {
       claimed: false,
       funded: false,
       senderAddress,
-      payRecipientFees: !!payRecipientFees
+      payRecipientFees: !!payRecipientFees,
+      cleanedUp: false,
+      cleanupTxId: null,
+      cleanedUpAt: null
     };
     
     const result = await escrowCollection.insertOne(escrowRecord);
@@ -1003,5 +1006,236 @@ router.get('/supported-assets', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch supported assets' });
   }
 });
+
+/**
+ * POST /api/cleanup-contract
+ * Clean up a single completed escrow contract to recover locked ALGO
+ */
+app.post('/api/cleanup-contract', async (req, res) => {
+  try {
+    const { senderAddress, appId } = req.body;
+    
+    console.log(`Cleanup request for app ${appId} from ${senderAddress}`);
+    
+    if (!senderAddress || !appId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing senderAddress or appId'
+      });
+    }
+
+    if (!algosdk.isValidAddress(senderAddress)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid sender address format'
+      });
+    }
+
+    const appIdInt = parseInt(appId);
+    if (isNaN(appIdInt) || appIdInt <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid app ID'
+      });
+    }
+
+    // Check if app exists and is completed (claimed = 1)
+    try {
+      const appInfo = await algodClient.getApplicationByID(appIdInt).do();
+      
+      // Parse global state to check if completed
+      let isCompleted = false;
+      let isCreator = false;
+      
+      if (appInfo.params && appInfo.params['global-state']) {
+        for (const kv of appInfo.params['global-state']) {
+          const key = Buffer.from(kv.key, 'base64').toString();
+          
+          if (key === 'claimed' && kv.value.uint === 1) {
+            isCompleted = true;
+          }
+          
+          if (key === 'creator') {
+            const creatorAddress = algosdk.encodeAddress(Buffer.from(kv.value.bytes, 'base64'));
+            isCreator = (creatorAddress === senderAddress);
+          }
+        }
+      }
+      
+      if (!isCreator) {
+        return res.status(403).json({
+          success: false,
+          error: 'Only the contract creator can clean up this contract'
+        });
+      }
+      
+      if (!isCompleted) {
+        return res.status(400).json({
+          success: false,
+          error: 'Contract must be completed (claimed or reclaimed) before cleanup'
+        });
+      }
+      
+    } catch (appError) {
+      console.error('Error checking app state:', appError);
+      return res.status(404).json({
+        success: false,
+        error: 'Contract not found or invalid'
+      });
+    }
+
+    // Generate cleanup transaction
+    const cleanupTxn = await generateCleanupTransaction(senderAddress, appIdInt);
+    
+    res.json({
+      success: true,
+      transaction: cleanupTxn.transaction,
+      estimatedRecovery: cleanupTxn.estimatedRecovery,
+      appId: appIdInt
+    });
+    
+  } catch (error) {
+    console.error('Cleanup contract error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate cleanup transaction'
+    });
+  }
+});
+
+/**
+ * Generate cleanup transaction for a completed contract
+ */
+async function generateCleanupTransaction(senderAddress, appId) {
+  try {
+    console.log(`Generating cleanup transaction for app ${appId}`);
+    
+    const suggestedParams = await algodClient.getTransactionParams().do();
+    const targetAssetId = getDefaultAssetId();
+    
+    // Single transaction to delete the application
+    // This will automatically:
+    // 1. Close out any remaining ALGO balance to creator
+    // 2. Close out asset opt-in (if still opted in)  
+    // 3. Recover all minimum balance increases
+    const deleteAppTxn = new algosdk.Transaction({
+      from: senderAddress,
+      appIndex: appId,
+      appOnComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
+      appForeignAssets: [targetAssetId], // Include asset in case we need to close it
+      fee: 2000, // Higher fee in case there are inner transactions during deletion
+      flatFee: true,
+      firstRound: suggestedParams.firstRound,
+      lastRound: suggestedParams.lastRound,
+      genesisID: suggestedParams.genesisID,
+      genesisHash: suggestedParams.genesisHash,
+      type: 'appl'
+    });
+    
+    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(deleteAppTxn)).toString('base64');
+    
+    console.log(`Cleanup transaction generated for app ${appId}`);
+    
+    return {
+      transaction: encodedTxn,
+      estimatedRecovery: "~0.594 ALGO", // Estimated total recovery
+      description: "Delete contract and recover all locked ALGO"
+    };
+    
+  } catch (error) {
+    console.error('Error generating cleanup transaction:', error);
+    throw new Error(`Failed to generate cleanup transaction: ${error.message}`);
+  }
+}
+
+/**
+ * POST /api/submit-cleanup
+ * Submit a signed cleanup transaction
+ */
+app.post('/api/submit-cleanup', async (req, res) => {
+  try {
+    const { signedTxn, appId, senderAddress } = req.body;
+    
+    console.log(`Submitting cleanup transaction for app ${appId}`);
+    
+    if (!signedTxn || !appId || !senderAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters'
+      });
+    }
+
+    // Submit the signed transaction
+    const txnBytes = Buffer.from(signedTxn, 'base64');
+    const txnResponse = await algodClient.sendRawTransaction(txnBytes).do();
+    const txId = txnResponse.txid;
+    
+    console.log(`Cleanup transaction submitted with ID: ${txId}`);
+    
+    // Wait for confirmation
+    let txInfo;
+    try {
+      txInfo = await waitForConfirmation(algodClient, txId, 10);
+      console.log('Cleanup transaction confirmed successfully');
+    } catch (confirmError) {
+      console.error('Cleanup transaction confirmation failed:', confirmError);
+      return res.status(500).json({
+        success: false,
+        error: 'Transaction submission failed or timed out'
+      });
+    }
+    
+    // Update database to mark contract as cleaned up
+    try {
+      await EscrowTransaction.findOneAndUpdate(
+        { appId: parseInt(appId), senderAddress },
+        { 
+          cleanedUp: true, 
+          cleanupTxId: txId,
+          cleanedUpAt: new Date()
+        }
+      );
+    } catch (dbError) {
+      console.warn('Failed to update database after cleanup:', dbError);
+      // Don't fail the request if DB update fails
+    }
+    
+    res.json({
+      success: true,
+      txId,
+      message: 'Contract cleaned up successfully',
+      estimatedRecovered: "~0.594 ALGO"
+    });
+    
+  } catch (error) {
+    console.error('Error submitting cleanup transaction:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to submit cleanup transaction'
+    });
+  }
+});
+
+// Helper function for waiting for confirmation (if not already present)
+async function waitForConfirmation(client, txId, timeout) {
+  let response = await client.status().do();
+  let lastRound = response['last-round'];
+  
+  while (true) {
+    const pendingInfo = await client.pendingTransactionInformation(txId).do();
+    
+    if (pendingInfo['confirmed-round'] !== null && pendingInfo['confirmed-round'] > 0) {
+      return pendingInfo;
+    }
+    
+    lastRound++;
+    await client.statusAfterBlock(lastRound).do();
+    
+    timeout--;
+    if (timeout <= 0) {
+      throw new Error('Transaction confirmation timeout');
+    }
+  }
+}
 
 module.exports = router;
