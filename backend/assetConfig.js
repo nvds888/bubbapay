@@ -19,6 +19,26 @@ const SUPPORTED_ASSETS = {
       symbol: 'xUSD',
       isDefault: false,
       description: 'xUSD'
+    },
+    // NEW: Add Monko
+    2494786278: {
+      id: 2494786278,
+      name: 'Monko',
+      unitName: 'MONKO',
+      decimals: 6,
+      symbol: 'MONKO',
+      isDefault: false,
+      description: 'Be Monko'
+    },
+    // NEW: Add Alpha
+    2726252423: {
+      id: 2726252423,
+      name: 'Alpha',
+      unitName: 'ALPHA',
+      decimals: 6,
+      symbol: 'ALPHA',
+      isDefault: false,
+      description: 'Alpha Arcade'
     }
     // Add more assets here as needed
   };
