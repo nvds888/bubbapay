@@ -1147,25 +1147,44 @@ router.post('/submit-cleanup', async (req, res) => {
       });
     }
 
-    // Submit the signed transaction group
-    const txnBytes = signedTxns.map(signedTxn => Buffer.from(signedTxn, 'base64'));
-    const txnResponse = await algodClient.sendRawTransaction(txnBytes).do();
-    const txId = txnResponse.txid;
+    let txId;
     
-    console.log(`Cleanup transaction group submitted with ID: ${txId}`);
-    
-    // Wait for confirmation
-    let txInfo;
     try {
-      txInfo = await waitForConfirmation(algodClient, txId, 10);
-      console.log('Cleanup transaction group confirmed successfully');
-    } catch (confirmError) {
-      console.error('Cleanup transaction confirmation failed:', confirmError);
-      return res.status(500).json({
-        success: false,
-        error: 'Transaction submission failed or timed out'
-      });
+      // Submit the signed transactions (same pattern as submit-group-transactions)
+      const submitResponse = await algodClient.sendRawTransaction(
+        signedTxns.map(txn => Buffer.from(txn, 'base64'))
+      ).do();
+      txId = submitResponse.txId;
+      
+      // Wait for confirmation (same pattern as other endpoints)
+      await algosdk.waitForConfirmation(algodClient, txId, 5);
+      
+    } catch (submitError) {
+      // Handle duplicate submission (same pattern as submit-app-creation)
+      if (submitError.message && submitError.message.includes('transaction already in ledger')) {
+        console.log('Cleanup transaction already in ledger, extracting txId...');
+        
+        const txIdMatch = submitError.message.match(/transaction already in ledger: ([A-Z0-9]+)/);
+        if (txIdMatch && txIdMatch[1]) {
+          txId = txIdMatch[1];
+          console.log(`Extracted cleanup txId from error: ${txId}`);
+          
+          try {
+            await algosdk.waitForConfirmation(algodClient, txId, 5);
+            console.log('Successfully confirmed existing cleanup transaction');
+          } catch (confirmError) {
+            console.error('Error confirming existing cleanup transaction:', confirmError);
+            throw new Error('Cleanup transaction was submitted but confirmation failed');
+          }
+        } else {
+          throw new Error('Could not extract transaction ID from cleanup duplicate submission error');
+        }
+      } else {
+        throw submitError;
+      }
     }
+    
+    console.log(`Cleanup transaction group confirmed with ID: ${txId}`);
     
     // Update database to mark contract as cleaned up
     try {
@@ -1181,9 +1200,11 @@ router.post('/submit-cleanup', async (req, res) => {
             cleanedUpAt: new Date()
           }
         );
+        console.log(`Database updated for cleaned up contract ${appId}`);
       }
     } catch (dbError) {
       console.warn('Failed to update database after cleanup:', dbError);
+      // Don't fail the request if database update fails
     }
     
     res.json({
