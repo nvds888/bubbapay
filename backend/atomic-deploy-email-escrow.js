@@ -328,7 +328,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
       appArgs: [new Uint8Array(Buffer.from("claim"))],
       appAccounts: [recipientAddress], // Where to send asset
       appForeignAssets: [targetAssetId],
-      fee: calculateTransactionFee(true, 1), // 2000 microALGO
+      fee: calculateTransactionFee(true, 2), // 3000 microALGO
       flatFee: true,
       firstRound: suggestedParams.firstRound,
       lastRound: suggestedParams.lastRound,
@@ -385,7 +385,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const suggestedParams = await algodClient.getTransactionParams().do();
     
     // Calculate exact fee (1 inner transaction for USDC transfer)
-    const exactFee = calculateTransactionFee(true, 1); // 2000 microALGO
+    const exactFee = calculateTransactionFee(true, 3); // 4000 microALGO
     
     const reclaimTxn = new algosdk.Transaction({
       from: senderAddress,

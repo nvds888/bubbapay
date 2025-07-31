@@ -1,10 +1,6 @@
-// teal-programs.js - TEAL Program Generation
+// teal-programs.js - UPDATED with Auto-Cleanup
 
-// CHANGE 1: Add this import at the top
 const { getDefaultAssetId } = require('./assetConfig');
-
-// USDC Asset ID
-const USDC_ASSET_ID = 31566704; // Mainnet USDC asset ID
 
 function createApprovalProgram(senderAddress, authorizedClaimerAddress, assetId = null) {
   const targetAssetId = assetId || getDefaultAssetId();
@@ -114,7 +110,7 @@ itxn_submit
 int 1
 return
 
-// Handle USDC claim - SIMPLIFIED VERSION
+// UPDATED: Handle USDC claim WITH automatic cleanup
 handle_claim:
 // Verify the claim hasn't already been processed
 byte "claimed"
@@ -146,8 +142,15 @@ byte "amount"
 app_global_get
 store 0 // Store amount in register 0
 
-// Begin inner transaction to transfer USDC
+// Get current ALGO balance for cleanup
+global CurrentApplicationAddress
+balance
+store 1 // Store ALGO balance in register 1
+
+// Begin inner transaction GROUP for claim + cleanup
 itxn_begin
+
+// Transaction 1: Transfer USDC to recipient
 int 4 // AssetTransfer
 itxn_field TypeEnum
 txn Assets 0
@@ -160,6 +163,23 @@ txn Accounts 1  // Recipient address from foreign accounts
 itxn_field AssetReceiver
 int 0
 itxn_field Fee
+
+// Transaction 2: Return ALL remaining ALGO to creator (NEW!)
+itxn_next
+int 1 // Payment
+itxn_field TypeEnum
+load 1 // Load ALGO balance from register 1
+int 1000 // Subtract minimum fee for this transaction
+-
+itxn_field Amount
+global CurrentApplicationAddress
+itxn_field Sender
+byte "creator"
+app_global_get
+itxn_field Receiver
+int 0
+itxn_field Fee
+
 itxn_submit
 
 int 1
@@ -190,7 +210,7 @@ app_global_put
 int 1
 return
 
-// Handle reclaim (by creator if funds haven't been claimed)
+// UPDATED: Handle reclaim WITH automatic cleanup AND asset close-out
 handle_reclaim:
 // Only creator can reclaim
 txn Sender
@@ -215,19 +235,26 @@ app_global_put
 global CurrentApplicationAddress
 txn Assets 0 // USDC asset ID
 asset_holding_get AssetBalance
-store 1 // Store asset balance flag in register 1
+store 2 // Store asset balance flag in register 2
 store 0 // Store asset balance in register 0
 
+// Get current ALGO balance for cleanup
+global CurrentApplicationAddress
+balance
+store 1 // Store ALGO balance in register 1
+
 // Check if we have any balance
-load 1
+load 2
 load 0
 int 0
 >
 &&
 bz reject_no_balance
 
-// Begin inner transaction to transfer all USDC back to creator
+// Begin inner transaction GROUP for reclaim + cleanup + opt-out
 itxn_begin
+
+// Transaction 1: Transfer all USDC back to creator
 int 4 // AssetTransfer
 itxn_field TypeEnum
 txn Assets 0
@@ -241,6 +268,42 @@ app_global_get
 itxn_field AssetReceiver
 int 0
 itxn_field Fee
+
+// Transaction 2: Close out of asset (opt-out) - recovers min balance (NEW!)
+itxn_next
+int 4 // AssetTransfer
+itxn_field TypeEnum
+txn Assets 0
+itxn_field XferAsset
+int 0 // Zero amount for close-out
+itxn_field AssetAmount
+global CurrentApplicationAddress
+itxn_field Sender
+byte "creator"
+app_global_get
+itxn_field AssetReceiver
+byte "creator"
+app_global_get
+itxn_field AssetCloseTo  // This opts out and returns min balance!
+int 0
+itxn_field Fee
+
+// Transaction 3: Return ALL remaining ALGO to creator (NEW!)
+itxn_next
+int 1 // Payment
+itxn_field TypeEnum
+load 1 // Load ALGO balance from register 1
+int 2000 // Subtract fees for the 2 transactions above
+-
+itxn_field Amount
+global CurrentApplicationAddress
+itxn_field Sender
+byte "creator"
+app_global_get
+itxn_field Receiver
+int 0
+itxn_field Fee
+
 itxn_submit
 
 int 1
