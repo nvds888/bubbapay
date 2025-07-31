@@ -169,8 +169,36 @@ export const checkAlgoAvailability = async (address, payRecipientFees = false) =
 
 // CHANGE 1: Add supported assets constant at the top (after imports)
 const SUPPORTED_ASSETS = {
-  31566704: { id: 31566704, name: 'USDC', symbol: 'USDC', decimals: 6, description: 'USD Coin' },
-  760037151: { id: 760037151, name: 'xUSD', symbol: 'xUSD', decimals: 6, description: 'Liquid Governance xUSD' }
+  31566704: { 
+    id: 31566704, 
+    name: 'USDC', 
+    symbol: 'USDC', 
+    decimals: 6, 
+    description: 'USD Coin' 
+  },
+  760037151: { 
+    id: 760037151, 
+    name: 'xUSD', 
+    symbol: 'xUSD', 
+    decimals: 6, 
+    description: 'Liquid Governance xUSD' 
+  },
+  // NEW: Add Monko
+  2494786278: {
+    id: 2494786278,
+    name: 'Monko',
+    symbol: 'MONKO',
+    decimals: 6,
+    description: 'Monko Token'
+  },
+  // NEW: Add Alpha
+  2726252423: {
+    id: 2726252423,
+    name: 'Alpha',
+    symbol: 'ALPHA',
+    decimals: 6,
+    description: 'Alpha Arcade Token'
+  }
 };
 
 const DEFAULT_ASSET_ID = 31566704; // USDC
