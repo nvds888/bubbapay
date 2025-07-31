@@ -1011,7 +1011,7 @@ router.get('/supported-assets', async (req, res) => {
  * POST /api/cleanup-contract
  * Clean up a single completed escrow contract to recover locked ALGO
  */
-app.post('/api/cleanup-contract', async (req, res) => {
+router.post('/cleanup-contract', async (req, res) => {
   try {
     const { senderAddress, appId } = req.body;
     
@@ -1152,7 +1152,7 @@ async function generateCleanupTransaction(senderAddress, appId) {
  * POST /api/submit-cleanup
  * Submit a signed cleanup transaction
  */
-app.post('/api/submit-cleanup', async (req, res) => {
+router.post('/submit-cleanup', async (req, res) => {
   try {
     const { signedTxn, appId, senderAddress } = req.body;
     
@@ -1187,14 +1187,19 @@ app.post('/api/submit-cleanup', async (req, res) => {
     
     // Update database to mark contract as cleaned up
     try {
-      await EscrowTransaction.findOneAndUpdate(
-        { appId: parseInt(appId), senderAddress },
-        { 
-          cleanedUp: true, 
-          cleanupTxId: txId,
-          cleanedUpAt: new Date()
-        }
-      );
+      const db = req.app.locals.db;
+      const escrowCollection = db.collection('escrows');
+      const escrow = await escrowCollection.findOne({ appId: parseInt(appId), senderAddress });
+      if (escrow) {
+        await escrowCollection.updateOne(
+          { _id: escrow._id },
+          { 
+            cleanedUp: true, 
+            cleanupTxId: txId,
+            cleanedUpAt: new Date()
+          }
+        );
+      }
     } catch (dbError) {
       console.warn('Failed to update database after cleanup:', dbError);
       // Don't fail the request if DB update fails
