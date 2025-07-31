@@ -1195,9 +1195,11 @@ router.post('/submit-cleanup', async (req, res) => {
         await escrowCollection.updateOne(
           { _id: escrow._id },
           { 
-            cleanedUp: true, 
-            cleanupTxId: txId,
-            cleanedUpAt: new Date()
+            $set: {  // ADD $set operator for MongoDB
+              cleanedUp: true, 
+              cleanupTxId: txId,
+              cleanedUpAt: new Date()
+            }
           }
         );
         console.log(`Database updated for cleaned up contract ${appId}`);
