@@ -59,7 +59,19 @@ return
 
 // Handle app calls
 handle_app_call:
-// Check if opting into an asset
+// CHANGE: Check OnComplete action FIRST before trying to access ApplicationArgs
+txn OnCompletion
+int 5 // DeleteApplication
+==
+bnz handle_delete
+
+// CHANGE: Check if we have application arguments before accessing them
+txn NumAppArgs
+int 0
+>
+bz reject
+
+// Now safe to check application arguments for NoOp calls
 txn ApplicationArgs 0
 byte "opt_in_asset"
 ==
@@ -83,7 +95,7 @@ byte "reclaim"
 ==
 bnz handle_reclaim
 
-// NEW: Check if cleaning up contract
+// Check if cleaning up contract
 txn ApplicationArgs 0
 byte "cleanup"
 ==
@@ -91,6 +103,25 @@ bnz handle_cleanup
 
 // Reject unknown app calls
 err
+
+// NEW: Handle delete application (separate from other app calls)
+handle_delete:
+// Only creator can delete
+txn Sender
+byte "creator"
+app_global_get 
+==
+bz reject
+
+// Only allow delete when claimed=1 (funds were claimed or reclaimed)
+byte "claimed"
+app_global_get
+int 1
+==
+bz reject_not_completed
+
+int 1
+return
 
 // Handle asset opt-in
 handle_opt_in_asset:
