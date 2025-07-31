@@ -16,7 +16,11 @@ import algosdk from 'algosdk';
 const getAssetInfo = (assetId) => {
   const assets = {
     31566704: { id: 31566704, name: 'USDC', symbol: 'USDC', decimals: 6 },
-    760037151: { id: 760037151, name: 'xUSD', symbol: 'xUSD', decimals: 6 }
+    760037151: { id: 760037151, name: 'xUSD', symbol: 'xUSD', decimals: 6 },
+    // ADD: Monko
+    2494786278: { id: 2494786278, name: 'Monko', symbol: 'MONKO', decimals: 6 },
+    // ADD: Alpha
+    2726252423: { id: 2726252423, name: 'Alpha', symbol: 'ALPHA', decimals: 6 }
   };
   return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
 };
