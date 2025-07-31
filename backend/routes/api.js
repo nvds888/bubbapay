@@ -9,7 +9,8 @@ const {
   generateUnsignedDeployTransactions, 
   generatePostAppTransactions,
   generateClaimTransaction,
-  generateReclaimTransaction
+  generateReclaimTransaction,
+  generateCleanupTransaction
 } = require('../atomic-deploy-email-escrow');
 const algosdk = require('algosdk');
 const { checkAlgoAvailabilityForEscrow } = require('../utils/algoAvailabilityUtils');
@@ -1084,13 +1085,13 @@ router.post('/cleanup-contract', async (req, res) => {
       });
     }
 
-    // Generate cleanup transaction
-    const cleanupTxn = await generateCleanupTransaction(senderAddress, appIdInt);
+    // Generate cleanup transaction group
+    const cleanupTxns = await generateCleanupTransactionGroup(senderAddress, appIdInt);
     
     res.json({
       success: true,
-      transactions: cleanupTxn.transactions,
-      estimatedRecovery: cleanupTxn.estimatedRecovery,
+      transactions: cleanupTxns.transactions,
+      estimatedRecovery: cleanupTxns.estimatedRecovery,
       appId: appIdInt
     });
     
@@ -1104,95 +1105,38 @@ router.post('/cleanup-contract', async (req, res) => {
 });
 
 /**
- * Generate cleanup transaction for a completed contract
+ * Generate cleanup transaction group for a completed contract
  */
-async function generateCleanupTransaction(senderAddress, appId) {
+async function generateCleanupTransactionGroup(senderAddress, appId) {
   try {
-    console.log(`Generating cleanup transaction for app ${appId}`);
+    console.log(`Generating cleanup transaction group for app ${appId}`);
     
-    const suggestedParams = await algodClient.getTransactionParams().do();
-    const targetAssetId = getDefaultAssetId();
-    
-    // Create a group of 3 transactions:
-    // 1. Call reclaim to withdraw any remaining ALGO and assets
-    // 2. Close asset opt-in by sending 0 assets with AssetCloseTo  
-    // 3. Delete the application
-    
-    // Transaction 1: Call reclaim to withdraw any remaining ALGO and assets
-    // This uses your existing TEAL "reclaim" function
-    const reclaimTxn = new algosdk.Transaction({
-      from: senderAddress,
-      appIndex: appId,
-      appArgs: [new Uint8Array(Buffer.from("reclaim"))],
-      appForeignAssets: [targetAssetId],
-      fee: 2000, // May have inner transaction
-      flatFee: true,
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      type: 'appl'
+    // Use the imported function from atomic-deploy-email-escrow.js
+    const cleanupTxns = await generateCleanupTransaction({
+      appId,
+      senderAddress,
+      assetId: getDefaultAssetId()
     });
-    
-    // Transaction 2: Close out of asset (opt-out) using direct asset transfer
-    const closeAssetTxn = new algosdk.Transaction({
-      from: senderAddress,
-      to: senderAddress, // Send to self
-      assetIndex: targetAssetId,
-      amount: 0, // Zero amount
-      closeRemainderTo: senderAddress, // Close remainder to self (opts out)
-      fee: 1000,
-      flatFee: true,
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      type: 'axfer'
-    });
-    
-    // Transaction 3: Delete the application (now should work)
-    const deleteAppTxn = new algosdk.Transaction({
-      from: senderAddress,
-      appIndex: appId,
-      appOnComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
-      fee: 1000,
-      flatFee: true,
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      type: 'appl'
-    });
-    
-    // Group the transactions
-    const txnGroup = [reclaimTxn, closeAssetTxn, deleteAppTxn];
-    algosdk.assignGroupID(txnGroup);
-    
-    const encodedTxns = txnGroup.map(txn => 
-      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
-    );
-    
-    console.log(`Cleanup transaction group generated for app ${appId}`);
     
     return {
-      transactions: encodedTxns, // Note: plural, it's now an array
+      transactions: cleanupTxns.transactions,
       estimatedRecovery: "~0.594 ALGO",
-      description: "Reclaim assets, close opt-ins, and delete contract"
+      description: cleanupTxns.description
     };
     
   } catch (error) {
-    console.error('Error generating cleanup transaction:', error);
-    throw new Error(`Failed to generate cleanup transaction: ${error.message}`);
+    console.error('Error generating cleanup transaction group:', error);
+    throw new Error(`Failed to generate cleanup transaction group: ${error.message}`);
   }
 }
 
 /**
  * POST /api/submit-cleanup
- * Submit a signed cleanup transaction
+ * Submit a signed cleanup transaction group
  */
 router.post('/submit-cleanup', async (req, res) => {
   try {
-    const { signedTxns, appId, senderAddress } = req.body; // Note: plural
+    const { signedTxns, appId, senderAddress } = req.body;
     
     console.log(`Submitting cleanup transaction group for app ${appId}`);
     

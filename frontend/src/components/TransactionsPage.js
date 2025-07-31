@@ -143,8 +143,8 @@ function TransactionsPage() {
     }
   };
   
-  // CHANGE 4: Update the handleCleanup function in TransactionsPage.js
-  // REPLACE THE ENTIRE handleCleanup function with:
+  // REPLACE the handleCleanup function in TransactionsPage.js with this:
+
   const handleCleanup = async (appId) => {
     if (!window.confirm("Clean up this contract to recover locked ALGO? This will permanently delete the contract.")) {
       return;
@@ -154,17 +154,12 @@ function TransactionsPage() {
     setCleanupStatus({ appId, status: 'Generating cleanup transactions...' });
     
     try {
-      // Generate the cleanup transactions
-      const response = await axios.post(`${API_URL}/cleanup-contract`, {
+      // Generate the cleanup transactions using the API service
+      const txnData = await api.generateCleanupTransaction({
         appId,
         senderAddress: activeAddress
       });
       
-      if (!response.data.success) {
-        throw new Error(response.data.error);
-      }
-      
-      const txnData = response.data;
       setCleanupStatus({ appId, status: 'Waiting for signature...' });
       
       // Convert base64 transactions to Uint8Array and decode
@@ -183,16 +178,12 @@ function TransactionsPage() {
       
       setCleanupStatus({ appId, status: 'Submitting transactions...' });
       
-      // Submit the signed transactions
-      const submitResponse = await axios.post(`${API_URL}/submit-cleanup`, {
-        signedTxns: signedTxnsBase64, // Note: plural
+      // Submit the signed transactions using the API service
+      const result = await api.submitCleanupTransaction({
+        signedTxns: signedTxnsBase64,
         appId,
         senderAddress: activeAddress
       });
-      
-      if (!submitResponse.data.success) {
-        throw new Error(submitResponse.data.error);
-      }
       
       // Update the local transactions state to reflect the cleanup
       setTransactions(prev => prev.map(tx => {

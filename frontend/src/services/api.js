@@ -208,6 +208,26 @@ export const getSupportedAssets = () => Object.values(SUPPORTED_ASSETS);
 export const getAssetInfo = (assetId) => SUPPORTED_ASSETS[parseInt(assetId)] || null;
 export const getDefaultAssetId = () => DEFAULT_ASSET_ID;
 
+// Generate cleanup transaction
+export const generateCleanupTransaction = async (data) => {
+  try {
+    const response = await apiClient.post('/cleanup-contract', data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.error || 'Failed to generate cleanup transaction';
+  }
+};
+
+// Submit cleanup transaction
+export const submitCleanupTransaction = async (data) => {
+  try {
+    const response = await apiClient.post('/submit-cleanup', data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.error || 'Failed to submit cleanup transaction';
+  }
+};
+
 export default {
   generateTransactions,
   submitAppCreation,
@@ -227,5 +247,8 @@ export default {
   getSupportedAssets,
   getAssetInfo,
   getDefaultAssetId,
-  fetchAssetBalance
+  fetchAssetBalance,
+  // NEW: Add cleanup functions
+  generateCleanupTransaction,
+  submitCleanupTransaction
 };
