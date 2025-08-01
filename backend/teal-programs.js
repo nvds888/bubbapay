@@ -99,7 +99,7 @@ bnz handle_reclaim
 // Reject unknown app calls
 err
 
-// Handle delete application (automatically opts out of any assets)
+// Handle delete application
 handle_delete:
 // Only creator can delete
 txn Sender
@@ -108,14 +108,20 @@ app_global_get
 ==
 bz reject
 
-// Only allow delete when claimed=1 (funds were claimed or reclaimed)
+// Only allow delete when claimed=1
 byte "claimed"
 app_global_get
 int 1
 ==
 bz reject_not_completed
 
-// Loop through all foreign assets and opt out of any we're opted into
+// STEP 1: Opt out of any assets first
+txn NumAssets
+int 0
+>
+bz close_account  // If no assets, skip to account closing
+
+// Loop through and opt out of any assets we're opted into
 int 0  // Start with asset index 0
 store 10  // Store current index
 
@@ -123,7 +129,7 @@ check_next_asset:
 load 10  // Load current index
 txn NumAssets  // Get number of foreign assets passed
 <  // Check if index < number of assets
-bz allow_deletion  // If no more assets, allow deletion
+bz close_account  // If no more assets, close account
 
 // Check if we're opted into this asset
 global CurrentApplicationAddress
@@ -152,7 +158,7 @@ global CurrentApplicationAddress
 itxn_field Sender
 byte "creator"
 app_global_get
-itxn_field AssetCloseTo  // This opts out and sends any remaining balance
+itxn_field AssetCloseTo  // Opt out and send any remaining balance
 int 0
 itxn_field Fee
 itxn_submit
@@ -164,7 +170,26 @@ int 1
 store 10  // Increment index
 b check_next_asset
 
-allow_deletion:
+close_account:
+// STEP 2: Close the account and send ALL ALGO to creator
+itxn_begin
+int 1 // Payment
+itxn_field TypeEnum
+int 0 // Send 0 ALGO as amount
+itxn_field Amount
+global CurrentApplicationAddress
+itxn_field Sender
+byte "creator"
+app_global_get
+itxn_field Receiver
+byte "creator"
+app_global_get
+itxn_field CloseRemainderTo 
+int 0
+itxn_field Fee
+itxn_submit
+
+// Now allow app deletion
 int 1
 return
 
