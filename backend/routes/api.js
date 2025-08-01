@@ -1111,20 +1111,18 @@ const cleanupTxns = await generateCleanupTransaction({
  * Generate cleanup transaction group for a completed contract
  */
 async function generateCleanupTransaction({ appId, senderAddress, assetId = null }) {
-  // Get all supported asset IDs
-  const { getSupportedAssets } = require('./assetConfig');
-  const allSupportedAssets = getSupportedAssets().map(asset => asset.id);
-
   try {
     const appIdInt = parseInt(appId);
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // ✅ Pass ALL supported assets - TEAL will figure out which one to opt out of
+    // ✅ Just pass the common assets - TEAL will figure out which ones to opt out of
+    const commonAssets = [31566704, 760037151, 2494786278, 2726252423]; // USDC, xUSD, MONKO, ALPHA
+    
     const deleteAppTxn = new algosdk.Transaction({
       from: senderAddress,
       appIndex: appIdInt,
       appOnComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
-      appForeignAssets: allSupportedAssets, // ✅ Pass all supported assets
+      appForeignAssets: commonAssets, // ✅ Simple hardcoded list
       fee: 3000,
       flatFee: true,
       firstRound: suggestedParams.firstRound,
