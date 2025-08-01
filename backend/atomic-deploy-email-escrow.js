@@ -411,75 +411,6 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
   }
 }
 
-// ADD this function to atomic-deploy-email-escrow.js
-async function generateCleanupTransaction({ appId, senderAddress, assetId = null }) {
-  const targetAssetId = assetId || getDefaultAssetId();
-
-  try {
-    console.log("Generating cleanup transaction for app:", appId);
-    
-    if (!appId || isNaN(parseInt(appId))) {
-      throw new Error("Invalid app ID");
-    }
-    
-    if (!algosdk.isValidAddress(senderAddress)) {
-      throw new Error("Invalid sender address");
-    }
-    
-    const appIdInt = parseInt(appId);
-    const suggestedParams = await algodClient.getTransactionParams().do();
-    
-    // Create the cleanup transaction group
-    // Transaction 1: Call cleanup function (handles asset opt-out and ALGO recovery)
-    const cleanupCallTxn = new algosdk.Transaction({
-      from: senderAddress,
-      appIndex: appIdInt,
-      appArgs: [new Uint8Array(Buffer.from("cleanup"))],
-      appForeignAssets: [targetAssetId],
-      fee: 4000, // Higher fee for multiple inner transactions (asset opt-out + payment)
-      flatFee: true,
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      type: 'appl',
-      appOnComplete: algosdk.OnApplicationComplete.NoOpOC
-    });
-    
-    // Transaction 2: Delete the application
-    const deleteAppTxn = new algosdk.Transaction({
-      from: senderAddress,
-      appIndex: appIdInt,
-      appOnComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
-      fee: 1000,
-      flatFee: true,
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      type: 'appl'
-    });
-    
-    // Group the transactions
-    const txnGroup = [cleanupCallTxn, deleteAppTxn];
-    algosdk.assignGroupID(txnGroup);
-    
-    const encodedTxns = txnGroup.map(txn => 
-      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
-    );
-    
-    console.log(`Cleanup transaction group created with total fee: ${(4000 + 1000) / 1e6} ALGO`);
-    
-    return { 
-      transactions: encodedTxns,
-      totalFee: (4000 + 1000) / 1e6,
-      description: "Cleanup contract and delete application"
-    };
-  } catch (error) {
-    console.error("Error in generateCleanupTransaction:", error);
-    throw new Error(`Failed to create cleanup transaction: ${error.message}`);
-  }
-}
 
 // Export functions for use by API
 module.exports = {
@@ -487,5 +418,4 @@ module.exports = {
   generatePostAppTransactions,
   generateClaimTransaction,
   generateReclaimTransaction,
-  generateCleanupTransaction  
 };

@@ -95,16 +95,11 @@ byte "reclaim"
 ==
 bnz handle_reclaim
 
-// Check if cleaning up contract
-txn ApplicationArgs 0
-byte "cleanup"
-==
-bnz handle_cleanup
 
 // Reject unknown app calls
 err
 
-// NEW: Handle delete application (separate from other app calls)
+// Handle delete application (automatically opts out of any assets)
 handle_delete:
 // Only creator can delete
 txn Sender
@@ -120,6 +115,56 @@ int 1
 ==
 bz reject_not_completed
 
+// Loop through all foreign assets and opt out of any we're opted into
+int 0  // Start with asset index 0
+store 10  // Store current index
+
+check_next_asset:
+load 10  // Load current index
+txn NumAssets  // Get number of foreign assets passed
+<  // Check if index < number of assets
+bz allow_deletion  // If no more assets, allow deletion
+
+// Check if we're opted into this asset
+global CurrentApplicationAddress
+load 10
+txnas Assets  // Get asset at current index
+asset_holding_get AssetBalance
+store 11  // Store has_balance flag
+pop      // Remove balance from stack
+
+// If we're opted into this asset (has_balance flag = 1), opt out
+load 11
+int 1
+==
+bz next_asset  // If not opted in, go to next asset
+
+// Opt out of this asset
+itxn_begin
+int 4  // AssetTransfer
+itxn_field TypeEnum
+load 10
+txnas Assets
+itxn_field XferAsset
+int 0
+itxn_field AssetAmount
+global CurrentApplicationAddress
+itxn_field Sender
+byte "creator"
+app_global_get
+itxn_field AssetCloseTo  // This opts out and sends any remaining balance
+int 0
+itxn_field Fee
+itxn_submit
+
+next_asset:
+load 10
+int 1
++
+store 10  // Increment index
+b check_next_asset
+
+allow_deletion:
 int 1
 return
 
@@ -283,106 +328,6 @@ itxn_submit
 int 1
 return
 
-// NEW: Handle cleanup - only for creator when claimed=1
-handle_cleanup:
-// Only creator can cleanup
-txn Sender
-byte "creator"
-app_global_get 
-==
-bz reject
-
-// Only allow cleanup when claimed=1 (funds were claimed or reclaimed)
-byte "claimed"
-app_global_get
-int 1
-==
-bz reject_not_completed
-
-// Step 1: Opt out of asset (close asset holding to creator)
-global CurrentApplicationAddress
-txn Assets 0
-asset_holding_get AssetBalance
-store 1 // Store has_balance flag
-store 0 // Store balance amount
-
-// Only create asset opt-out transaction if we have asset balance or are opted in
-load 1
-int 1
-==
-bnz do_asset_optout
-
-// Step 2: Send remaining ALGO to creator
-b do_algo_transfer
-
-do_asset_optout:
-itxn_begin
-int 4 // AssetTransfer
-itxn_field TypeEnum
-txn Assets 0
-itxn_field XferAsset
-load 0 // Send all asset balance
-itxn_field AssetAmount
-global CurrentApplicationAddress
-itxn_field Sender
-byte "creator"
-app_global_get
-itxn_field AssetReceiver
-byte "creator" 
-app_global_get
-itxn_field AssetCloseTo // This opts out of the asset
-int 0
-itxn_field Fee
-itxn_submit
-
-do_algo_transfer:
-// Step 2: Send all remaining ALGO to creator
-// Calculate available balance (account balance - minimum balance - fees)
-global CurrentApplicationAddress
-acct_params_get AcctBalance
-store 3 // Store success flag
-store 2 // Store balance
-
-global CurrentApplicationAddress
-acct_params_get AcctMinBalance  
-store 5 // Store success flag
-store 4 // Store min balance
-
-// Calculate sendable amount: balance - min_balance - fee_reserve
-load 2 // total balance
-load 4 // min balance
--
-int 2000 // Reserve for this transaction fee
--
-store 6 // Store sendable amount
-
-// Only send if we have positive amount to send
-load 6
-int 0
->
-bnz do_payment
-
-// If no ALGO to send, we're done
-int 1
-return
-
-do_payment:
-itxn_begin
-int 1 // Payment
-itxn_field TypeEnum
-load 6 // Amount to send
-itxn_field Amount
-global CurrentApplicationAddress
-itxn_field Sender
-byte "creator"
-app_global_get
-itxn_field Receiver
-int 0
-itxn_field Fee
-itxn_submit
-
-int 1
-return
 
 // Handle asset transfers
 handle_transfer:
