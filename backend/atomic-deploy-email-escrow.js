@@ -11,6 +11,9 @@ const ALGOD_TOKEN = '';
 const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://mainnet-api.algonode.cloud';
 const ALGOD_PORT = '';
 
+// ADD this constant at the top of the file (after existing constants)
+const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
+
 // Initialize Algorand client
 const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
 
@@ -282,12 +285,12 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
   }
 }
 
-// Generate claim transaction using temporary account (SIMPLIFIED - NO fee transfer)
+// REPLACE the entire generateClaimTransaction function with this:
 async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddress, assetId = null }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
   try {
-    console.log("Generating claim transaction for app:", appId);
+    console.log("Generating claim transaction group with temp account closure for app:", appId);
     
     // Validate inputs
     if (!appId || isNaN(parseInt(appId))) {
@@ -300,6 +303,10 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
     
     if (!algosdk.isValidAddress(recipientAddress)) {
       throw new Error("Invalid recipient address");
+    }
+    
+    if (!algosdk.isValidAddress(PLATFORM_ADDRESS)) {
+      throw new Error("Invalid platform address - check PLATFORM_ADDRESS environment variable");
     }
     
     const appIdInt = parseInt(appId);
@@ -317,11 +324,21 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
     };
     
     console.log("Reconstructed temp account address:", tempAccountObj.addr);
+    console.log("Platform address for closure:", PLATFORM_ADDRESS);
     
     // Get suggested parameters
     let suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Create ONLY the claim transaction (fees already transferred when wallet connected)
+    // Create base parameters for both transactions
+    const baseParams = {
+      firstRound: suggestedParams.firstRound,
+      lastRound: suggestedParams.lastRound,
+      genesisID: suggestedParams.genesisID,
+      genesisHash: suggestedParams.genesisHash,
+      flatFee: true
+    };
+    
+    // Transaction 1: App call to claim funds
     const claimTxn = new algosdk.Transaction({
       from: tempAccountObj.addr,
       appIndex: appIdInt,
@@ -329,22 +346,39 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
       appAccounts: [recipientAddress], // Where to send asset
       appForeignAssets: [targetAssetId],
       fee: calculateTransactionFee(true, 1), // 2000 microALGO
-      flatFee: true,
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      type: 'appl'
+      type: 'appl',
+      ...baseParams
     });
 
-    // Sign the transaction with temp account
-    const signedTxn = algosdk.signTransaction(claimTxn, tempAccountObj.sk);
+    // Transaction 2: Close temp account and send remaining ALGO to platform
+    const closeAccountTxn = new algosdk.Transaction({
+      from: tempAccountObj.addr,
+      to: PLATFORM_ADDRESS,
+      amount: 0, // Implicit 0, all remaining goes to closeRemainderTo
+      closeRemainderTo: PLATFORM_ADDRESS, // KEY: This closes the account
+      fee: 1000, // Standard fee for payment transaction
+      type: 'pay',
+      note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
+      ...baseParams
+    });
 
-    console.log(`Claim transaction created and signed`);
+    // Group the transactions together
+    const txnGroup = [claimTxn, closeAccountTxn];
+    algosdk.assignGroupID(txnGroup);
+
+    // Sign both transactions with temp account
+    const signedClaimTxn = algosdk.signTransaction(claimTxn, tempAccountObj.sk);
+    const signedCloseTxn = algosdk.signTransaction(closeAccountTxn, tempAccountObj.sk);
+
+    console.log(`Claim transaction group created and signed (2 transactions)`);
+    console.log(`Expected platform revenue: ~${(100000 - 3000) / 1e6} ALGO per claim`); // ~0.097 ALGO
     
-    // Return single transaction format (no fee transfer needed)
+    // Return group transaction format (changed from single transaction)
     return { 
-      signedTransaction: Buffer.from(signedTxn.blob).toString('base64'),
+      signedTransactions: [
+        Buffer.from(signedClaimTxn.blob).toString('base64'),
+        Buffer.from(signedCloseTxn.blob).toString('base64')
+      ],
       txnId: claimTxn.txID()
     };
   } catch (error) {

@@ -475,7 +475,7 @@ router.post('/generate-claim', async (req, res) => {
       return res.status(400).json({ error: 'Funds have already been claimed' });
     }
     
-    // Generate ONLY the claim transaction (no fee transfer)
+    // Generate claim transaction group (with temp account closure)
     const txnData = await generateClaimTransaction({
       appId: parseInt(appId),
       tempPrivateKey,
@@ -493,9 +493,9 @@ router.post('/generate-claim', async (req, res) => {
 // Claim USDC - SIMPLIFIED (only single transaction support)
 router.post('/claim-usdc', async (req, res) => {
   try {
-    const { signedTxn, appId, recipientAddress, tempPrivateKey } = req.body;
+    const { signedTransactions, appId, recipientAddress, tempPrivateKey } = req.body;
     
-    if (!signedTxn || !appId || !recipientAddress || !tempPrivateKey) {
+    if (!signedTransactions || !Array.isArray(signedTransactions) || !appId || !recipientAddress || !tempPrivateKey) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
@@ -519,9 +519,11 @@ router.post('/claim-usdc', async (req, res) => {
       return res.status(400).json({ error: 'Funds have already been claimed' });
     }
     
-    // Submit the signed transaction
+    // Submit the signed transaction group
     try {
-      const { txId } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      const { txId } = await algodClient.sendRawTransaction(
+        signedTransactions.map(txn => Buffer.from(txn, 'base64'))
+      ).do();
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txId, 5);

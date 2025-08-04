@@ -508,7 +508,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
       console.log("Submitting claim transaction...");
       
       const submitData = {
-        signedTxn: response.data.signedTransaction,
+        signedTransactions: response.data.signedTransactions,
         appId,
         recipientAddress: accountAddress,
         tempPrivateKey
