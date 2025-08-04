@@ -183,7 +183,7 @@ function SuccessPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Payment Sent Successfully!</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Payment created Successfully!</h1>
         <p className="text-gray-600 text-sm">
           Your {getAssetSymbol()} transfer has been completed and is ready to be claimed.
         </p>
@@ -220,7 +220,7 @@ function SuccessPage() {
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Contract:</span>
                 <a
-                  href={`https://lora.algokit.io/application/${escrowDetails.appId}`}
+                  href={`https://lora.algokit.io/mainnet/application/${escrowDetails.appId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1"

@@ -291,7 +291,7 @@ function ClaimPage() {
                 </svg>
               </div>
               <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim USDC</h1>
-              <p className="text-gray-600 text-sm">Secure and instant USDC transfer on Algorand</p>
+              <p className="text-gray-600 text-sm">Secure and instant $ transfers on Algorand</p>
             </div>
             
             {renderContentWithoutWallet(assetInfo)}

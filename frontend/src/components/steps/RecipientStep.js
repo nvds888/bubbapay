@@ -35,7 +35,7 @@ function RecipientStep({ formData, handleInputChange, nextStep, prevStep }) {
           </svg>
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-1">Delivery Method</h2>
-        <p className="text-gray-600 text-sm">Choose how to send your USDC</p>
+        <p className="text-gray-600 text-sm">Choose how to send your internet money</p>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">

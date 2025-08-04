@@ -217,7 +217,7 @@ function ConfirmStep({
                 <div className={`text-sm font-medium ${
                   stage === 'initial' ? 'text-purple-900' : stage !== 'initial' ? 'text-green-900' : 'text-gray-700'
                 }`}>
-                  Create Smart Contract
+                  Create Application
                 </div>
                 <div className="text-xs text-gray-600">
                   {stage === 'initial' ? 'Ready to sign' : stage !== 'initial' ? 'Completed' : 'Pending'}
