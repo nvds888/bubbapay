@@ -25,7 +25,7 @@ function Footer() {
                 </span>
               </div>
               <p className="text-gray-600 max-w-md mb-4 text-sm">
-                Send USDC to anyone, anywhere, anytime. User-friendly payments on Algorand.
+                Send internet money to anyone, anywhere, anytime.
               </p>
               
               {/* Social links - minimal */}

@@ -37,8 +37,8 @@ function AssetSelectionModal({ isOpen, onClose, selectedAssetId, onAssetSelect }
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium text-gray-900">{asset.symbol}</div>
                   <div className="text-sm text-gray-600">{asset.name}</div>
+                  <div className="text-sm text-gray-600">{asset.id}</div>
                   <div className="text-xs text-gray-500">{asset.description}</div>
                 </div>
                 {selectedAssetId === asset.id && (

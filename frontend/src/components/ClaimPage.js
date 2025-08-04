@@ -12,14 +12,11 @@ import { WalletUIProvider } from '@txnlab/use-wallet-ui-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
 
-// CHANGE 1: Add asset info helper at the top (after imports, around line 10)
 const getAssetInfo = (assetId) => {
   const assets = {
     31566704: { id: 31566704, name: 'USDC', symbol: 'USDC', decimals: 6 },
     760037151: { id: 760037151, name: 'xUSD', symbol: 'xUSD', decimals: 6 },
-    // ADD: Monko
     2494786278: { id: 2494786278, name: 'Monko', symbol: 'MONKO', decimals: 6 },
-    // ADD: Alpha
     2726252423: { id: 2726252423, name: 'Alpha', symbol: 'ALPHA', decimals: 6 }
   };
   return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
@@ -197,7 +194,7 @@ function ClaimPage() {
             </div>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Already Claimed</h3>
-          <p className="text-red-600 mb-4 text-sm">These funds have already been claimed</p>
+          <p className="text-red-600 mb-4 text-sm">These funds have already been claimed or reclaimed by the creator</p>
           {escrowDetails && (
             // CHANGE 15a: Already claimed section
             <p className="text-gray-500 text-sm mb-4">

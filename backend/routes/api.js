@@ -1139,6 +1139,7 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
     return { 
       transactions: encodedTxns,
       totalFee: 3000 / 1e6,
+      estimatedRecovery: "0.31 ALGO", // 0.1 app reserve + 0.21 app funding
       description: "Delete application and recover all ALGO + assets"
     };
   } catch (error) {
@@ -1230,7 +1231,7 @@ router.post('/submit-cleanup', async (req, res) => {
       success: true,
       txId,
       message: 'Contract cleaned up successfully',
-      estimatedRecovered: "~0.594 ALGO"
+      estimatedRecovered: "~0.31 ALGO"
     });
     
   } catch (error) {

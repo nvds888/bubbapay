@@ -245,13 +245,14 @@ function AmountStep({
               <span className="text-sm">{status.message}</span>
             </div>
             
-            {(status.type === 'error' || status.type === 'warning') && algoAvailability && (
+            {/* Always show Details button if algoAvailability is present */}
+            {algoAvailability && (
               <button
                 type="button"
                 onClick={() => setShowBalanceDetails(!showBalanceDetails)}
                 className="btn-ghost text-xs px-2 py-1"
               >
-                Details
+                {showBalanceDetails ? "Hide Details" : "Details"}
               </button>
             )}
           </div>

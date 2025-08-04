@@ -295,7 +295,7 @@ function TransactionsPage() {
             </svg>
             <div className="text-sm">
               <p className="font-medium text-amber-800">Important Security Note:</p>
-              <p className="text-amber-700 mt-1">Claim links are only displayed once during creation for security. If a link was lost, you can reclaim unclaimed funds below.</p>
+              <p className="text-amber-700 mt-1">Claim links are only displayed once during creation for security. If a link was lost, the creator can always reclaim unclaimed funds below.</p>
             </div>
           </div>
         </div>
@@ -309,8 +309,8 @@ function TransactionsPage() {
               <div className="text-sm">
                 <p className="font-medium text-green-800">Contracts Ready for Cleanup:</p>
                 <p className="text-green-700 mt-1">
-                  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} completed contracts can be cleaned up to recover ~{(transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.594).toFixed(3)} ALGO in locked funds.
-                </p>
+  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} Claimed contracts can be cleaned up to recover ~{(transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.31).toFixed(2)} ALGO in locked funds.
+</p>
               </div>
             </div>
           </div>
@@ -424,7 +424,7 @@ function TransactionsPage() {
                             disabled={isCleaningUp}
                             className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
                           >
-                            Clean Up (~0.594 ALGO)
+                            Clean Up (0.31 ALGO)
                           </button>
                           <a
                             href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
@@ -515,7 +515,7 @@ function TransactionsPage() {
                           disabled={isCleaningUp}
                           className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
                         >
-                          Clean Up (~0.594 ALGO)
+                          Clean Up (~0.31 ALGO)
                         </button>
                         <a
                           href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
