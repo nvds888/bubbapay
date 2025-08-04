@@ -220,7 +220,7 @@ function SuccessPage() {
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Contract:</span>
                 <a
-                  href={`https://lora.algokit.io/testnet/application/${escrowDetails.appId}`}
+                  href={`https://lora.algokit.io/application/${escrowDetails.appId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1"

@@ -134,7 +134,7 @@ function ConfirmStep({
           <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm text-gray-600">
             <div className="flex justify-between">
               <span>Network:</span>
-              <span>Algorand Testnet</span>
+              <span>Algorand Mainnet</span>
             </div>
             <div className="flex justify-between">
               <span>Settlement:</span>

@@ -1,6 +1,5 @@
 // assetConfig.js - Simple Asset Configuration
 
-// Supported assets for testnet
 const SUPPORTED_ASSETS = {
     31566704: {
       id: 31566704,

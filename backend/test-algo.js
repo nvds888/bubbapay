@@ -1,7 +1,7 @@
 const algosdk = require('algosdk');
 
 // Initialize client
-const algodClient = new algosdk.Algodv2('', 'https://testnet-api.algonode.cloud', '');
+const algodClient = new algosdk.Algodv2('', 'https://mainnet-api.algonode.cloud', '');
 
 async function testTransaction() {
   try {

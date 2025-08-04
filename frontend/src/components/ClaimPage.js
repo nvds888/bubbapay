@@ -39,7 +39,7 @@ const createClaimWalletManager = () => new WalletManager({
     WalletId.DEFLY,
     WalletId.LUTE,
   ],
-  defaultNetwork: NetworkId.TESTNET,
+  defaultNetwork: NetworkId.MAINNET,
 });
 
 // Main ClaimPage component - no wallet functionality initially
