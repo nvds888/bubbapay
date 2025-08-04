@@ -17,7 +17,7 @@ const { getDefaultAssetId, getAssetInfo, isAssetSupported, toMicroUnits, fromMic
 
 // Initialize Algorand client
 const ALGOD_TOKEN = process.env.ALGOD_TOKEN || '';
-const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://testnet-api.algonode.cloud';
+const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://mainnet-api.algonode.cloud';
 const ALGOD_PORT = process.env.ALGOD_PORT || '';
 
 const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
@@ -246,7 +246,7 @@ router.post('/submit-group-transactions', async (req, res) => {
     const escrowRecord = {
       appId: parseInt(appId),
       appAddress,
-      network: 'testnet',
+      network: 'mainnet',
       assetId: assetId || getDefaultAssetId(),
       recipientEmail: recipientEmail || null,
       isShareable: !recipientEmail,

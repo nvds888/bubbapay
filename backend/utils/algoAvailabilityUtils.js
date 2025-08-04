@@ -54,7 +54,7 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
   const totalAlgoSentOut = baseAlgoSentOut + recipientFunding;
   
   // Current state
-  const currentBalance = accountInfo.amount; // in microALGO
+  const currentBalance = accountInfo.amount; 
   const currentMinBalance = accountInfo['min-balance'] || 0;
   const currentAvailableBalance = Math.max(0, currentBalance - currentMinBalance);
   
