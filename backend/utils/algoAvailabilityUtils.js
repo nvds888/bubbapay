@@ -12,15 +12,15 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
   const TRANSACTION_COSTS = {
     // Phase 1: App Creation Transaction
     APP_CREATION_FEE: 1000,             // 0.001 ALGO - transaction fee
-    APP_CREATION_MIN_BALANCE: 257000,   // 0.1 ALGO - app creation increases min balance
+    APP_CREATION_MIN_BALANCE: 100000,   // 0.1 ALGO - app creation increases min balance
     
     // Phase 2: Group Transaction Fees
     GROUP_TXN_1_FEE: 1000,              // 0.001 ALGO - Payment (contract funding)
-    GROUP_TXN_2_FEE: 1000,              // 0.001 ALGO - Payment (platform fee)
-    GROUP_TXN_3_FEE: 1000,              // 0.001 ALGO - Payment (temp funding)
+    GROUP_TXN_2_FEE: 1000,              // 0.001 ALGO - Payment (temp funding)
+    GROUP_TXN_3_FEE: 1000,              // 0.001 ALGO - Payment (recipient funding, if enabled)
     GROUP_TXN_4_FEE: 2000,              // 0.002 ALGO - Application Call (opt-in with inner txn)
-    GROUP_TXN_5_FEE: 1000,  
-    GROUP_TXN_6_FEE: 1000, 
+    GROUP_TXN_5_FEE: 1000,              // 0.001 ALGO - Application Call (set amount)
+    GROUP_TXN_6_FEE: 1000,              // 0.001 ALGO - Asset Transfer (send asset to app)
     
     INNER_TXN_MIN_BALANCE: 25000,
     
@@ -40,7 +40,7 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
                    TRANSACTION_COSTS.GROUP_TXN_2_FEE + 
                    TRANSACTION_COSTS.GROUP_TXN_3_FEE + 
                    TRANSACTION_COSTS.GROUP_TXN_4_FEE + 
-                   TRANSACTION_COSTS.GROUP_TXN_5_FEE; +
+                   TRANSACTION_COSTS.GROUP_TXN_5_FEE +
                    TRANSACTION_COSTS.GROUP_TXN_6_FEE;
   
   const recipientFundingFee = payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FUNDING_FEE : 0;
@@ -61,9 +61,7 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
   // SIMULATION: Calculate final state after all transactions
   // 1. After app creation
   const balanceAfterAppCreation = currentBalance - appCreationFee;
-  const minBalanceAfterAppCreation = currentMinBalance + 
-                                  TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE +
-                                  TRANSACTION_COSTS.INNER_TXN_MIN_BALANCE;
+  const minBalanceAfterAppCreation = currentMinBalance + TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE;
   const availableAfterAppCreation = Math.max(0, balanceAfterAppCreation - minBalanceAfterAppCreation);
   
   // 2. After group transactions (fees + ALGO sent out)
@@ -107,22 +105,28 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
     shortfall: microAlgoToAlgo(shortfall),
     groupTxnShortfall: microAlgoToAlgo(canCompleteGroupTxns ? 0 : (groupTxnCost - availableAfterAppCreation)),
     breakdown: {
-      // Real transaction fees
-      appCreationFee: microAlgoToAlgo(appCreationFee),
-      appMinBalanceIncrease: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE),
-      groupTransactionFees: microAlgoToAlgo(groupFees + recipientFundingFee),
-      totalFees: microAlgoToAlgo(totalFees),
+      // What you get back after cleanup
+      recoverable: {
+        appReserve: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE), // 0.1 ALGO
+        appFunding: microAlgoToAlgo(TRANSACTION_COSTS.CONTRACT_FUNDING), // 0.21 ALGO
+        total: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE + TRANSACTION_COSTS.CONTRACT_FUNDING) // 0.31 ALGO
+      },
       
-      // ALGO transfers
-      tempAccountFunding: microAlgoToAlgo(TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING),
-      contractFunding: microAlgoToAlgo(TRANSACTION_COSTS.CONTRACT_FUNDING),
-      recipientFunding: microAlgoToAlgo(payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0),
-      totalAlgoSent: microAlgoToAlgo(totalAlgoSentOut),
+      // Real costs (not recoverable)
+      realCosts: {
+        platformFee: microAlgoToAlgo(TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING), // 0.102 ALGO
+        transactionFees: microAlgoToAlgo(totalFees), // ~0.007 ALGO
+        recipientFees: microAlgoToAlgo(payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0), // 0.21 ALGO if enabled
+        total: microAlgoToAlgo(
+          TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING + 
+          totalFees + 
+          (payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0)
+        )
+      },
       
       // Summary
       totalRequired: microAlgoToAlgo(totalRequired),
-      totalRequiredWithBuffer: microAlgoToAlgo(totalRequiredWithBuffer),
-      safetyBufferPercentage: "10%"
+      totalRequiredWithBuffer: microAlgoToAlgo(totalRequiredWithBuffer)
     },
     simulation: {
       // Current state

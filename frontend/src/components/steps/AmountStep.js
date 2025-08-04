@@ -281,33 +281,65 @@ function AmountStep({
                 </div>
                 
                 {algoAvailability.breakdown && (
-                  <div className="pt-2 border-t border-gray-200 space-y-1 text-xs text-gray-500">
-                    <div className="flex justify-between">
-                      <span>App creation fee:</span>
-                      <span>{algoAvailability.breakdown.appCreationFee} ALGO</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>App min balance:</span>
-                      <span>{algoAvailability.breakdown.appMinBalanceIncrease || '0.100000'} ALGO</span>
-                    </div>
-                    <div className="flex justify-between">
-                    <span>Temp account funding:</span>
-                    <span>{algoAvailability.breakdown.tempAccountFunding || '0.102000'} ALGO</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Contract funding:</span>
-                      <span>{algoAvailability.breakdown.contractFunding} ALGO</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Transaction fees:</span>
-                      <span>{algoAvailability.breakdown.groupTransactionFees || algoAvailability.breakdown.totalFees} ALGO</span>
-                    </div>
-                    {formData.payRecipientFees && (
-                      <div className="flex justify-between">
-                        <span>Recipient fees:</span>
-                        <span>{algoAvailability.breakdown.recipientFunding} ALGO</span>
+                  <div className="pt-2 border-t border-gray-200 space-y-3">
+                    {/* Recoverable Costs */}
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-green-600 flex items-center space-x-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span>Recoverable (via cleanup after claim):</span>
                       </div>
-                    )}
+                      <div className="text-xs text-gray-500 space-y-1 ml-4">
+                        <div className="flex justify-between">
+                          <span>• App reserve balance:</span>
+                          <span>0.100000 ALGO</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>• App contract funding:</span>
+                          <span>0.210000 ALGO</span>
+                        </div>
+                        <div className="flex justify-between font-medium border-t border-gray-200 pt-1">
+                          <span>Recoverable total:</span>
+                          <span>0.310000 ALGO</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Real Costs */}
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-red-600 flex items-center space-x-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>Real costs (not recoverable):</span>
+                      </div>
+                      <div className="text-xs text-gray-500 space-y-1 ml-4">
+                        <div className="flex justify-between">
+                          <span>• Platform fee:</span>
+                          <span>0.102000 ALGO</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>• Network transaction fees:</span>
+                          <span>{algoAvailability.breakdown.realCosts?.transactionFees || '0.007000'} ALGO</span>
+                        </div>
+                        {formData.payRecipientFees && (
+                          <div className="flex justify-between">
+                            <span>• Recipient fee coverage:</span>
+                            <span>0.210000 ALGO</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-medium border-t border-gray-200 pt-1">
+                          <span>Real cost total:</span>
+                          <span>{algoAvailability.breakdown.realCosts?.total} ALGO</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Help text */}
+                    <div className="text-xs text-gray-400 bg-gray-50 rounded p-2">
+                      💡 The recoverable amounts are temporarily locked but returned to you after you "cleanup" the contract in your transaction history.
+                    </div>
                   </div>
                 )}
               </>
