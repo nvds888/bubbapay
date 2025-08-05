@@ -283,7 +283,7 @@ function TransactionsPage() {
           </div>
           <div>
             <h2 className="text-xl font-semibold text-gray-900">My Transactions</h2>
-            <p className="text-gray-600 text-sm">View and manage your crypto transfers</p>
+            <p className="text-gray-600 text-sm">View and manage your $$transfers</p>
           </div>
         </div>
         
@@ -328,7 +328,7 @@ function TransactionsPage() {
             </div>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Transactions Yet</h3>
-          <p className="text-gray-600 mb-4 text-sm">You haven't sent any crypto yet. Create your first transfer!</p>
+          <p className="text-gray-600 mb-4 text-sm">You haven't sent any $$ yet. Create your first transfer!</p>
           <Link 
             to="/"
             className="btn-primary px-4 py-2 font-medium"
@@ -407,18 +407,18 @@ function TransactionsPage() {
                       )}
                       
                       {/* Action buttons */}
-                      {!transaction.claimed && !transaction.reclaimed ? (
-                        <button
-                          onClick={() => handleReclaim(transaction.appId)}
-                          disabled={isReclaiming}
-                          className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm"
-                        >
-                          Reclaim Funds
-                        </button>
-                      ) : transaction.cleanedUp ? (
-                        <span className="text-gray-500 text-sm">Cleaned Up</span>
-                      ) : (
-                        <div className="space-y-1">
+                      <div className="space-y-1">
+                        {!transaction.claimed && !transaction.reclaimed ? (
+                          <button
+                            onClick={() => handleReclaim(transaction.appId)}
+                            disabled={isReclaiming}
+                            className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+                          >
+                            Reclaim Funds
+                          </button>
+                        ) : transaction.cleanedUp ? (
+                          <span className="text-gray-500 text-sm">Cleaned Up</span>
+                        ) : (
                           <button
                             onClick={() => handleCleanup(transaction.appId)}
                             disabled={isCleaningUp}
@@ -426,19 +426,21 @@ function TransactionsPage() {
                           >
                             Clean Up (0.31 ALGO)
                           </button>
-                          <a
-                            href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1 text-sm"
-                          >
-                            <span>View Explorer</span>
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                        </div>
-                      )}
+                        )}
+                        
+                        {/* Explorer link - always show */}
+                        <a
+                          href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1 text-sm"
+                        >
+                          <span>View Explorer</span>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -509,24 +511,24 @@ function TransactionsPage() {
                     ) : transaction.cleanedUp ? (
                       <span className="text-gray-500 text-sm">Cleaned Up</span>
                     ) : (
-                      <div className="space-y-2">
-                        <button
-                          onClick={() => handleCleanup(transaction.appId)}
-                          disabled={isCleaningUp}
-                          className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
-                        >
-                          Clean Up (~0.31 ALGO)
-                        </button>
-                        <a
-                          href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-secondary px-3 py-1.5 text-sm font-medium w-full text-center block"
-                        >
-                          View Explorer
-                        </a>
-                      </div>
+                      <button
+                        onClick={() => handleCleanup(transaction.appId)}
+                        disabled={isCleaningUp}
+                        className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
+                      >
+                        Clean Up (~0.31 ALGO)
+                      </button>
                     )}
+                    
+                    {/* Explorer link - always show */}
+                    <a
+                      href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-secondary px-3 py-1.5 text-sm font-medium w-full text-center block"
+                    >
+                      View Explorer
+                    </a>
                   </div>
                 </div>
               </div>
