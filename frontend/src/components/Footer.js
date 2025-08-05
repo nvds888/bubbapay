@@ -14,12 +14,12 @@ function Footer() {
             {/* Brand section */}
             <div className="lg:col-span-2">
               <div className="flex items-center space-x-2 mb-3">
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-                     style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                </div>
+                {/* Replace SVG logo with image */}
+                <img
+                  src="/bubbapay.jpg"
+                  alt="Bubbapay Logo"
+                  className="w-6 h-6 rounded-lg object-cover"
+                />
                 <span className="text-lg font-semibold text-gray-900">
                   Bubba<span className="gradient-text">Pay</span>
                 </span>
