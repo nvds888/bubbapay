@@ -789,7 +789,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   {/* CHANGE 7n: Bottom button text */}
-                  <span>Send Your Own {assetInfo?.symbol || 'Assets'}</span>
+                  <span>Send Your Own $$</span>
                 </span>
               </button>
             </div>
