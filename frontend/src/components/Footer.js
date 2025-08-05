@@ -44,7 +44,7 @@ function Footer() {
               <ul className="space-y-2 text-sm">
                 <li><Link to="/" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Send $$</Link></li>
                 <li><Link to="/transactions" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Transaction History</Link></li>
-                <li><Link to="/docs" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Technical Docs</Link></li>
+                <li><Link to="/docs" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Docs</Link></li>
               </ul>
             </div>
             
