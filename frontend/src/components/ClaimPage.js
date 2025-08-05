@@ -290,7 +290,7 @@ function ClaimPage() {
                   <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                 </svg>
               </div>
-              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your [internet moneys]</h1>
+              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your internet money</h1>
               <p className="text-gray-600 text-sm">Secure and instant on Algorand</p>
             </div>
             
