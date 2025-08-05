@@ -199,16 +199,6 @@ function DocumentationPage() {
                 </p>
               </div>
 
-              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Cost Breakdown</h3>
-              <div className="card card-compact bg-gray-50 my-4">
-                <ul className="text-sm text-gray-700 space-y-2">
-                  <li><strong>Without fee coverage:</strong> ~0.35 ALGO total (you get ~0.35 ALGO back after cleanup: this includes 0.1 reserve and 0.21 ALGO)</li>
-                  <li><strong>With fee coverage:</strong> ~0.21 ALGO total (recipient gets ALGO for transactions)</li>
-                  <li><strong>Platform fee:</strong> ~0.1 ALGO per transfer (paid when recipient claims)</li>
-                  <li><strong>Your tokens:</strong> Always recoverable by creator if recipient doesn't claim</li>
-                </ul>
-              </div>
-
               <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Recovery Options</h3>
               <p>
                 You can always reclaim your tokens if the recipient never claims them. The smart contract ensures only you (the original sender) can recover unclaimed funds.
