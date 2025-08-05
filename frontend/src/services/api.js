@@ -174,14 +174,14 @@ const SUPPORTED_ASSETS = {
     name: 'USDC', 
     symbol: 'USDC', 
     decimals: 6, 
-    description: 'USD Coin' 
+    description: 'USDC is a stablecoin pegged to USD' 
   },
   760037151: { 
     id: 760037151, 
     name: 'xUSD', 
     symbol: 'xUSD', 
     decimals: 6, 
-    description: 'Liquid Governance xUSD' 
+    description: 'xUSD is a stablecoin backed by ASAs' 
   },
   // NEW: Add Monko
   2494786278: {
@@ -189,7 +189,7 @@ const SUPPORTED_ASSETS = {
     name: 'Monko',
     symbol: 'MONKO',
     decimals: 6,
-    description: 'Monko Token'
+    description: 'Be Monko'
   },
   // NEW: Add Alpha
   2726252423: {

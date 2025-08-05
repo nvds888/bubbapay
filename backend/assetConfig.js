@@ -8,7 +8,7 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       symbol: 'USDC',
       isDefault: true,
-      description: 'USD Coin'
+      description: 'USDC is a stablecoin pegged to USD' 
     },
     760037151: {
       id: 760037151,
@@ -17,7 +17,7 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       symbol: 'xUSD',
       isDefault: false,
-      description: 'xUSD'
+      description: 'xUSD is a stablecoin backed by ASAs'
     },
     // NEW: Add Monko
     2494786278: {
@@ -37,7 +37,7 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       symbol: 'ALPHA',
       isDefault: false,
-      description: 'Alpha Arcade'
+      description: 'Alpha Arcade Token'
     }
     // Add more assets here as needed
   };
