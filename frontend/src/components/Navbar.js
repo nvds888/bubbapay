@@ -27,7 +27,7 @@ function Navbar({ hideWalletConnection = false }) {
                 </div>
                 <div className="flex items-center space-x-1">
                   <span className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-200">
-                    Nomizo<span className="gradient-text">Pay</span>
+                    Bubba<span className="gradient-text">Pay</span>
                   </span>
                   <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200 rounded">
                     Beta

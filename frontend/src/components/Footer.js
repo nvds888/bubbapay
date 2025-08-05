@@ -21,7 +21,7 @@ function Footer() {
                   </svg>
                 </div>
                 <span className="text-lg font-semibold text-gray-900">
-                  Nomizo<span className="gradient-text">Pay</span>
+                  Bubba<span className="gradient-text">Pay</span>
                 </span>
               </div>
               <p className="text-gray-600 max-w-md mb-4 text-sm">
@@ -42,7 +42,7 @@ function Footer() {
             <div>
               <h3 className="text-gray-900 font-medium mb-3 text-sm">Product</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Send USDC</Link></li>
+                <li><Link to="/" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Send $$</Link></li>
                 <li><Link to="/transactions" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Transaction History</Link></li>
                 <li><Link to="/docs" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Technical Docs</Link></li>
               </ul>
@@ -63,7 +63,7 @@ function Footer() {
           <div className="border-t border-gray-200 mt-8 pt-6">
             <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
               <p className="text-gray-500 text-sm">
-                © {new Date().getFullYear()} Nomizo Pay. All rights reserved.
+                © {new Date().getFullYear()} BubbaPay. All rights reserved.
               </p>
               
               {/* Powered by section */}

@@ -266,7 +266,7 @@ function SigningPage() {
             onClick={() => navigate('/')}
             className="btn-primary px-4 py-2 font-medium"
           >
-            Return to Nomizo Pay
+            Return to BubbaPay
           </button>
         </div>
       </div>
@@ -294,7 +294,7 @@ function SigningPage() {
                 </svg>
               </div>
               <span className="text-lg font-semibold text-gray-900">
-                Nomizo <span className="gradient-text">Pay</span>
+                Bubba<span className="gradient-text">Pay</span>
               </span>
             </div>
             
@@ -553,7 +553,7 @@ function SigningPage() {
                     onClick={() => navigate('/')}
                     className="btn-primary px-6 py-3 font-medium"
                   >
-                    Return to Nomizo Pay
+                    Return to BubbaPay
                   </button>
                   {!sessionData?.reclaimTransaction && (
                     <button
