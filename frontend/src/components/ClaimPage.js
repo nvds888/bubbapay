@@ -287,7 +287,7 @@ function ClaimPage() {
               <img
                 src="/bubbapay.jpg"
                 alt="Bubbapay Logo"
-                className="w-12 h-12 rounded-lg object-cover mb-3"
+                className="w-12 h-12 rounded-lg object-cover mb-3 mx-auto"
               />
               <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your internet money</h1>
               <p className="text-gray-600 text-sm">Secure and instant on Algorand</p>
@@ -815,7 +815,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             <img
               src="/bubbapay.jpg"
               alt="Bubbapay Logo"
-              className="w-12 h-12 rounded-lg object-cover mb-3"
+              className="w-12 h-12 rounded-lg object-cover mb-3 mx-auto"
             />
             <h1 className="text-xl font-semibold text-gray-900 mb-1">
               Claim {assetInfo?.symbol || 'Asset'}
