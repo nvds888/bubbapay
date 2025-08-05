@@ -5,6 +5,7 @@ import { WalletButton } from '@txnlab/use-wallet-ui-react';
 
 function Navbar({ hideWalletConnection = false }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { activeAddress } = useWallet();
 
   return (
@@ -38,6 +39,17 @@ function Navbar({ hideWalletConnection = false }) {
             
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-4">
+              {/* How It Works Button */}
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium text-sm flex items-center space-x-1 px-3 py-2 rounded-lg hover:bg-gray-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>How it works?</span>
+              </button>
+
               {/* Technical Docs Link */}
               <Link 
                 to="/docs" 
@@ -92,6 +104,20 @@ function Navbar({ hideWalletConnection = false }) {
             isMobileMenuOpen ? 'max-h-64 opacity-100 pb-4' : 'max-h-0 opacity-0'
           }`}>
             <div className="pt-2 space-y-2 border-t border-gray-200">
+              {/* How It Works Button - Mobile */}
+              <button 
+                onClick={() => {
+                  setIsModalOpen(true);
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center space-x-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-200 font-medium py-2 px-3 rounded-lg text-left"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>How it works?</span>
+              </button>
+
               {/* Technical Docs Link */}
               <Link 
                 to="/docs" 
@@ -130,6 +156,33 @@ function Navbar({ hideWalletConnection = false }) {
           </div>
         </div>
       </nav>
+
+      {/* How It Works Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto relative">
+            {/* Close button */}
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Modal content */}
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">How BubbaPay Works</h2>
+              <img 
+                src="/bubbaillustration.png" 
+                alt="How BubbaPay Works" 
+                className="w-full h-auto rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
