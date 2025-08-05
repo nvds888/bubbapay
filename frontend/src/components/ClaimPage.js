@@ -286,9 +286,11 @@ function ClaimPage() {
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
                    style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                </svg>
+                <img
+                  src="/bubbapay.jpg"
+                  alt="Bubbapay Logo"
+                  className="w-7 h-7 rounded-lg object-cover"
+                />
               </div>
               <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your internet money</h1>
               <p className="text-gray-600 text-sm">Secure and instant on Algorand</p>
@@ -815,9 +817,11 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           <div className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
                  style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-              </svg>
+              <img
+                src="/bubbapay.jpg"
+                alt="Bubbapay Logo"
+                className="w-7 h-7 rounded-lg object-cover"
+              />
             </div>
             <h1 className="text-xl font-semibold text-gray-900 mb-1">
               Claim {assetInfo?.symbol || 'Asset'}
