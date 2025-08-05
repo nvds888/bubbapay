@@ -290,8 +290,8 @@ function ClaimPage() {
                   <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                 </svg>
               </div>
-              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim [internet Moneys]</h1>
-              <p className="text-gray-600 text-sm">Secure and instant $ transfers on Algorand</p>
+              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your [internet Moneys]</h1>
+              <p className="text-gray-600 text-sm">Secure and instant on Algorand</p>
             </div>
             
             {renderContentWithoutWallet(assetInfo)}
@@ -541,24 +541,22 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
   };
   
   // Handle wallet disconnection and switch
-  const handleWalletSwitch = async () => {
-    try {
-      await disconnect();
-      setAccountAddress(null);
-      setClaimStatus('initial');
-      setError(null);
-      setShowWalletSwitch(false);
-      // Auto-trigger wallet selection modal again
-      setTimeout(() => {
-        const walletButton = document.querySelector('[data-wallet-ui] button');
-        if (walletButton) {
-          walletButton.click();
-        }
-      }, 100);
-    } catch (error) {
-      console.error('Error switching wallet:', error);
-    }
-  };
+const handleWalletSwitch = async () => {
+  try {
+    await disconnect();
+    setAccountAddress(null);
+    setClaimStatus('initial');
+    setError(null);
+    setShowWalletSwitch(false);
+    
+    // Reset the auto-click trigger so the wallet selection opens automatically
+    setAutoClickTriggered(false);
+    
+    console.log('Wallet disconnected, wallet selection will re-open automatically');
+  } catch (error) {
+    console.error('Error switching wallet:', error);
+  }
+};
 
   // Render wallet-connected content
   const renderWalletContent = () => {
@@ -579,11 +577,11 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                 You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
               </h2>
               <p className="text-gray-600">
-                Connect your Algorand wallet to claim the funds
+                Connect or create your wallet to claim funds
               </p>
               {escrowDetails.payRecipientFees && (
                 <div className="mt-2 text-xs text-gray-500">
-                  Transaction fees covered by sender
+                  Fees covered by sender
                 </div>
               )}
             </div>
@@ -863,7 +861,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   {/* CHANGE 7n: Bottom button text */}
-                  <span>Send Your Own {assetInfo?.symbol || 'Assets'}</span>
+                  <span>Send Your Own $$</span>
                 </span>
               </button>
             </div>
@@ -897,7 +895,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
               Claim {assetInfo?.symbol || 'Asset'}
             </h1>
             <p className="text-gray-600 text-sm">
-              Secure and instant {assetInfo?.symbol || 'asset'} transfer on Algorand
+              Secure and instant on Algorand
             </p>
           </div>
           
