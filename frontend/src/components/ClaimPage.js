@@ -256,7 +256,7 @@ function ClaimPage() {
             </p>
             {escrowDetails.payRecipientFees && (
               <div className="mt-2 text-xs text-gray-500">
-                Transaction fees covered by sender
+                Fees covered by sender
               </div>
             )}
           </div>
@@ -290,7 +290,7 @@ function ClaimPage() {
                   <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                 </svg>
               </div>
-              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your [internet Moneys]</h1>
+              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your [internet moneys]</h1>
               <p className="text-gray-600 text-sm">Secure and instant on Algorand</p>
             </div>
             
@@ -319,7 +319,7 @@ function ClaimPage() {
 
 // CHANGE 12: Update ClaimPageWithWallet function signature
 function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemProjects, assetInfo }) {
-  const { activeAddress, signTransactions, disconnect } = useWallet();
+  const { activeAddress, signTransactions } = useWallet();
   const [accountAddress, setAccountAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -554,15 +554,16 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           
           {escrowDetails && (
             <div className="mb-6">
+              {/* CHANGE 7e: Another "You've received" message in wallet content */}
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
                 You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
               </h2>
               <p className="text-gray-600">
-                Connect or create your wallet to claim funds
+                Connect your wallet to claim the funds
               </p>
               {escrowDetails.payRecipientFees && (
                 <div className="mt-2 text-xs text-gray-500">
-                  Fees covered by sender
+                  Transaction fees covered by sender
                 </div>
               )}
             </div>
@@ -632,54 +633,9 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           </h3>
           {/* CHANGE 7h: Opt-in description */}
           <p className="text-gray-600 mb-4 text-sm">
-            Your wallet needs to opt-in to the {assetInfo?.name || 'asset'} token before you can receive the funds.
-            This is a one-time setup step.
+            Your wallet needs to opt-in to {assetInfo?.name || 'asset'} before you can receive the funds.
+            This is a one-time setup.
           </p>
-          
-          {/* Wallet info and disconnect button */}
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <div className="text-purple-600 text-xs font-medium">Connected Wallet</div>
-                  <div className="text-gray-900 font-mono text-sm">{formatAddress(accountAddress)}</div>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  // Direct disconnect without modal - just clear everything
-                  console.log('Disconnecting wallet directly...');
-                  
-                  // Clear local state immediately
-                  setAccountAddress(null);
-                  setClaimStatus('initial');
-                  setError(null);
-                  setAutoClickTriggered(false);
-                  
-                  // Try to disconnect in background (but don't wait for it)
-                  if (disconnect && typeof disconnect === 'function') {
-                    disconnect().catch(err => {
-                      console.log('Background disconnect completed');
-                    });
-                  }
-                  
-                  console.log('Wallet disconnected, will auto-open selection modal');
-                }}
-                className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1"
-                title="Disconnect wallet"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span>Disconnect</span>
-              </button>
-            </div>
-          </div>
           
           <button
             onClick={handleOptIn}
@@ -720,51 +676,6 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           <p className="text-gray-600 mb-6">
             Claim your <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> now
           </p>
-          
-          {/* Wallet info and disconnect button */}
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <div className="text-purple-600 text-xs font-medium">Connected Wallet</div>
-                  <div className="text-gray-900 font-mono text-sm">{formatAddress(accountAddress)}</div>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  // Direct disconnect without modal - just clear everything
-                  console.log('Disconnecting wallet directly...');
-                  
-                  // Clear local state immediately
-                  setAccountAddress(null);
-                  setClaimStatus('initial');
-                  setError(null);
-                  setAutoClickTriggered(false);
-                  
-                  // Try to disconnect in background (but don't wait for it)
-                  if (disconnect && typeof disconnect === 'function') {
-                    disconnect().catch(err => {
-                      console.log('Background disconnect completed');
-                    });
-                  }
-                  
-                  console.log('Wallet disconnected, will auto-open selection modal');
-                }}
-                className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1"
-                title="Disconnect wallet"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span>Disconnect</span>
-              </button>
-            </div>
-          </div>
           
           {escrowDetails?.payRecipientFees && (
             <div className="mb-4 text-xs text-gray-500">
@@ -878,7 +789,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   {/* CHANGE 7n: Bottom button text */}
-                  <span>Send Your Own $$</span>
+                  <span>Send Your Own {assetInfo?.symbol || 'Assets'}</span>
                 </span>
               </button>
             </div>
