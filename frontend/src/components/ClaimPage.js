@@ -652,13 +652,23 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
               </div>
               <button
                 onClick={() => {
-                  if (disconnect && typeof disconnect === 'function') {
-                    disconnect();
-                  }
+                  // Direct disconnect without modal - just clear everything
+                  console.log('Disconnecting wallet directly...');
+                  
+                  // Clear local state immediately
                   setAccountAddress(null);
                   setClaimStatus('initial');
                   setError(null);
                   setAutoClickTriggered(false);
+                  
+                  // Try to disconnect in background (but don't wait for it)
+                  if (disconnect && typeof disconnect === 'function') {
+                    disconnect().catch(err => {
+                      console.log('Background disconnect completed');
+                    });
+                  }
+                  
+                  console.log('Wallet disconnected, will auto-open selection modal');
                 }}
                 className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1"
                 title="Disconnect wallet"
@@ -727,13 +737,23 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
               </div>
               <button
                 onClick={() => {
-                  if (disconnect && typeof disconnect === 'function') {
-                    disconnect();
-                  }
+                  // Direct disconnect without modal - just clear everything
+                  console.log('Disconnecting wallet directly...');
+                  
+                  // Clear local state immediately
                   setAccountAddress(null);
                   setClaimStatus('initial');
                   setError(null);
                   setAutoClickTriggered(false);
+                  
+                  // Try to disconnect in background (but don't wait for it)
+                  if (disconnect && typeof disconnect === 'function') {
+                    disconnect().catch(err => {
+                      console.log('Background disconnect completed');
+                    });
+                  }
+                  
+                  console.log('Wallet disconnected, will auto-open selection modal');
                 }}
                 className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1"
                 title="Disconnect wallet"
