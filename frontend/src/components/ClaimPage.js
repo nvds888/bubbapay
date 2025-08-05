@@ -284,14 +284,11 @@ function ClaimPage() {
         <div className="w-full max-w-lg mx-auto relative z-10">
           <div className="card card-normal">
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
-                   style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
-                <img
-                  src="/bubbapay.jpg"
-                  alt="Bubbapay Logo"
-                  className="w-7 h-7 rounded-lg object-cover"
-                />
-              </div>
+              <img
+                src="/bubbapay.jpg"
+                alt="Bubbapay Logo"
+                className="w-12 h-12 rounded-lg object-cover mb-3"
+              />
               <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your internet money</h1>
               <p className="text-gray-600 text-sm">Secure and instant on Algorand</p>
             </div>
@@ -815,14 +812,11 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
       <div className="w-full max-w-lg mx-auto relative z-10">
         <div className="card card-normal">
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
-                 style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
-              <img
-                src="/bubbapay.jpg"
-                alt="Bubbapay Logo"
-                className="w-7 h-7 rounded-lg object-cover"
-              />
-            </div>
+            <img
+              src="/bubbapay.jpg"
+              alt="Bubbapay Logo"
+              className="w-12 h-12 rounded-lg object-cover mb-3"
+            />
             <h1 className="text-xl font-semibold text-gray-900 mb-1">
               Claim {assetInfo?.symbol || 'Asset'}
             </h1>
