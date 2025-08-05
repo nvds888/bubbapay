@@ -38,7 +38,7 @@ function DocumentationPage() {
                   <div>
                     <h4 className="text-red-800 font-semibold text-lg mb-2">⚠️ IMPORTANT SECURITY NOTICE</h4>
                     <p className="text-red-700 mb-3">
-                      <strong>NomizoPay is experimental software provided "as is" without warranty.</strong> We take no responsibility for lost, stolen, or inaccessible funds. Use at your own risk with amounts you can afford to lose.
+                      <strong>BubbaPay is experimental software provided "as is" without warranty.</strong> We take no responsibility for lost, stolen, or inaccessible funds. Use at your own risk with amounts you can afford to lose.
                     </p>
                     <p className="text-red-700 text-sm">
                       Always keep claim links secure, never share them through unsecured channels, and remember that smart contracts are permanent - transactions cannot be reversed.
@@ -85,7 +85,7 @@ function DocumentationPage() {
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">How It Works</h2>
               <p>
-                When you send tokens through NomizoPay, we create a custom smart contract that acts like a secure digital vault. Here's the simple flow:
+                When you send tokens through BubbaPay, we create a custom smart contract that acts like a secure digital vault. Here's the simple flow:
               </p>
               
               <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
@@ -171,7 +171,7 @@ function DocumentationPage() {
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Security Model</h2>
               <p>
-                NomizoPay uses multiple layers of security to protect your transfers:
+                BubbaPay uses multiple layers of security to protect your transfers:
               </p>
 
               <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Unique Authorization</h3>
@@ -186,7 +186,7 @@ function DocumentationPage() {
 
               <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Blockchain Independence</h3>
               <p>
-                Your funds are held by smart contracts on the Algorand blockchain, not by us. Even if NomizoPay disappeared tomorrow, you could still interact with the contracts directly.
+                Your funds are held by smart contracts on the Algorand blockchain, not by us. Even if BubbaPay disappeared tomorrow, you could still interact with the contracts directly.
               </p>
             </section>
 
