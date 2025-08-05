@@ -252,7 +252,7 @@ function ClaimPage() {
               You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
             </h2>
             <p className="text-gray-600">
-              Connect your Algorand wallet to claim the funds
+              Connect your wallet to claim the funds
             </p>
             {escrowDetails.payRecipientFees && (
               <div className="mt-2 text-xs text-gray-500">
@@ -636,7 +636,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             This is a one-time setup step.
           </p>
           
-          {/* Wallet info and switch button */}
+          {/* Wallet info and disconnect button */}
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -650,14 +650,24 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                   <div className="text-gray-900 font-mono text-sm">{formatAddress(accountAddress)}</div>
                 </div>
               </div>
-              <div data-wallet-ui>
-                <WalletButton className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1 bg-transparent border-none p-1">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  <span>Switch</span>
-                </WalletButton>
-              </div>
+              <button
+                onClick={() => {
+                  if (disconnect && typeof disconnect === 'function') {
+                    disconnect();
+                  }
+                  setAccountAddress(null);
+                  setClaimStatus('initial');
+                  setError(null);
+                  setAutoClickTriggered(false);
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1"
+                title="Disconnect wallet"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Disconnect</span>
+              </button>
             </div>
           </div>
           
@@ -701,7 +711,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             Claim your <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> now
           </p>
           
-          {/* Wallet info and switch button */}
+          {/* Wallet info and disconnect button */}
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -715,14 +725,24 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                   <div className="text-gray-900 font-mono text-sm">{formatAddress(accountAddress)}</div>
                 </div>
               </div>
-              <div data-wallet-ui>
-                <WalletButton className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1 bg-transparent border-none p-1">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  <span>Switch</span>
-                </WalletButton>
-              </div>
+              <button
+                onClick={() => {
+                  if (disconnect && typeof disconnect === 'function') {
+                    disconnect();
+                  }
+                  setAccountAddress(null);
+                  setClaimStatus('initial');
+                  setError(null);
+                  setAutoClickTriggered(false);
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1"
+                title="Disconnect wallet"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Disconnect</span>
+              </button>
             </div>
           </div>
           
