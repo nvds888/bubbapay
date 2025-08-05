@@ -8,7 +8,7 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       symbol: 'USDC',
       isDefault: true,
-      description: 'USDC is a stablecoin pegged to USD' 
+      description: 'USDC is a USD pegged stablecoin' 
     },
     760037151: {
       id: 760037151,
@@ -17,7 +17,7 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       symbol: 'xUSD',
       isDefault: false,
-      description: 'xUSD is a stablecoin backed by ASAs'
+      description: 'xUSD is a stablecoin by CompX'
     },
     // NEW: Add Monko
     2494786278: {
