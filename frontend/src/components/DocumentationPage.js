@@ -69,7 +69,7 @@ function DocumentationPage() {
                 <div className="card card-compact bg-gray-50">
                   <h4 className="text-yellow-700 font-semibold mb-2">🎯 Trading Kickstart</h4>
                   <p className="text-sm text-gray-600">
-                    Send USDC for trading memecoins or DeFi. Recipients get both the USDC and gas fees to start trading immediately.
+                    Send USDC for trading memecoins or DeFi. Recipients get both the USDC and fees to start trading immediately.
                   </p>
                 </div>
                 

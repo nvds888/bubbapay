@@ -152,7 +152,8 @@ app.use(cors({
     'http://localhost:3000', 
     'https://localhost:3000',
     'https://nompay.vercel.app',
-    'https://bubbapay.app'  
+    'https://bubbapay.app',
+    'https://www.bubbapay.app' 
   ],
   credentials: true
 }));
