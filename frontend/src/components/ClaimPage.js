@@ -281,10 +281,8 @@ function ClaimPage() {
           <div className="absolute bottom-32 left-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-20"></div>
         </div>
         
-        {/* CHANGE 3: Update mobile container width - FIND the main container div */}
-        <div className="w-full max-w-md sm:max-w-lg mx-auto relative z-10 px-2 sm:px-0">
-          {/* CHANGE 9: Better mobile spacing - FIND the main card */}
-          <div className="card card-normal mx-2 sm:mx-0">
+        <div className="w-full max-w-lg mx-auto relative z-10">
+          <div className="card card-normal">
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
                    style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
@@ -292,9 +290,8 @@ function ClaimPage() {
                   <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                 </svg>
               </div>
-              {/* CHANGE 10: Better mobile text sizing - FIND the main title */}
-              <h1 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1">Claim Your Funds</h1>
-              <p className="text-gray-600 text-xs sm:text-sm">Secure transfer on Algorand</p>
+              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim [internet Moneys]</h1>
+              <p className="text-gray-600 text-sm">Secure and instant $ transfers on Algorand</p>
             </div>
             
             {renderContentWithoutWallet(assetInfo)}
@@ -322,13 +319,14 @@ function ClaimPage() {
 
 // CHANGE 12: Update ClaimPageWithWallet function signature
 function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemProjects, assetInfo }) {
-  const { activeAddress, signTransactions } = useWallet();
+  const { activeAddress, signTransactions, disconnect } = useWallet();
   const [accountAddress, setAccountAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [claimStatus, setClaimStatus] = useState('initial');
   const [isFunding, setIsFunding] = useState(false);
   const [autoClickTriggered, setAutoClickTriggered] = useState(false);
+  const [showWalletSwitch, setShowWalletSwitch] = useState(false);
   // CHANGE 16: Remove the duplicate assetInfo state from ClaimPageWithWallet
 
   // Auto-trigger wallet button click when component mounts
@@ -521,7 +519,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
         console.log(`${assetInfo?.symbol || 'Asset'} claimed successfully!`);
         setClaimStatus('success');
       } else {
-        setError(claimResponse.data.error || 'Failed to claim');
+        setError(claimResponse.data.error || 'Failed to claim USDC');
         setClaimStatus('ready-to-claim');
       }
       
@@ -541,20 +539,25 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
     if (!address) return '';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
-
-  // CHANGE 2: Add disconnect function in ClaimPageWithWallet component
-  const handleDisconnect = () => {
-    // Clear wallet connection
-    if (window.localStorage) {
-      // Clear use-wallet storage
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes('use-wallet') || key.includes('wallet')) {
-          localStorage.removeItem(key);
+  
+  // Handle wallet disconnection and switch
+  const handleWalletSwitch = async () => {
+    try {
+      await disconnect();
+      setAccountAddress(null);
+      setClaimStatus('initial');
+      setError(null);
+      setShowWalletSwitch(false);
+      // Auto-trigger wallet selection modal again
+      setTimeout(() => {
+        const walletButton = document.querySelector('[data-wallet-ui] button');
+        if (walletButton) {
+          walletButton.click();
         }
-      });
+      }, 100);
+    } catch (error) {
+      console.error('Error switching wallet:', error);
     }
-    // Reload page to reset state
-    window.location.reload();
   };
 
   // Render wallet-connected content
@@ -572,7 +575,6 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           
           {escrowDetails && (
             <div className="mb-6">
-              {/* CHANGE 7e: Another "You've received" message in wallet content */}
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
                 You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
               </h2>
@@ -617,29 +619,17 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                   : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
           </p>
           
-          {/* CHANGE 4: Add disconnect button - FIND the connected wallet card */}
           <div className="mt-4 card card-compact inline-block">
-            <div className="flex items-center justify-between space-x-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-purple-600 text-sm font-medium">Connected</div>
-                  <div className="text-gray-900 font-mono text-xs sm:text-sm">{formatAddress(accountAddress)}</div>
-                </div>
-              </div>
-              <button
-                onClick={handleDisconnect}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-                title="Switch wallet"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+            <div className="flex items-center space-x-3">
+              <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
+                <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                 </svg>
-              </button>
+              </div>
+              <div>
+                <div className="text-purple-600 text-sm font-medium">Connected Wallet</div>
+                <div className="text-gray-900 font-mono text-sm">{formatAddress(accountAddress)}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -657,20 +647,47 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             </div>
           </div>
           
-          {/* CHANGE 5: Reduce repetitive asset references - FIND opt-in section */}
+          {/* CHANGE 7g: Opt-in section title */}
           <h3 className="text-lg font-semibold text-gray-900 mb-3">
-            Asset Opt-in Required
+            {assetInfo?.symbol || 'Asset'} Opt-in Required
           </h3>
+          {/* CHANGE 7h: Opt-in description */}
           <p className="text-gray-600 mb-4 text-sm">
-            Your wallet needs to opt-in to {assetInfo?.symbol || 'this asset'} before you can receive the funds.
+            Your wallet needs to opt-in to the {assetInfo?.name || 'asset'} token before you can receive the funds.
             This is a one-time setup step.
           </p>
           
-          {/* CHANGE 13: Better mobile button for opt-in */}
+          {/* Wallet info and switch button */}
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="text-purple-600 text-xs font-medium">Connected Wallet</div>
+                  <div className="text-gray-900 font-mono text-sm">{formatAddress(accountAddress)}</div>
+                </div>
+              </div>
+              <button
+                onClick={handleWalletSwitch}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1"
+                title="Switch to a different wallet"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                <span>Switch</span>
+              </button>
+            </div>
+          </div>
+          
           <button
             onClick={handleOptIn}
             disabled={isLoading}
-            className="btn-primary px-4 py-2 font-medium w-full sm:w-auto"
+            className="btn-primary px-4 py-2 font-medium"
           >
             {isLoading ? (
               <span className="flex items-center space-x-2">
@@ -678,8 +695,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                 <span>Processing...</span>
               </span>
             ) : (
-              // CHANGE 6: Reduce repetitive asset references - FIND opt-in button
-              `Enable ${assetInfo?.symbol || 'Asset'}`
+              // CHANGE 7i: Opt-in button text
+              `Opt-in to ${assetInfo?.symbol || 'Asset'}`
             )}
           </button>
           
@@ -701,11 +718,38 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             </div>
           </div>
           
-          {/* CHANGE 7: Reduce repetitive asset references - FIND ready to claim section */}
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Ready to Claim!</h2>
+          {/* CHANGE 7j: Ready to claim message */}
           <p className="text-gray-600 mb-6">
-            <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> ready to claim
+            Claim your <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> now
           </p>
+          
+          {/* Wallet info and switch button */}
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="text-purple-600 text-xs font-medium">Connected Wallet</div>
+                  <div className="text-gray-900 font-mono text-sm">{formatAddress(accountAddress)}</div>
+                </div>
+              </div>
+              <button
+                onClick={handleWalletSwitch}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center space-x-1"
+                title="Switch to a different wallet"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                <span>Switch</span>
+              </button>
+            </div>
+          </div>
           
           {escrowDetails?.payRecipientFees && (
             <div className="mb-4 text-xs text-gray-500">
@@ -713,11 +757,10 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             </div>
           )}
           
-          {/* CHANGE 12: Better mobile button spacing - FIND action buttons */}
           <button
             onClick={handleClaim}
             disabled={isLoading}
-            className="btn-primary px-4 sm:px-6 py-3 font-medium w-full sm:w-auto"
+            className="btn-primary px-6 py-3 font-medium"
           >
             {isLoading ? (
               <span className="flex items-center space-x-2">
@@ -729,8 +772,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
-                {/* CHANGE 8: Reduce repetitive asset references - FIND claim button */}
-                <span>Claim Funds</span>
+                {/* CHANGE 7k: Claim button text */}
+                <span>Claim {assetInfo?.symbol || 'Asset'}</span>
               </span>
             )}
           </button>
@@ -757,9 +800,9 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             </div>
             
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">Successfully Claimed! 🎉</h2>
-            {/* CHANGE 11: Reduce repetitive asset references - FIND success message */}
+            {/* CHANGE 7l: Success message */}
             <p className="text-gray-600 mb-2">
-              <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> transferred successfully
+              <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been transferred to your wallet
             </p>
             {escrowDetails?.payRecipientFees && (
               <p className="text-gray-500 text-xs mb-2">
@@ -841,10 +884,8 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
         <div className="absolute bottom-32 left-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-20"></div>
       </div>
       
-      {/* CHANGE 3: Update mobile container width - FIND the main container div */}
-      <div className="w-full max-w-md sm:max-w-lg mx-auto relative z-10 px-2 sm:px-0">
-        {/* CHANGE 9: Better mobile spacing - FIND the main card */}
-        <div className="card card-normal mx-2 sm:mx-0">
+      <div className="w-full max-w-lg mx-auto relative z-10">
+        <div className="card card-normal">
           <div className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3"
                  style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
@@ -852,12 +893,11 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
                 <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
             </div>
-            {/* CHANGE 10: Better mobile text sizing - FIND the main title */}
-            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1">
-              Claim Your Funds
+            <h1 className="text-xl font-semibold text-gray-900 mb-1">
+              Claim {assetInfo?.symbol || 'Asset'}
             </h1>
-            <p className="text-gray-600 text-xs sm:text-sm">
-              Secure transfer on Algorand
+            <p className="text-gray-600 text-sm">
+              Secure and instant {assetInfo?.symbol || 'asset'} transfer on Algorand
             </p>
           </div>
           
