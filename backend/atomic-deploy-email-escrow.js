@@ -86,6 +86,12 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     try {
       console.log("Creating application transaction...");
       
+      const appSuggestedParams = {
+        ...suggestedParams,
+        fee: 1000,
+        flatFee: true
+      };
+      
       const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
         from: senderAddress,
         approvalProgram: approvalProgram,
@@ -96,11 +102,7 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
         numGlobalByteSlices: 2,
         onComplete: algosdk.OnApplicationComplete.NoOpOC,
         foreignAssets: [targetAssetId],
-        suggestedParams: {
-          ...suggestedParams,
-          fee: 1000,
-          flatFee: true
-        }
+        suggestedParams: appSuggestedParams
       });
       
       // Encode the transaction for the frontend using v3 method
