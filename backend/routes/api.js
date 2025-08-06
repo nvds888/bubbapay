@@ -734,10 +734,13 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
 
     let assetBalance = '0.00';
     const assets = accountInfo.assets || [];
+    console.log('📊 Found', assets.length, 'assets in account');
 
     for (const asset of assets) {
+      console.log('🔍 Asset:', asset['asset-id'], 'Amount:', asset.amount); // ADD THIS
       if (asset['asset-id'] === targetAssetId) {
         const microBalance = safeToNumber(asset.amount);
+        console.log('✅ MATCH! Converting', asset.amount, '->', microBalance); // ADD THIS
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
       }
