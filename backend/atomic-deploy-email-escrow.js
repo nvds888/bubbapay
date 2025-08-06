@@ -1,4 +1,4 @@
-// atomic-deploy-email-escrow.js - Updated with Platform Fee Implementation
+// atomic-deploy-email-escrow-v3.js - Updated for algosdk v3 with Platform Fee Implementation
 
 const algosdk = require('algosdk');
 const crypto = require('crypto');
@@ -71,16 +71,6 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     console.log("Fetching suggested parameters...");
     let suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Create clean parameters object 
-    const processedParams = {
-      fee: 1000,
-      firstRound: Number(suggestedParams.firstRound),
-      lastRound: Number(suggestedParams.lastRound),
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      flatFee: true
-    };
-    
     console.log("Processing parameters complete. Generating TEAL programs...");
     
     // Compile the TEAL programs - now using imported functions
@@ -92,37 +82,35 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     
     console.log("TEAL compilation successful");
     
-    // Create application transaction
+    // Create application transaction using v3 maker function
     try {
       console.log("Creating application transaction...");
       
-      const appCreateTxn = new algosdk.Transaction({
+      const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
         from: senderAddress,
-        appIndex: 0,
-        appOnComplete: algosdk.OnApplicationComplete.NoOpOC,
-        appLocalInts: 0,
-        appLocalByteSlices: 0,
-        appGlobalInts: 2,
-        appGlobalByteSlices: 2,
-        appApprovalProgram: approvalProgram,
-        appClearProgram: clearProgram,
-        appForeignAssets: [targetAssetId],
-        type: 'appl',
-        fee: processedParams.fee,
-        flatFee: true,
-        firstRound: processedParams.firstRound,
-        lastRound: processedParams.lastRound,
-        genesisID: processedParams.genesisID,
-        genesisHash: processedParams.genesisHash
+        approvalProgram: approvalProgram,
+        clearProgram: clearProgram,
+        numLocalInts: 0,
+        numLocalByteSlices: 0,
+        numGlobalInts: 2,
+        numGlobalByteSlices: 2,
+        onComplete: algosdk.OnApplicationComplete.NoOpOC,
+        foreignAssets: [targetAssetId],
+        suggestedParams: {
+          ...suggestedParams,
+          fee: 1000,
+          flatFee: true
+        }
       });
       
-      // Encode the transaction for the frontend
+      // Encode the transaction for the frontend using v3 method
       console.log("Transaction created successfully, encoding...");
-      const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(appCreateTxn)).toString('base64');
+      const encodedTxn = algosdk.encodeMsgpack(appCreateTxn);
+      const encodedTxnB64 = Buffer.from(encodedTxn).toString('base64');
       
       console.log("Transaction encoded successfully");
       return {
-        transaction: encodedTxn,
+        transaction: encodedTxnB64,
         tempAccount: {
           address: tempAddress,
           privateKey: tempPrivateKey
@@ -178,82 +166,87 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     
     console.log(`Group transaction total fee budget: ${totalFeeNeeded / 1e6} ALGO`);
     
-    // Create base parameters
-    const baseParams = {
-      firstRound: Number(suggestedParams.firstRound),
-      lastRound: Number(suggestedParams.lastRound),
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      flatFee: true
-    };
-    
-    // 1. Fund the app with ALGO (back to 0.3 ALGO since no platform fee)
-    const fundingTxn = new algosdk.Transaction({
+    // 1. Fund the app with ALGO (back to 0.21 ALGO since no platform fee)
+    const fundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       from: senderAddress,
       to: appAddress,
-      amount: 210000, 
-      fee: EXACT_FEES.FUNDING,
-      ...baseParams,
-      type: 'pay'
+      amount: 210000,
+      suggestedParams: {
+        ...suggestedParams,
+        fee: EXACT_FEES.FUNDING,
+        flatFee: true
+      }
     });
     
     // 2. Fund the temporary account with minimal ALGO for claim transaction
-    const tempFundingTxn = new algosdk.Transaction({
+    const tempFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       from: senderAddress,
       to: tempAccount.address,
-      amount: 102000, 
-      fee: EXACT_FEES.TEMP_FUNDING,
-      ...baseParams,
-      type: 'pay'
+      amount: 102000,
+      suggestedParams: {
+        ...suggestedParams,
+        fee: EXACT_FEES.TEMP_FUNDING,
+        flatFee: true
+      }
     });
     
     // 3. Send cover fee to temporary account (if enabled)
     let recipientFundingTxn = null;
     if (payRecipientFees) {
-      recipientFundingTxn = new algosdk.Transaction({
+      recipientFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         from: senderAddress,
         to: tempAccount.address,
-        amount: 210000, 
-        fee: EXACT_FEES.RECIPIENT_FUNDING,
-        ...baseParams,
-        type: 'pay',
-        note: new Uint8Array(Buffer.from('Recipient fee funding to temp account'))
+        amount: 210000,
+        note: new Uint8Array(Buffer.from('Recipient fee funding to temp account')),
+        suggestedParams: {
+          ...suggestedParams,
+          fee: EXACT_FEES.RECIPIENT_FUNDING,
+          flatFee: true
+        }
       });
     }
     
     // 4. Opt the app into asset
-    const optInTxn = new algosdk.Transaction({
+    const optInTxn = algosdk.makeApplicationCallTxnFromObject({
       from: senderAddress,
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("opt_in_asset"))],
-      appForeignAssets: [targetAssetId],
-      fee: EXACT_FEES.OPT_IN,
-      ...baseParams,
-      type: 'appl'
+      foreignAssets: [targetAssetId],
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
+      suggestedParams: {
+        ...suggestedParams,
+        fee: EXACT_FEES.OPT_IN,
+        flatFee: true
+      }
     });
     
     // 5. Set the amount
-    const setAmountTxn = new algosdk.Transaction({
+    const setAmountTxn = algosdk.makeApplicationCallTxnFromObject({
       from: senderAddress,
       appIndex: appIdInt,
       appArgs: [
         new Uint8Array(Buffer.from("set_amount")),
         algosdk.encodeUint64(microAmount)
       ],
-      fee: EXACT_FEES.SET_AMOUNT,
-      ...baseParams,
-      type: 'appl'
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
+      suggestedParams: {
+        ...suggestedParams,
+        fee: EXACT_FEES.SET_AMOUNT,
+        flatFee: true
+      }
     });
     
     // 6. Send asset to the app
-    const sendAssetTxn = new algosdk.Transaction({
+    const sendAssetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       from: senderAddress,
       to: appAddress,
       assetIndex: targetAssetId,
       amount: microAmount,
-      fee: EXACT_FEES.SEND_ASSET,
-      ...baseParams,
-      type: 'axfer'
+      suggestedParams: {
+        ...suggestedParams,
+        fee: EXACT_FEES.SEND_ASSET,
+        flatFee: true
+      }
     });
     
     // Group transactions (no platform fee)
@@ -268,10 +261,11 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     const actualTotalFee = txnGroup.reduce((sum, txn) => sum + txn.fee, 0);
     console.log(`Actual group fee total: ${actualTotalFee / 1e6} ALGO`);
     
-    // Convert to base64 for transmission
-    const encodedTxns = txnGroup.map(txn => 
-      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
-    );
+    // Convert to base64 for transmission using v3 encoding
+    const encodedTxns = txnGroup.map(txn => {
+      const encoded = algosdk.encodeMsgpack(txn);
+      return Buffer.from(encoded).toString('base64');
+    });
     
     return {
       appAddress,
@@ -329,37 +323,33 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
     // Get suggested parameters
     let suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Create base parameters for both transactions
-    const baseParams = {
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      flatFee: true
-    };
-    
     // Transaction 1: App call to claim funds
-    const claimTxn = new algosdk.Transaction({
+    const claimTxn = algosdk.makeApplicationCallTxnFromObject({
       from: tempAccountObj.addr,
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("claim"))],
-      appAccounts: [recipientAddress], // Where to send asset
-      appForeignAssets: [targetAssetId],
-      fee: calculateTransactionFee(true, 1), // 2000 microALGO
-      type: 'appl',
-      ...baseParams
+      accounts: [recipientAddress], // Where to send asset
+      foreignAssets: [targetAssetId],
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
+      suggestedParams: {
+        ...suggestedParams,
+        fee: calculateTransactionFee(true, 1), // 2000 microALGO
+        flatFee: true
+      }
     });
 
     // Transaction 2: Close temp account and send remaining ALGO to platform
-    const closeAccountTxn = new algosdk.Transaction({
+    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       from: tempAccountObj.addr,
       to: PLATFORM_ADDRESS,
       amount: 0, // Implicit 0, all remaining goes to closeRemainderTo
       closeRemainderTo: PLATFORM_ADDRESS, // KEY: This closes the account
-      fee: 1000, // Standard fee for payment transaction
-      type: 'pay',
       note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
-      ...baseParams
+      suggestedParams: {
+        ...suggestedParams,
+        fee: 1000, // Standard fee for payment transaction
+        flatFee: true
+      }
     });
 
     // Group the transactions together
@@ -418,24 +408,25 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const appIdInt = parseInt(appId);
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Calculate exact fee (1 inner transaction for USDC transfer)
+    // Calculate exact fee (1 inner transaction for asset transfer)
     const exactFee = calculateTransactionFee(true, 1); // 2000 microALGO
     
-    const reclaimTxn = new algosdk.Transaction({
+    const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       from: senderAddress,
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("reclaim"))],
-      appForeignAssets: [targetAssetId],
-      fee: exactFee,
-      flatFee: true, // CRITICAL: Prevents network fee estimation
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      type: 'appl'
+      foreignAssets: [targetAssetId],
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
+      suggestedParams: {
+        ...suggestedParams,
+        fee: exactFee,
+        flatFee: true // CRITICAL: Prevents network fee estimation
+      }
     });
     
-    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64');
+    // Encode using v3 method
+    const encoded = algosdk.encodeMsgpack(reclaimTxn);
+    const encodedTxn = Buffer.from(encoded).toString('base64');
     
     console.log(`Reclaim transaction created with exact fee: ${exactFee / 1e6} ALGO`);
     return { transaction: encodedTxn };
@@ -444,7 +435,6 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     throw new Error(`Failed to create reclaim transaction: ${error.message}`);
   }
 }
-
 
 // Export functions for use by API
 module.exports = {
