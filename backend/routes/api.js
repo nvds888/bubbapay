@@ -37,7 +37,11 @@ function safeToNumber(value) {
   if (typeof value === 'bigint') {
     return Number(value);
   }
-  return typeof value === 'number' ? value : 0;
+  if (typeof value === 'number') {
+    return value;
+  }
+  // Don't default to 0 for undefined/null - that's the bug!
+  return value; // Return the original value
 }
 
 // Helper function to hash private keys securely
