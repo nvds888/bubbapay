@@ -283,7 +283,7 @@ function TransactionsPage() {
           </div>
           <div>
             <h2 className="text-xl font-semibold text-gray-900">My Transactions</h2>
-            <p className="text-gray-600 text-sm">View and manage your $$transfers</p>
+            <p className="text-gray-600 text-sm">View and manage your transfers</p>
           </div>
         </div>
         

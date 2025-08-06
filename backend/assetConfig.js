@@ -8,7 +8,7 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       symbol: 'USDC',
       isDefault: true,
-      description: 'USDC is a USD pegged stablecoin' 
+      description: 'USDC is a stablecoin by Circle' 
     },
     760037151: {
       id: 760037151,
@@ -27,7 +27,7 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       symbol: 'MONKO',
       isDefault: false,
-      description: 'Be Monko'
+      description: 'Be Monko meme token'
     },
     // NEW: Add Alpha
     2726252423: {
@@ -37,7 +37,7 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       symbol: 'ALPHA',
       isDefault: false,
-      description: 'Alpha Arcade Token'
+      description: 'Alpha Arcade prediction market token'
     }
     // Add more assets here as needed
   };

@@ -401,11 +401,12 @@ function AmountStep({
             Cancel
           </button>
           <button
-            type="submit"
-            className="btn-primary flex-1 py-3 px-4 font-medium"
-          >
-            Continue
-          </button>
+  type="submit"
+  disabled={!status || status.type !== 'success'}
+  className="btn-primary flex-1 py-3 px-4 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  Continue
+</button>
         </div>
       </form>
 
