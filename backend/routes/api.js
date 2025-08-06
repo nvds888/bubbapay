@@ -736,12 +736,25 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
     const assets = accountInfo.assets || [];
 
     for (const asset of assets) {
+      console.log('🔍 Checking asset:', asset.assetId, 'vs target:', targetAssetId);
       if (asset.assetId === targetAssetId) {
-        const microBalance = safeToNumber(asset.amount);
-        assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
+        console.log('🎉 FOUND MATCH!');
+        console.log('  - Asset ID:', asset.assetId);
+        console.log('  - Raw amount:', asset.amount);
+        console.log('  - Amount type:', typeof asset.amount);
+        
+        let microBalance = safeToNumber(asset.amount);
+        console.log('  - Converted amount:', microBalance);
+        
+        let finalBalance = fromMicroUnits(microBalance, targetAssetId);
+        console.log('  - After fromMicroUnits:', finalBalance);
+        
+        assetBalance = finalBalance.toFixed(assetInfo?.decimals || 2);
+        console.log('  - Final formatted balance:', assetBalance);
         break;
       }
     }
+    console.log('📤 Final result - balance:', assetBalance);
     
     // Return the balance
     res.status(200).json({
