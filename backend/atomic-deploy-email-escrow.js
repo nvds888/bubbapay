@@ -86,12 +86,20 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     try {
       console.log("Creating application transaction...");
       
-      const appSuggestedParams = {
-        ...suggestedParams,
-        fee: 1000,
-        flatFee: true
-      };
-      
+      console.log("Creating app with the following values:");
+
+console.log("senderAddress:", senderAddress, typeof senderAddress);
+console.log("approvalProgram:", approvalProgram, approvalProgram?.length);
+console.log("clearProgram:", clearProgram, clearProgram?.length);
+console.log("targetAssetId:", targetAssetId);
+console.log("suggestedParams:", suggestedParams);
+
+console.log("suggestedParams.genesisHash:", suggestedParams?.genesisHash);
+console.log("suggestedParams.genesisID:", suggestedParams?.genesisID);
+console.log("suggestedParams.firstRound:", suggestedParams?.firstRound);
+console.log("suggestedParams.lastRound:", suggestedParams?.lastRound);
+
+
       const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
         from: senderAddress,
         approvalProgram: approvalProgram,
@@ -102,8 +110,15 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
         numGlobalByteSlices: 2,
         onComplete: algosdk.OnApplicationComplete.NoOpOC,
         foreignAssets: [targetAssetId],
-        suggestedParams: appSuggestedParams
+        suggestedParams: {
+          ...suggestedParams,
+          fee: 1000,
+          flatFee: true
+        }
       });
+
+      console.log("OnApplicationComplete constants:", algosdk.OnApplicationComplete);
+
       
       // Encode the transaction for the frontend using v3 method
       console.log("Transaction created successfully, encoding...");
