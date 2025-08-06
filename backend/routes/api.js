@@ -679,7 +679,11 @@ router.post('/fund-wallet', async (req, res) => {
       suggestedParams: {
         ...suggestedParams,
         fee: fundingTransactionFee,
-        flatFee: true
+        flatFee: true,
+        firstRound: suggestedParams.firstValid,
+  lastRound: suggestedParams.lastValid,
+  genesisHash: suggestedParams.genesisHash,
+  genesisID: suggestedParams.genesisID
       }
     });
     
@@ -1135,7 +1139,11 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
       suggestedParams: {
         ...suggestedParams,
         fee: 3000,
-        flatFee: true
+        flatFee: true,
+        firstRound: suggestedParams.firstValid,
+  lastRound: suggestedParams.lastValid,
+  genesisHash: suggestedParams.genesisHash,
+  genesisID: suggestedParams.genesisID
       }
     });
     
