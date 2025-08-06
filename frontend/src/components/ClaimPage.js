@@ -742,43 +742,48 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           </div>
           
           <div className="space-y-4">
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">What's Next?</h3>
-              {/* CHANGE 18: Update ecosystem projects description to be more generic */}
-              <p className="text-gray-600 text-sm">Put your {assetInfo?.symbol || 'crypto'} to work in the Algorand ecosystem</p>
-            </div>
+          <div className="text-center">
+  <h3 className="text-lg font-medium text-gray-900 mb-2">What's Next?</h3>
+  <p className="text-gray-600 text-sm hidden sm:block">Put your {assetInfo?.symbol || 'crypto'} to work in the Algorand ecosystem</p>
+</div>
             
-            <div className="grid grid-cols-1 gap-3">
-              {ecosystemProjects.map((project, index) => (
-                <div
-                  key={project.name}
-                  className="card card-compact hover:shadow-md transition-all duration-200 group"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${project.gradient} flex items-center justify-center text-lg group-hover:scale-110 transition-transform duration-200`}>
-                      {project.icon}
-                    </div>
-                    
-                    <div className="flex-1">
-                      <h4 className="text-gray-900 font-medium">{project.name}</h4>
-                      <p className="text-gray-600 text-sm">{project.description}</p>
-                    </div>
-                    
-                    <button
-                      onClick={() => window.open(project.url, '_blank')}
-                      className="btn-secondary px-3 py-1.5 text-sm font-medium hover:scale-105 transition-transform duration-200"
-                    >
-                      <span className="flex items-center space-x-1">
-                        <span>Visit</span>
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+<div className="grid grid-cols-1 gap-2 sm:gap-3">
+  {ecosystemProjects.map((project, index) => (
+    <div
+      key={project.name}
+      className="card card-compact hover:shadow-md transition-all duration-200 group"
+    >
+      <div className="flex items-center space-x-3">
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br ${project.gradient} flex items-center justify-center text-base sm:text-lg group-hover:scale-110 transition-transform duration-200`}>
+          {project.icon}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <h4 className="text-gray-900 font-medium text-sm sm:text-base">{project.name}</h4>
+          <p className="text-gray-600 text-xs sm:hidden">
+            {project.name.includes('Alpha') ? 'Prediction market' : 
+             project.name.includes('Vestige') ? 'Token trading' : 
+             'Real estate investing'}
+          </p>
+          <p className="text-gray-600 text-sm hidden sm:block">{project.description}</p>
+        </div>
+        
+        <button
+          onClick={() => window.open(project.url, '_blank')}
+          className="btn-secondary px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm font-medium hover:scale-105 transition-transform duration-200 shrink-0"
+        >
+          <span className="flex items-center space-x-1">
+            <span className="hidden sm:inline">Visit</span>
+            <span className="sm:hidden">Go</span>
+            <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  ))}
+</div>
             
             <div className="text-center pt-3">
               <button
