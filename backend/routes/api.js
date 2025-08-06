@@ -380,7 +380,7 @@ router.get('/check-optin/:address/:assetId', async (req, res) => {
   try {
     const accountInfo = await algodClient.accountInformation(req.params.address).do();
     const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
-    const hasOptedIn = accountInfo.assets?.some(asset => asset.assetId === targetAssetId) || false;
+    const hasOptedIn = accountInfo.assets?.some(asset => Number(asset.assetId) === targetAssetId) || false;
     res.status(200).json({ hasOptedIn, assetId: targetAssetId });
   } catch (error) {
     console.error('Error checking opt-in status:', error);
@@ -393,7 +393,7 @@ router.get('/check-optin/:address', async (req, res) => {
   try {
     const accountInfo = await algodClient.accountInformation(req.params.address).do();
     const targetAssetId = getDefaultAssetId();
-    const hasOptedIn = accountInfo.assets?.some(asset => asset.assetId === targetAssetId) || false;
+    const hasOptedIn = accountInfo.assets?.some(asset => Number(asset.assetId) === targetAssetId) || false;
     res.status(200).json({ hasOptedIn, assetId: targetAssetId });
   } catch (error) {
     console.error('Error checking opt-in status:', error);
@@ -736,25 +736,12 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
     const assets = accountInfo.assets || [];
 
     for (const asset of assets) {
-      console.log('🔍 Checking asset:', asset.assetId, 'vs target:', targetAssetId);
-      if (asset.assetId === targetAssetId) {
-        console.log('🎉 FOUND MATCH!');
-        console.log('  - Asset ID:', asset.assetId);
-        console.log('  - Raw amount:', asset.amount);
-        console.log('  - Amount type:', typeof asset.amount);
-        
-        let microBalance = safeToNumber(asset.amount);
-        console.log('  - Converted amount:', microBalance);
-        
-        let finalBalance = fromMicroUnits(microBalance, targetAssetId);
-        console.log('  - After fromMicroUnits:', finalBalance);
-        
-        assetBalance = finalBalance.toFixed(assetInfo?.decimals || 2);
-        console.log('  - Final formatted balance:', assetBalance);
+      if (Number(asset.assetId) === targetAssetId) {
+        const microBalance = safeToNumber(asset.amount);
+        assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
       }
     }
-    console.log('📤 Final result - balance:', assetBalance);
     
     // Return the balance
     res.status(200).json({
@@ -793,7 +780,7 @@ router.get('/asset-balance/:address', async (req, res) => {
     const assets = accountInfo.assets || [];
 
     for (const asset of assets) {
-      if (asset.assetId === targetAssetId) {
+      if (Number(asset.assetId) === targetAssetId) {
         const microBalance = safeToNumber(asset.amount);
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
