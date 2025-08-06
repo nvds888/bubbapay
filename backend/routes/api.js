@@ -32,6 +32,14 @@ require('express').Router.prototype.route = function(path) {
   return originalRoute.call(this, path);
 };
 
+// Add this helper function after your imports in api.js
+function safeToNumber(value) {
+  if (typeof value === 'bigint') {
+    return Number(value);
+  }
+  return typeof value === 'number' ? value : 0;
+}
+
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
   // Create a hash using the private key and app ID for uniqueness
@@ -631,7 +639,7 @@ router.post('/fund-wallet', async (req, res) => {
     
     // Check temp account balance first
     const tempAccountInfo = await algodClient.accountInformation(tempAccountObj.addr).do();
-    const tempBalance = tempAccountInfo.amount;
+    const tempBalance = safeToNumber(tempAccountInfo.amount);
     
     console.log(`Temp account balance: ${tempBalance / 1e6} ALGO`);
     
@@ -725,7 +733,7 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
 
     for (const asset of assets) {
       if (asset['asset-id'] === targetAssetId) {
-        const microBalance = asset.amount;
+        const microBalance = safeToNumber(asset.amount);
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
       }
@@ -769,7 +777,7 @@ router.get('/asset-balance/:address', async (req, res) => {
 
     for (const asset of assets) {
       if (asset['asset-id'] === targetAssetId) {
-        const microBalance = asset.amount;
+        const microBalance = safeToNumber(asset.amount);
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
       }
