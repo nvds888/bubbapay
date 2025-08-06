@@ -17,7 +17,8 @@ function ConfirmStep({
   selectedAssetInfo // Remove the hardcoded default
 }) {
   const [stage, setStage] = useState('initial'); // initial, app-created, funded
-  const [showTransactionDetails, setShowTransactionDetails] = useState(false);
+const [subStage, setSubStage] = useState('idle'); // idle, signing-1, submitting-1, signing-2, submitting-2, completed
+const [showTransactionDetails, setShowTransactionDetails] = useState(false);
   
   // Get wallet functionality from use-wallet
   const { activeAddress } = useWallet();
@@ -148,18 +149,6 @@ function ConfirmStep({
         )}
       </div>
       
-      {/* Status indicator */}
-      {stage === 'app-created' && (
-        <div className="card card-compact status-info mb-4">
-          <div className="flex items-center space-x-2">
-            <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <span className="text-sm">Smart contract created. Complete the final step to fund the transfer.</span>
-          </div>
-        </div>
-      )}
-      
       {/* Wallet Connection Section for MCP users */}
       {!isWalletConnected && mcpSessionData && (
         <div className="card card-normal mb-4">
@@ -181,77 +170,90 @@ function ConfirmStep({
         </div>
       )}
       
-      {/* Transaction steps - compact */}
-      {isWalletConnected && (
-        <div className="card card-normal mb-4">
-          <h3 className="font-medium text-gray-900 mb-3">Transaction Steps</h3>
-          <p className="text-gray-600 text-sm mb-4">
-            Sign two transactions with your wallet:
-          </p>
-          
-          <div className="space-y-3">
-            {/* Step 1 */}
-            <div className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-              stage === 'initial' 
-                ? 'bg-purple-50 border border-purple-200' 
-                : stage !== 'initial' 
-                ? 'bg-green-50 border border-green-200' 
-                : 'bg-gray-50 border border-gray-200'
-            }`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                stage === 'initial'
-                  ? 'bg-purple-100 text-purple-700'
-                  : stage !== 'initial'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}>
-                {stage !== 'initial' ? (
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1  1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  '1'
-                )}
-              </div>
-              <div className="flex-1">
-                <div className={`text-sm font-medium ${
-                  stage === 'initial' ? 'text-purple-900' : stage !== 'initial' ? 'text-green-900' : 'text-gray-700'
-                }`}>
-                  Create Application
-                </div>
-                <div className="text-xs text-gray-600">
-                  {stage === 'initial' ? 'Ready to sign' : stage !== 'initial' ? 'Completed' : 'Pending'}
-                </div>
-              </div>
-            </div>
-            
-            {/* Step 2 */}
-            <div className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
-              stage === 'app-created' 
-                ? 'bg-purple-50 border border-purple-200' 
-                : 'bg-gray-50 border border-gray-200'
-            }`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                stage === 'app-created'
-                  ? 'bg-purple-100 text-purple-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}>
-                2
-              </div>
-              <div className="flex-1">
-                <div className={`text-sm font-medium ${
-                  stage === 'app-created' ? 'text-purple-900' : 'text-gray-600'
-                }`}>
-                  Fund & Setup Transfer
-                </div>
-                <div className="text-xs text-gray-600">
-                  {stage === 'app-created' ? 'Ready to sign' : 'Pending'}
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Transaction steps - horizontal flow */}
+{isWalletConnected && (
+  <div className="card card-normal mb-4">
+    <h3 className="font-medium text-gray-900 mb-4">Transaction Progress</h3>
+    
+    {/* Horizontal Step Flow */}
+    <div className="flex items-center justify-between mb-4">
+      {/* Step 1 */}
+      <div className="flex-1 flex flex-col items-center">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
+          stage === 'initial' && subStage === 'signing-1'
+            ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-200 animate-pulse'
+            : stage === 'initial' && subStage === 'submitting-1'
+            ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-200'
+            : stage !== 'initial'
+            ? 'bg-green-100 text-green-700'
+            : 'bg-purple-100 text-purple-700'
+        }`}>
+          {stage !== 'initial' ? (
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          ) : subStage === 'submitting-1' ? (
+            <div className="w-4 h-4 spinner"></div>
+          ) : (
+            '1'
+          )}
         </div>
-      )}
+        <div className="text-xs font-medium text-gray-900 mt-2 text-center">
+          Create App
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {stage === 'initial' && subStage === 'signing-1' ? 'Sign transaction' :
+           stage === 'initial' && subStage === 'submitting-1' ? 'Processing...' :
+           stage !== 'initial' ? 'Complete' : 'Ready'}
+        </div>
+      </div>
+
+      {/* Progress Connector */}
+      <div className="flex-1 px-4">
+        <div className="relative">
+          <div className="h-0.5 bg-gray-200 rounded-full"></div>
+          <div className={`absolute top-0 left-0 h-0.5 rounded-full transition-all duration-500 ${
+            stage !== 'initial' ? 'w-full bg-green-400' : 'w-0 bg-purple-400'
+          }`}></div>
+        </div>
+      </div>
+
+      {/* Step 2 */}
+      <div className="flex-1 flex flex-col items-center">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
+          stage === 'app-created' && subStage === 'signing-2'
+            ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-200 animate-pulse'
+            : stage === 'app-created' && subStage === 'submitting-2'
+            ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-200'
+            : subStage === 'completed'
+            ? 'bg-green-100 text-green-700'
+            : stage === 'app-created'
+            ? 'bg-purple-100 text-purple-700'
+            : 'bg-gray-100 text-gray-600'
+        }`}>
+          {subStage === 'completed' ? (
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          ) : stage === 'app-created' && subStage === 'submitting-2' ? (
+            <div className="w-4 h-4 spinner"></div>
+          ) : (
+            '2'
+          )}
+        </div>
+        <div className="text-xs font-medium text-gray-900 mt-2 text-center">
+          Fund Transfer
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          {stage === 'app-created' && subStage === 'signing-2' ? 'Sign transaction' :
+           stage === 'app-created' && subStage === 'submitting-2' ? 'Processing...' :
+           subStage === 'completed' ? 'Complete' :
+           stage === 'app-created' ? 'Ready' : 'Pending'}
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       
       {/* Error display */}
       {error && (
@@ -288,56 +290,78 @@ function ConfirmStep({
           )}
           
           {stage === 'initial' && (
-            <button
-              type="button"
-              onClick={handleSignFirstTransaction}
-              disabled={isLoading}
-              className={`btn-primary py-3 px-4 font-medium disabled:opacity-70 ${
-                !canGoBack ? 'w-full' : 'flex-1'
-              }`}
-            >
-              <span className="flex items-center justify-center space-x-2">
-                {isLoading ? (
-                  <>
-                    <div className="w-4 h-4 spinner"></div>
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                    <span>Sign First Transaction</span>
-                  </>
-                )}
-              </span>
-            </button>
-          )}
-          
-          {stage === 'app-created' && (
-            <button
-              type="button"
-              onClick={handleSignGroupTransactions}
-              disabled={isLoading}
-              className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
-            >
-              <span className="flex items-center justify-center space-x-2">
-                {isLoading ? (
-                  <>
-                    <div className="w-4 h-4 spinner"></div>
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                    <span>Sign Final Transaction</span>
-                  </>
-                )}
-              </span>
-            </button>
-          )}
+  <button
+    type="button"
+    onClick={async () => {
+      setSubStage('signing-1');
+      try {
+        await handleSignFirstTransaction();
+        // Show submitting state briefly before completion
+        setSubStage('submitting-1');
+        setTimeout(() => setSubStage('idle'), 500);
+      } catch (error) {
+        setSubStage('idle');
+        throw error;
+      }
+    }}
+    disabled={isLoading}
+    className={`btn-primary py-3 px-4 font-medium disabled:opacity-70 ${
+      !canGoBack ? 'w-full' : 'flex-1'
+    }`}
+  >
+    <span className="flex items-center justify-center space-x-2">
+      {isLoading ? (
+        <>
+          <div className="w-4 h-4 spinner"></div>
+          <span>Processing...</span>
+        </>
+      ) : (
+        <>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+          <span>Sign First Transaction</span>
+        </>
+      )}
+    </span>
+  </button>
+)}
+
+{stage === 'app-created' && (
+  <button
+    type="button"
+    onClick={async () => {
+      setSubStage('signing-2');
+      try {
+        await handleSignGroupTransactions();
+        // Show submitting state briefly before completion
+        setSubStage('submitting-2');
+        setTimeout(() => setSubStage('completed'), 500);
+      } catch (error) {
+        setSubStage('idle');
+        throw error;
+      }
+    }}
+    disabled={isLoading}
+    className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
+  >
+    <span className="flex items-center justify-center space-x-2">
+      {isLoading ? (
+        <>
+          <div className="w-4 h-4 spinner"></div>
+          <span>Processing...</span>
+        </>
+      ) : (
+        <>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+          <span>Sign Final Transaction</span>
+        </>
+      )}
+    </span>
+  </button>
+)}
         </div>
       )}
     </div>
