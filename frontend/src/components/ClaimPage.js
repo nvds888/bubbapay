@@ -282,7 +282,7 @@ function ClaimPage() {
         </div>
         
         <div className="w-full max-w-lg mx-auto relative z-10">
-          <div className="card card-normal">
+  <div className="card card-normal min-w-[28rem] w-full">
             <div className="text-center mb-6">
               <img
                 src="/bubbapay.jpg"
@@ -293,11 +293,13 @@ function ClaimPage() {
               <p className="text-gray-600 text-sm">Secure and instant on Algorand</p>
             </div>
             
-            {renderContentWithoutWallet(assetInfo)}
-          </div>
+            <div className="min-h-[200px] flex items-center justify-center">
+          {renderContentWithoutWallet(assetInfo)}
         </div>
       </div>
-    );
+    </div>
+  </div>
+);
   }
   
   // If wallet is enabled, render with wallet functionality
@@ -810,7 +812,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
       </div>
       
       <div className="w-full max-w-lg mx-auto relative z-10">
-        <div className="card card-normal">
+  <div className="card card-normal min-w-[28rem] w-full">
           <div className="text-center mb-6">
             <img
               src="/bubbapay.jpg"
@@ -825,7 +827,9 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
             </p>
           </div>
           
-          {renderWalletContent()}
+          <div className="min-h-[200px] flex items-center justify-center">
+            {renderWalletContent()}
+          </div>
         </div>
       </div>
     </div>

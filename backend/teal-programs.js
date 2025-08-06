@@ -1,10 +1,19 @@
-// teal-programs.js - TEAL Program Generation
+// teal-programs
 
-// CHANGE 1: Add this import at the top
+// pragma version 8
+// AlgoSend Escrow Smart Contract 
+//
+// SECURITY FEATURES:
+// - Immutable authorized claimer
+// - Single-use claim mechanism  
+// - Creator-only reclaim before claim
+// - Safe asset opt-out on deletion
+// - No reentrancy vulnerabilities
+
 const { getDefaultAssetId } = require('./assetConfig');
 
-// USDC Asset ID
-const USDC_ASSET_ID = 31566704; // Mainnet USDC asset ID
+const USDC_ASSET_ID = 31566704; // Mainnet
+
 
 function createApprovalProgram(senderAddress, authorizedClaimerAddress, assetId = null) {
   const targetAssetId = assetId || getDefaultAssetId();
@@ -413,5 +422,5 @@ return`;
 module.exports = {
   createApprovalProgram,
   createClearProgram,
-  USDC_ASSET_ID: getDefaultAssetId() // For backwards compatibility
+  USDC_ASSET_ID: getDefaultAssetId() 
 };
