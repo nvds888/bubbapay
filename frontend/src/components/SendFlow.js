@@ -358,23 +358,26 @@ function SendFlow() {
   };
   
   // NEW: Handle asset selection
-  const handleAssetSelect = (assetId, assetInfo) => {
+  const handleAssetSelect = (assetId, assetInfo, forceRefresh = false) => {
+    const isAssetChanging = assetId !== selectedAssetId;
+    
     setSelectedAssetId(assetId);
     setSelectedAssetInfo(assetInfo);
-
-    // Reset balance when asset changes
-    setUsdcBalance(null);
-    setBalanceError(null);
+  
+    if (isAssetChanging || forceRefresh) {
+      setUsdcBalance(null);
+      setBalanceError(null);
+      setAlgoAvailability(null);
+      setAlgoError(null);
+    }
     
-    // CRITICAL FIX: Reset amount to prevent accidental transactions
-    setFormData(prev => ({
-      ...prev,
-      amount: '' // Clear the amount field when switching assets
-    }));
-    
-    // Also reset ALGO availability since amount changed
-    setAlgoAvailability(null);
-    setAlgoError(null);
+    // CRITICAL FIX: Reset amount to prevent accidental transactions (only when asset actually changes)
+    if (isAssetChanging) {
+      setFormData(prev => ({
+        ...prev,
+        amount: '' // Clear the amount field when switching assets
+      }));
+    }
   };
 
   // Render current step
