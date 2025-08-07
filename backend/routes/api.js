@@ -133,7 +133,7 @@ router.post('/submit-app-creation', async (req, res) => {
       // DEBUG: Log the full response
       console.log('Submit response:', JSON.stringify(submitResponse, null, 2));
       
-      txId = submitResponse.txId;
+      txId = submitResponse.txid;
       console.log('Extracted txId:', txId);
       console.log('txId type:', typeof txId);
       console.log('txId length:', txId?.length);
@@ -219,7 +219,7 @@ router.post('/submit-group-transactions', async (req, res) => {
       const submitResponse = await algodClient.sendRawTransaction(
         signedTxns.map(txn => Buffer.from(txn, 'base64'))
       ).do();
-      txId = submitResponse.txId;
+      txId = submitResponse.txid;
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txId, 5);
@@ -453,12 +453,12 @@ router.post('/submit-optin', async (req, res) => {
     }
     
     // Submit the signed transaction
-    const { txId } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+    const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
     
     // Wait for confirmation
-    await algosdk.waitForConfirmation(algodClient, txId, 5);
+    await algosdk.waitForConfirmation(algodClient, txid, 5);
     
-    res.status(200).json({ success: true, txId });
+    res.status(200).json({ success: true, txid });
   } catch (error) {
     console.error('Error submitting opt-in transaction:', error);
     res.status(500).json({ error: 'Failed to submit opt-in transaction', details: error.message });
@@ -540,12 +540,12 @@ router.post('/claim-usdc', async (req, res) => {
     
     // Submit the signed transaction group
     try {
-      const { txId } = await algodClient.sendRawTransaction(
+      const { txid } = await algodClient.sendRawTransaction(
         signedTransactions.map(txn => Buffer.from(txn, 'base64'))
       ).do();
       
       // Wait for confirmation
-      await algosdk.waitForConfirmation(algodClient, txId, 5);
+      await algosdk.waitForConfirmation(algodClient, txid, 5);
       
       // Update the escrow record
       await escrowCollection.updateOne(
@@ -697,10 +697,10 @@ router.post('/fund-wallet', async (req, res) => {
     const signedTxn = algosdk.signTransaction(fundingTxn, tempAccountObj.sk);
     
     // Submit the transaction
-    const { txId } = await algodClient.sendRawTransaction(signedTxn.blob).do();
+    const { txid } = await algodClient.sendRawTransaction(signedTxn.blob).do();
     
     // Wait for confirmation
-    await algosdk.waitForConfirmation(algodClient, txId, 5);
+    await algosdk.waitForConfirmation(algodClient, txid, 5);
     
     // Mark escrow as funded
     await escrowCollection.updateOne(
@@ -946,10 +946,10 @@ router.post('/submit-reclaim', async (req, res) => {
     
     // Submit the signed transaction
     try {
-      const { txId } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
       
       // Wait for confirmation
-      await algosdk.waitForConfirmation(algodClient, txId, 5);
+      await algosdk.waitForConfirmation(algodClient, txid, 5);
       
       // Update the escrow record
       await escrowCollection.updateOne(
@@ -1187,7 +1187,7 @@ router.post('/submit-cleanup', async (req, res) => {
       const submitResponse = await algodClient.sendRawTransaction(
         signedTxns.map(txn => Buffer.from(txn, 'base64'))
       ).do();
-      txId = submitResponse.txId;
+      txId = submitResponse.txid;
       
       // Wait for confirmation (same pattern as other endpoints)
       await algosdk.waitForConfirmation(algodClient, txId, 5);
