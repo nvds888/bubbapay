@@ -62,7 +62,7 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     // Convert to microUnits
     const microAmount = toMicroUnits(amount, targetAssetId);
     
-   // Get suggested parameters
+// Get suggested parameters
 console.log("Fetching suggested parameters...");
 let suggestedParams;
 try {
@@ -86,13 +86,18 @@ if (!suggestedParams ||
   throw new Error("Invalid transaction parameters: missing or invalid firstRound/firstValid, lastRound/lastValid, genesisID, or genesisHash");
 }
 
+// Ensure genesisHash is a base64 string if it's a Uint8Array
+const genesisHash = suggestedParams.genesisHash instanceof Uint8Array 
+  ? Buffer.from(suggestedParams.genesisHash).toString('base64')
+  : suggestedParams.genesisHash;
+
 // Create clean parameters object 
 const processedParams = {
   fee: 1000,
-  firstRound: Number(firstRound), // Convert BigInt or number to number
-  lastRound: Number(lastRound),   // Convert BigInt or number to number
+  firstRound: Number(firstRound),
+  lastRound: Number(lastRound),
   genesisID: suggestedParams.genesisID,
-  genesisHash: suggestedParams.genesisHash,
+  genesisHash: genesisHash,
   flatFee: true
 };
     
