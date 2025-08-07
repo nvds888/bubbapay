@@ -168,7 +168,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     
     // 1. Fund the app with ALGO
     const fundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      from: senderAddress,
+      sender: senderAddress,
       to: appAddress,
       amount: 210000,
       suggestedParams: { ...baseParams, fee: EXACT_FEES.FUNDING }
@@ -176,7 +176,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     
     // 2. Fund the temporary account with minimal ALGO
     const tempFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      from: senderAddress,
+      sender: senderAddress,
       to: tempAccount.address,
       amount: 102000,
       suggestedParams: { ...baseParams, fee: EXACT_FEES.TEMP_FUNDING }
@@ -186,7 +186,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     let recipientFundingTxn = null;
     if (payRecipientFees) {
       recipientFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        from: senderAddress,
+        sender: senderAddress,
         to: tempAccount.address,
         amount: 210000,
         note: new Uint8Array(Buffer.from('Recipient fee funding to temp account')),
@@ -196,7 +196,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     
     // 4. Opt the app into asset
     const optInTxn = algosdk.makeApplicationNoOpTxnFromObject({
-      from: senderAddress,
+      sender: senderAddress,
       suggestedParams: { ...baseParams, fee: EXACT_FEES.OPT_IN },
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("opt_in_asset"))],
@@ -205,7 +205,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     
     // 5. Set the amount
     const setAmountTxn = algosdk.makeApplicationNoOpTxnFromObject({
-      from: senderAddress,
+      sender: senderAddress,
       suggestedParams: { ...baseParams, fee: EXACT_FEES.SET_AMOUNT },
       appIndex: appIdInt,
       appArgs: [
@@ -216,7 +216,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     
     // 6. Send asset to the app
     const sendAssetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      from: senderAddress,
+      sender: senderAddress,
       to: appAddress,
       amount: microAmount,
       assetIndex: targetAssetId,
@@ -383,7 +383,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const exactFee = calculateTransactionFee(true, 1);
     
     const reclaimTxn = algosdk.makeApplicationNoOpTxnFromObject({
-      from: senderAddress,
+      sender: senderAddress,
       suggestedParams: { ...suggestedParams, fee: exactFee, flatFee: true },
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("reclaim"))],
