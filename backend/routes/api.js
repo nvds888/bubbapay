@@ -128,21 +128,20 @@ router.post('/submit-app-creation', async (req, res) => {
 
     try {
       // Submit the signed transaction
-      const submitResponse = await algodClient.sendRawTransaction(
-        Buffer.from(signedTxn, 'base64')
-      ).do();
-      txId = submitResponse.txId; // Note: Use 'txId' (not 'txid') for algosdk 3.4.0
-
+      const submitResponse = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      
+      // DEBUG: Log the full response
+      console.log('Submit response:', JSON.stringify(submitResponse, null, 2));
+      
+      txId = submitResponse.txid;
+      
       // Wait for confirmation
       txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
-      
-      // Extract app ID from transaction result
-      const appId = txnResult['application-index'];
-      
-      if (!appId) {
-        throw new Error('Application ID not found in transaction result');
-      }
-
+  
+  // Extract app ID from transaction result
+  const appId = txnResult['application-index'];
+  console.log('Attempted appId extraction:', appId);
+  
     } catch (submitError) {
       console.error('submitError details:', submitError);
       // Check if this is a "transaction already in ledger" error
@@ -204,6 +203,7 @@ router.post('/submit-app-creation', async (req, res) => {
     });
   }
 });
+
 
 // Submit signed group transactions
 router.post('/submit-group-transactions', async (req, res) => {
