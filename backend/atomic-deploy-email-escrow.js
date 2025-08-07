@@ -71,15 +71,6 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     console.log("Fetching suggested parameters...");
     let suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Create clean parameters object with v3 compatible structure
-    const processedParams = {
-      fee: 1000,
-      firstRound: Number(suggestedParams.firstRound),
-      lastRound: Number(suggestedParams.lastRound),
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      flatFee: true
-    };
     
     console.log("Processing parameters complete. Generating TEAL programs...");
     
@@ -106,7 +97,7 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
         approvalProgram: approvalProgram,
         clearProgram: clearProgram,
         foreignAssets: [targetAssetId],
-        suggestedParams: processedParams
+        suggestedParams: suggestedParams
       });
       
       // Encode the transaction for the frontend
