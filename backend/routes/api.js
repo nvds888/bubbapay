@@ -171,12 +171,14 @@ router.post('/submit-app-creation', async (req, res) => {
       }
     }
 
-    // Extract app ID from transaction result
-    const appId = txnResult['application-index'];
-    
-    if (!appId) {
-      throw new Error('Application ID not found in transaction result');
-    }
+    console.log('txnResult:', JSON.stringify(txnResult, null, 2));
+
+const appId = txnResult['application-index'];
+if (!appId) {
+  console.error('Application ID not found. Full txnResult:', JSON.stringify(txnResult, null, 2));
+  throw new Error('Application ID not found in transaction result');
+}
+
 
     // Generate the second group of transactions
     const postAppTxns = await generatePostAppTransactions({
