@@ -32,6 +32,17 @@ require('express').Router.prototype.route = function(path) {
   return originalRoute.call(this, path);
 };
 
+function safeToNumber(value) {
+  if (typeof value === 'bigint') {
+    return Number(value);
+  }
+  if (typeof value === 'number') {
+    return value;
+  }
+  // Don't default to 0 for undefined/null - that's the bug!
+  return value; // Return the original value
+}
+
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
   // Create a hash using the private key and app ID for uniqueness
@@ -634,7 +645,7 @@ router.post('/fund-wallet', async (req, res) => {
     
     // Check temp account balance first
     const tempAccountInfo = await algodClient.accountInformation(tempAccountObj.addr).do();
-    const tempBalance = tempAccountInfo.amount;
+    const tempBalance = safeToNumber(tempAccountInfo.amount);
     
     console.log(`Temp account balance: ${tempBalance / 1e6} ALGO`);
     
@@ -727,8 +738,8 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
     const assets = accountInfo.assets || [];
 
     for (const asset of assets) {
-      if (asset['asset-id'] === targetAssetId) {
-        const microBalance = asset.amount;
+      if (Number(asset.assetId) === targetAssetId) {
+        const microBalance = safeToNumber(asset.amount);
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
       }
@@ -772,7 +783,7 @@ router.get('/asset-balance/:address', async (req, res) => {
 
     for (const asset of assets) {
       if (asset['asset-id'] === targetAssetId) {
-        const microBalance = asset.amount;
+        const microBalance = safeToNumber(asset.amount);
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
       }
