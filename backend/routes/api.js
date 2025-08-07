@@ -401,16 +401,16 @@ router.post('/generate-optin', async (req, res) => {
     // Get suggested parameters
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
-      recipientAddress, // from
-      recipientAddress, // to
-      undefined, // closeRemainderTo
-      undefined, // revocationTarget
-      0, // amount (0 for opt-in)
-      undefined, // note
-      assetId || getDefaultAssetId(), // assetIndex
-      suggestedParams // suggestedParams
-    );
+    const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      sender: recipientAddress,
+      receiver: recipientAddress,
+      closeRemainderTo: undefined,
+      revocationTarget: undefined,
+      amount: 0,
+      note: undefined,
+      assetIndex: assetId || getDefaultAssetId(),
+      suggestedParams: suggestedParams
+    });
     
     const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(optInTxn)).toString('base64');
     
@@ -662,18 +662,16 @@ router.post('/fund-wallet', async (req, res) => {
     const suggestedParams = await algodClient.getTransactionParams().do();
     
     // Create and sign the funding transaction FROM temp account TO recipient
-    const fundingTxn = new algosdk.Transaction({
-      from: tempAccountObj.addr,
-      to: recipientAddress,
+    const fundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: tempAccountObj.addr,
+      receiver: recipientAddress,
       amount: actualFundingAmount,
-      fee: fundingTransactionFee,
-      flatFee: true,
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      type: 'pay',
-      note: new Uint8Array(Buffer.from('AlgoSend fee coverage'))
+      note: new Uint8Array(Buffer.from('AlgoSend fee coverage')),
+      suggestedParams: {
+        ...suggestedParams,
+        fee: fundingTransactionFee,
+        flatFee: true
+      }
     });
     
     // Sign with temp account
@@ -1120,18 +1118,16 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
     // ✅ Just pass the common assets - TEAL will figure out which ones to opt out of
     const commonAssets = [31566704, 760037151, 2494786278, 2726252423]; // USDC, xUSD, MONKO, ALPHA
     
-    const deleteAppTxn = new algosdk.Transaction({
-      from: senderAddress,
+    const deleteAppTxn = algosdk.makeApplicationCallTxnWithSuggestedParamsFromObject({
+      sender: senderAddress,
       appIndex: appIdInt,
-      appOnComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
-      appForeignAssets: commonAssets, // ✅ Simple hardcoded list
-      fee: 3000,
-      flatFee: true,
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      type: 'appl'
+      onComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
+      foreignAssets: commonAssets,
+      suggestedParams: {
+        ...suggestedParams,
+        fee: 3000,
+        flatFee: true
+      }
     });
     
     const encodedTxns = [Buffer.from(algosdk.encodeUnsignedTransaction(deleteAppTxn)).toString('base64')];
