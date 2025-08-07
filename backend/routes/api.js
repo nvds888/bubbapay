@@ -141,6 +141,13 @@ router.post('/submit-app-creation', async (req, res) => {
       // Wait for confirmation
       txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
       
+      // DEBUG: Log the full transaction result structure
+  console.log('Full txnResult:', JSON.stringify(txnResult, null, 2));
+  
+  // Extract app ID from transaction result
+  const appId = txnResult['application-index'];
+  console.log('Attempted appId extraction:', appId);
+  
     } catch (submitError) {
       console.error('submitError details:', submitError);
       // Check if this is a "transaction already in ledger" error
