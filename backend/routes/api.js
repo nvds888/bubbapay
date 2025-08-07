@@ -32,6 +32,14 @@ require('express').Router.prototype.route = function(path) {
   return originalRoute.call(this, path);
 };
 
+function safeJson(obj) {
+  return JSON.stringify(obj, (_, value) =>
+    typeof value === 'bigint' ? value.toString() : value,
+    2
+  );
+}
+
+
 function safeToNumber(value) {
   if (typeof value === 'bigint') {
     return Number(value);
@@ -174,7 +182,7 @@ router.post('/submit-app-creation', async (req, res) => {
     console.log('Confirmed App ID:', appId);
 
     if (!appId) {
-      console.error('Confirmed txn:', JSON.stringify(confirmedTxn, null, 2));
+      console.log('Confirmed txn:', safeJson(confirmedTxn));
       throw new Error('Application ID not found in transaction result');
     }
 
