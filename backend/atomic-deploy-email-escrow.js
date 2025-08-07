@@ -159,8 +159,8 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     
     // Create base parameters
     const baseParams = {
-      firstRound: Number(suggestedParams.firstRound),
-      lastRound: Number(suggestedParams.lastRound),
+      firstRound: Number(suggestedParams.firstValid),  // CHANGED from firstRound
+      lastRound: Number(suggestedParams.lastValid),    // CHANGED from lastRound  
       genesisID: suggestedParams.genesisID,
       genesisHash: suggestedParams.genesisHash,
       flatFee: true
@@ -297,8 +297,8 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
     
     // Create base parameters for both transactions
     const baseParams = {
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
+      firstRound: suggestedParams.firstValid,    // CHANGED
+      lastRound: suggestedParams.lastValid,      // CHANGED  
       genesisID: suggestedParams.genesisID,
       genesisHash: suggestedParams.genesisHash,
       flatFee: true
