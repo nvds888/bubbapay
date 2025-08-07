@@ -62,52 +62,10 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     // Convert to microUnits
     const microAmount = toMicroUnits(amount, targetAssetId);
     
-// Get suggested parameters
-console.log("Fetching suggested parameters...");
-let suggestedParams;
-try {
-  suggestedParams = await algodClient.getTransactionParams().do();
-} catch (error) {
-  console.error("Failed to fetch transaction parameters:", error);
-  throw new Error(`Failed to fetch transaction parameters: ${error.message}`);
-}
-
-// Validate suggested parameters
-const firstRound = suggestedParams.firstRound ?? suggestedParams.firstValid;
-const lastRound = suggestedParams.lastRound ?? suggestedParams.lastValid;
-
-if (!suggestedParams || 
-    (firstRound === undefined || firstRound === null) || 
-    (lastRound === undefined || lastRound === null) || 
-    !suggestedParams.genesisID || 
-    !suggestedParams.genesisHash) {
-  console.error("Invalid suggested parameters:", JSON.stringify(suggestedParams, (key, value) => 
-    typeof value === 'bigint' ? value.toString() : value));
-  throw new Error("Invalid transaction parameters: missing or invalid firstRound/firstValid, lastRound/lastValid, genesisID, or genesisHash");
-}
-
-// Ensure genesisHash is a base64 string if it's a Uint8Array
-const genesisHash = suggestedParams.genesisHash instanceof Uint8Array 
-  ? Buffer.from(suggestedParams.genesisHash).toString('base64')
-  : suggestedParams.genesisHash;
-
-// Create clean parameters object 
-const processedParams = {
-  fee: 1000,
-  firstRound: Number(firstRound),
-  lastRound: Number(lastRound),
-  genesisID: suggestedParams.genesisID,
-  genesisHash: genesisHash,
-  flatFee: true
-};
-
-// Validate targetAssetId
-const targetAssetId = assetId || getDefaultAssetId();
-if (!targetAssetId || isNaN(targetAssetId) || targetAssetId <= 0) {
-  console.error("Invalid targetAssetId:", targetAssetId);
-  throw new Error("Invalid asset ID: assetId must be a positive integer");
-}
-console.log("Using targetAssetId:", targetAssetId);
+ // Get suggested parameters
+ console.log("Fetching suggested parameters...");
+ let suggestedParams = await algodClient.getTransactionParams().do();
+ 
     
     console.log("Processing parameters complete. Generating TEAL programs...");
     
