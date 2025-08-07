@@ -100,6 +100,14 @@ const processedParams = {
   genesisHash: genesisHash,
   flatFee: true
 };
+
+// Validate targetAssetId
+const targetAssetId = assetId || getDefaultAssetId();
+if (!targetAssetId || isNaN(targetAssetId) || targetAssetId <= 0) {
+  console.error("Invalid targetAssetId:", targetAssetId);
+  throw new Error("Invalid asset ID: assetId must be a positive integer");
+}
+console.log("Using targetAssetId:", targetAssetId);
     
     console.log("Processing parameters complete. Generating TEAL programs...");
     
@@ -126,7 +134,7 @@ const processedParams = {
         numLocalByteSlices: 0,
         numGlobalInts: 2,
         numGlobalByteSlices: 2,
-        foreignAssets: [targetAssetId]
+        foreignAssets: [Number(targetAssetId)]
       });
       
       // Encode the transaction for the frontend
