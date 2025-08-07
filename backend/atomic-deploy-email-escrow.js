@@ -178,7 +178,7 @@ console.log("Debug - typeof OnApplicationComplete.NoOpOC:", typeof algosdk.OnApp
 console.log("Debug - algosdk exports:", Object.keys(algosdk).filter(k => k.includes('Application') || k.includes('OnComplete')));
 // Try passing suggestedParams directly first
 const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
-  from: senderAddress,
+  from: [BigInt(senderAddress)],
   approvalProgram: approvalProgram,
   clearProgram: clearProgram,
   numLocalInts: 0,
@@ -186,7 +186,7 @@ const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
   numGlobalInts: 2,
   numGlobalByteSlices: 2,
   onComplete: algosdk.OnApplicationComplete.NoOpOC,
-  foreignAssets: [BigInt(targetAssetId)],
+  foreignAssets: [targetAssetId],
   suggestedParams: suggestedParams  // Pass directly without modification
 });
 
