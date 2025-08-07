@@ -1,4 +1,4 @@
-// atomic-deploy-email-escrow-v3.js - Updated for algosdk v3 with Platform Fee Implementation
+// atomic-deploy-email-escrow-v3.js - Fixed for algosdk v3 compatibility
 
 const algosdk = require('algosdk');
 const crypto = require('crypto');
@@ -7,7 +7,6 @@ const { getDefaultAssetId, toMicroUnits, getAssetInfo } = require('./assetConfig
 
 // Configuration
 const ALGOD_TOKEN = '';
-// CHANGE: Update to mainnet
 const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://mainnet-api.algonode.cloud';
 const ALGOD_PORT = '';
 
@@ -88,7 +87,13 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
       
       console.log("Creating app with the following values:");
 
+      // Before creating the transaction:
+console.log("Debug - senderAddress:", senderAddress);
+console.log("Debug - senderAddress valid?", algosdk.isValidAddress(senderAddress));
+console.log("Debug - suggestedParams keys:", Object.keys(suggestedParams));
+console.log("Debug - targetAssetId:", targetAssetId);
 
+      // FIX: Use spread operator to keep all suggestedParams fields
       const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
         from: senderAddress,
         approvalProgram: approvalProgram,
@@ -100,16 +105,14 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
         onComplete: algosdk.OnApplicationComplete.NoOpOC,
         foreignAssets: [targetAssetId],
         suggestedParams: {
+          ...suggestedParams,  // Spread the entire object
           fee: 1000,
-          flatFee: true,
-          firstRound: suggestedParams.firstValid,
-          lastRound: suggestedParams.lastValid,
-          genesisHash: suggestedParams.genesisHash,
-          genesisID: suggestedParams.genesisID
+          flatFee: true
         }
       });
 
-
+      // Add this after fetching suggestedParams to debug:
+console.log("Suggested params structure:", JSON.stringify(suggestedParams, null, 2));
       
       // Encode the transaction for the frontend using v3 method
       console.log("Transaction created successfully, encoding...");
@@ -182,11 +185,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       suggestedParams: {
         ...suggestedParams,
         fee: EXACT_FEES.FUNDING,
-        flatFee: true,
-        firstRound: suggestedParams.firstValid,
-  lastRound: suggestedParams.lastValid,
-  genesisHash: suggestedParams.genesisHash,
-  genesisID: suggestedParams.genesisID
+        flatFee: true
       }
     });
     
@@ -198,11 +197,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       suggestedParams: {
         ...suggestedParams,
         fee: EXACT_FEES.TEMP_FUNDING,
-        flatFee: true,
-        firstRound: suggestedParams.firstValid,
-  lastRound: suggestedParams.lastValid,
-  genesisHash: suggestedParams.genesisHash,
-  genesisID: suggestedParams.genesisID
+        flatFee: true
       }
     });
     
@@ -217,11 +212,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
         suggestedParams: {
           ...suggestedParams,
           fee: EXACT_FEES.RECIPIENT_FUNDING,
-          flatFee: true,
-          firstRound: suggestedParams.firstValid,
-  lastRound: suggestedParams.lastValid,
-  genesisHash: suggestedParams.genesisHash,
-  genesisID: suggestedParams.genesisID
+          flatFee: true
         }
       });
     }
@@ -236,11 +227,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       suggestedParams: {
         ...suggestedParams,
         fee: EXACT_FEES.OPT_IN,
-        flatFee: true,
-        firstRound: suggestedParams.firstValid,
-  lastRound: suggestedParams.lastValid,
-  genesisHash: suggestedParams.genesisHash,
-  genesisID: suggestedParams.genesisID
+        flatFee: true
       }
     });
     
@@ -256,11 +243,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       suggestedParams: {
         ...suggestedParams,
         fee: EXACT_FEES.SET_AMOUNT,
-        flatFee: true,
-        firstRound: suggestedParams.firstValid,
-  lastRound: suggestedParams.lastValid,
-  genesisHash: suggestedParams.genesisHash,
-  genesisID: suggestedParams.genesisID
+        flatFee: true
       }
     });
     
@@ -273,11 +256,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       suggestedParams: {
         ...suggestedParams,
         fee: EXACT_FEES.SEND_ASSET,
-        flatFee: true,
-        firstRound: suggestedParams.firstValid,
-  lastRound: suggestedParams.lastValid,
-  genesisHash: suggestedParams.genesisHash,
-  genesisID: suggestedParams.genesisID
+        flatFee: true
       }
     });
     
@@ -311,7 +290,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
   }
 }
 
-// REPLACE the entire generateClaimTransaction function with this:
+// Generate claim transaction with platform fee
 async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddress, assetId = null }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
@@ -366,11 +345,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
       suggestedParams: {
         ...suggestedParams,
         fee: calculateTransactionFee(true, 1), // 2000 microALGO
-        flatFee: true,
-        firstRound: suggestedParams.firstValid,
-  lastRound: suggestedParams.lastValid,
-  genesisHash: suggestedParams.genesisHash,
-  genesisID: suggestedParams.genesisID
+        flatFee: true
       }
     });
 
@@ -384,11 +359,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
       suggestedParams: {
         ...suggestedParams,
         fee: 1000, // Standard fee for payment transaction
-        flatFee: true,
-        firstRound: suggestedParams.firstValid,
-  lastRound: suggestedParams.lastValid,
-  genesisHash: suggestedParams.genesisHash,
-  genesisID: suggestedParams.genesisID
+        flatFee: true
       }
     });
 
@@ -460,11 +431,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       suggestedParams: {
         ...suggestedParams,
         fee: exactFee,
-        flatFee: true,
-        firstRound: suggestedParams.firstValid,
-  lastRound: suggestedParams.lastValid,
-  genesisHash: suggestedParams.genesisHash,
-  genesisID: suggestedParams.genesisID
+        flatFee: true
       }
     });
     
