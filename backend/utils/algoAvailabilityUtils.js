@@ -18,11 +18,11 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
     GROUP_TXN_1_FEE: 1000,              // 0.001 ALGO - Payment (contract funding)
     GROUP_TXN_2_FEE: 1000,              // 0.001 ALGO - Payment (temp funding)
     GROUP_TXN_3_FEE: 1000,              // 0.001 ALGO - Payment (recipient funding, if enabled)
-    GROUP_TXN_4_FEE: 2000,              // 0.002 ALGO - Application Call (opt-in with inner txn)
+    GROUP_TXN_4_FEE: 8000,              // 0.01 ALGO - Application Call (opt-in with inner txn)
     GROUP_TXN_5_FEE: 1000,              // 0.001 ALGO - Application Call (set amount)
     GROUP_TXN_6_FEE: 1000,              // 0.001 ALGO - Asset Transfer (send asset to app)
     
-    INNER_TXN_MIN_BALANCE: 35000,
+    INNER_TXN_MIN_BALANCE: 25000,
     
     // Optional recipient funding fee (if enabled)
     RECIPIENT_FUNDING_FEE: 1000,        // 0.001 ALGO - Payment (recipient fee funding)
