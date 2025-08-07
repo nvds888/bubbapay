@@ -113,15 +113,11 @@ console.log("Debug - targetAssetId:", targetAssetId);
         numGlobalByteSlices: 2,
         onComplete: algosdk.OnApplicationComplete.NoOpOC,
         foreignAssets: [targetAssetId],
-        suggestedParams: {
-          fee: 1000,
-          flatFee: true,
-          firstValid: suggestedParams.firstValid,
-          lastValid: suggestedParams.lastValid,
-          genesisID: suggestedParams.genesisID,
-          genesisHash: suggestedParams.genesisHash
-        }
-      });
+        suggestedParams: suggestedParams  // Pass the entire object as-is
+});
+
+appCreateTxn.fee = 1000;
+appCreateTxn.flatFee = true;
 
       // Add this after fetching suggestedParams to debug:
 console.log("Suggested params structure:", JSON.stringify(suggestedParams, null, 2));
