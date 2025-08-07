@@ -67,11 +67,19 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     const microAmount = toMicroUnits(amount, targetAssetId);
     
     // Get suggested parameters
-    console.log("Fetching suggested parameters...");
-    let suggestedParams = await algodClient.getTransactionParams().do();
-    
-    console.log("Debug - suggestedParams full object:", JSON.stringify(suggestedParams, null, 2));
-    console.log("Processing parameters complete. Generating TEAL programs...");
+console.log("Fetching suggested parameters...");
+let suggestedParams = await algodClient.getTransactionParams().do();
+
+// ADD THIS INSTEAD (handles BigInt):
+console.log("Debug - suggestedParams full object:", {
+  ...suggestedParams,
+  fee: suggestedParams.fee?.toString(),
+  firstRound: suggestedParams.firstRound?.toString(),
+  lastRound: suggestedParams.lastRound?.toString(),
+  minFee: suggestedParams.minFee?.toString()
+});
+
+console.log("Processing parameters complete. Generating TEAL programs...");
     
     // Compile the TEAL programs - now using imported functions
     const approvalProgramSource = createApprovalProgram(senderAddress, tempAddress, targetAssetId);
