@@ -98,7 +98,7 @@ console.log("Processing parameters complete. Generating TEAL programs...");
       UpdateApplicationOC: algosdk.OnApplicationComplete.UpdateApplicationOC,
       DeleteApplicationOC: algosdk.OnApplicationComplete.DeleteApplicationOC
     });
-
+    
     try {
       console.log("TEST: Creating minimal app transaction...");
       const testTxn = algosdk.makeApplicationCreateTxnFromObject({
@@ -172,6 +172,10 @@ console.log("Debug - clearProgram:", clearProgram ? `Uint8Array(${clearProgram.l
 console.log("Debug - foreignAssets:", [targetAssetId]);
 console.log("Debug - onComplete value:", algosdk.OnApplicationComplete.NoOpOC);
 
+console.log("Debug - OnApplicationComplete.NoOpOC actual value:", algosdk.OnApplicationComplete.NoOpOC);
+console.log("Debug - OnApplicationComplete object:", algosdk.OnApplicationComplete);
+console.log("Debug - typeof OnApplicationComplete.NoOpOC:", typeof algosdk.OnApplicationComplete.NoOpOC);
+console.log("Debug - algosdk exports:", Object.keys(algosdk).filter(k => k.includes('Application') || k.includes('OnComplete')));
 // Try passing suggestedParams directly first
 const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
   from: senderAddress,
@@ -181,6 +185,7 @@ const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
   numLocalByteSlices: 0,
   numGlobalInts: 2,
   numGlobalByteSlices: 2,
+  onComplete: algosdk.OnApplicationComplete.NoOpOC,
   foreignAssets: [targetAssetId],
   suggestedParams: suggestedParams  // Pass directly without modification
 });
