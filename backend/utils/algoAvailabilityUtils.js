@@ -22,7 +22,7 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
     GROUP_TXN_5_FEE: 1000,              // 0.001 ALGO - Application Call (set amount)
     GROUP_TXN_6_FEE: 1000,              // 0.001 ALGO - Asset Transfer (send asset to app)
     
-    INNER_TXN_MIN_BALANCE: 25000,
+    INNER_TXN_MIN_BALANCE: 35000,
     
     // Optional recipient funding fee (if enabled)
     RECIPIENT_FUNDING_FEE: 1000,        // 0.001 ALGO - Payment (recipient fee funding)
