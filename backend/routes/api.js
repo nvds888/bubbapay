@@ -136,8 +136,7 @@ router.post('/submit-app-creation', async (req, res) => {
       console.log('txnResult applicationIndex:', txnResult.applicationIndex);
       
       // Extract app ID from transaction result
-      // Convert BigInt to regular number
-const appId = txnResult['application-index'] ? Number(txnResult['application-index']) : null;
+      const appId = txnResult['application-index'];
       console.log('Attempted appId extraction:', appId);
       
       if (!appId) {
