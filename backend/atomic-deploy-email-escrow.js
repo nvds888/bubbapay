@@ -63,18 +63,34 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     const microAmount = toMicroUnits(amount, targetAssetId);
     
     // Get suggested parameters
-    console.log("Fetching suggested parameters...");
-    let suggestedParams = await algodClient.getTransactionParams().do();
-    
-    // Create clean parameters object 
-    const processedParams = {
-      fee: 1000,
-      firstRound: Number(suggestedParams.firstRound),
-      lastRound: Number(suggestedParams.lastRound),
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      flatFee: true
-    };
+console.log("Fetching suggested parameters...");
+let suggestedParams;
+try {
+  suggestedParams = await algodClient.getTransactionParams().do();
+} catch (error) {
+  console.error("Failed to fetch transaction parameters:", error);
+  throw new Error(`Failed to fetch transaction parameters: ${error.message}`);
+}
+
+// Validate suggested parameters
+if (!suggestedParams || 
+    typeof suggestedParams.firstRound !== 'number' || 
+    typeof suggestedParams.lastRound !== 'number' || 
+    !suggestedParams.genesisID || 
+    !suggestedParams.genesisHash) {
+  console.error("Invalid suggested parameters:", suggestedParams);
+  throw new Error("Invalid transaction parameters: missing or invalid firstRound, lastRound, genesisID, or genesisHash");
+}
+
+// Create clean parameters object 
+const processedParams = {
+  fee: 1000,
+  firstRound: Number(suggestedParams.firstRound),
+  lastRound: Number(suggestedParams.lastRound),
+  genesisID: suggestedParams.genesisID,
+  genesisHash: suggestedParams.genesisHash,
+  flatFee: true
+};
     
     console.log("Processing parameters complete. Generating TEAL programs...");
     
