@@ -114,95 +114,97 @@ router.post('/generate-transactions', async (req, res) => {
   }
 });
 
-// Submit signed app creation transaction
 router.post('/submit-app-creation', async (req, res) => {
   try {
-    const { signedTxn, tempAccount, amount, microAmount, recipientEmail, senderAddress, payRecipientFees, assetId } = req.body;
-    
+    const {
+      signedTxn,
+      tempAccount,
+      amount,
+      microAmount,
+      recipientEmail,
+      senderAddress,
+      payRecipientFees,
+      assetId
+    } = req.body;
+
     if (!signedTxn || !tempAccount || !amount || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
     let txId;
-    let txnResult;
 
+    // Step 1: Submit transaction
     try {
-      // Submit the signed transaction
-      const submitResponse = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
-      
-      // DEBUG: Log the full response
+      const submitResponse = await algodClient
+        .sendRawTransaction(Buffer.from(signedTxn, 'base64'))
+        .do();
+
       console.log('Submit response:', JSON.stringify(submitResponse, null, 2));
-      
+
       txId = submitResponse.txid;
-      
-      // Wait for confirmation
-      txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
-  
-  // Extract app ID from transaction result
-  const appId = txnResult['application-index'];
-  console.log('Attempted appId extraction:', appId);
-  
     } catch (submitError) {
       console.error('submitError details:', submitError);
-      // Check if this is a "transaction already in ledger" error
-      if (submitError.message && submitError.message.includes('transaction already in ledger')) {
+
+      // Handle "already in ledger" case
+      if (
+        submitError.message &&
+        submitError.message.includes('transaction already in ledger')
+      ) {
         console.log('Transaction already in ledger, extracting txId and confirming...');
-        
-        // Extract transaction ID from error message
+
         const txIdMatch = submitError.message.match(/transaction already in ledger: ([A-Z0-9]+)/);
         if (txIdMatch && txIdMatch[1]) {
           txId = txIdMatch[1];
           console.log(`Extracted txId from error: ${txId}`);
-          
-          // Wait for confirmation of the existing transaction
-          try {
-            txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
-            console.log('Successfully confirmed existing transaction');
-          } catch (confirmError) {
-            console.error('Error confirming existing transaction:', confirmError);
-            throw new Error('Transaction was submitted but confirmation failed');
-          }
         } else {
           throw new Error('Could not extract transaction ID from duplicate submission error');
         }
       } else {
-        // Re-throw other errors
-        throw submitError;
+        throw submitError; // Re-throw all other errors
       }
     }
 
-    // Extract app ID from transaction result
-    const appId = txnResult['created-application-index'];
-    
+    // Step 2: Wait for confirmation
+    await algosdk.waitForConfirmation(algodClient, txId, 5);
+
+    // Step 3: Get full confirmed txn info
+    const confirmedTxn = await algodClient.pendingTransactionInformation(txId).do();
+    const appId = confirmedTxn['created-application-index'];
+
+    console.log('Confirmed App ID:', appId);
+
     if (!appId) {
+      console.error('Confirmed txn:', JSON.stringify(confirmedTxn, null, 2));
       throw new Error('Application ID not found in transaction result');
     }
 
-    // Generate the second group of transactions
+    // Step 4: Generate post-creation transactions
     const postAppTxns = await generatePostAppTransactions({
       appId,
       senderAddress,
-      microAmount: microAmount,
+      microAmount,
       tempAccount,
       payRecipientFees,
       assetId: assetId || getDefaultAssetId()
     });
-    
+
+    // Step 5: Send response
     res.status(200).json({
       appId,
       appAddress: postAppTxns.appAddress,
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: postAppTxns.tempAccount
     });
-    
+
   } catch (error) {
     console.error('Error submitting app creation:', error);
-    res.status(500).json({ 
-      error: 'Failed to submit app creation', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Failed to submit app creation',
+      details: error.message
     });
   }
 });
+
 
 
 // Submit signed group transactions
