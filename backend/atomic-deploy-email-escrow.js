@@ -90,6 +90,62 @@ console.log("Processing parameters complete. Generating TEAL programs...");
     
     console.log("TEAL compilation successful");
     
+    try {
+      console.log("TEST: Creating minimal app transaction...");
+      const testTxn = algosdk.makeApplicationCreateTxnFromObject({
+        from: senderAddress,
+        approvalProgram: approvalProgram,
+        clearProgram: clearProgram,
+        numLocalInts: 0,
+        numLocalByteSlices: 0,
+        numGlobalInts: 2,
+        numGlobalByteSlices: 2,
+        suggestedParams: suggestedParams
+      });
+      console.log("TEST: Minimal transaction created successfully!");
+    } catch (testError) {
+      console.log("TEST: Minimal transaction failed:", testError.message);
+    }
+    
+    // Now try with onComplete
+    try {
+      console.log("TEST: Adding onComplete...");
+      const testTxn2 = algosdk.makeApplicationCreateTxnFromObject({
+        from: senderAddress,
+        approvalProgram: approvalProgram,
+        clearProgram: clearProgram,
+        numLocalInts: 0,
+        numLocalByteSlices: 0,
+        numGlobalInts: 2,
+        numGlobalByteSlices: 2,
+        onComplete: algosdk.OnApplicationComplete.NoOpOC,
+        suggestedParams: suggestedParams
+      });
+      console.log("TEST: With onComplete created successfully!");
+    } catch (testError) {
+      console.log("TEST: With onComplete failed:", testError.message);
+    }
+    
+    // Now try with foreignAssets
+    try {
+      console.log("TEST: Adding foreignAssets...");
+      const testTxn3 = algosdk.makeApplicationCreateTxnFromObject({
+        from: senderAddress,
+        approvalProgram: approvalProgram,
+        clearProgram: clearProgram,
+        numLocalInts: 0,
+        numLocalByteSlices: 0,
+        numGlobalInts: 2,
+        numGlobalByteSlices: 2,
+        onComplete: algosdk.OnApplicationComplete.NoOpOC,
+        foreignAssets: [targetAssetId],
+        suggestedParams: suggestedParams
+      });
+      console.log("TEST: With foreignAssets created successfully!");
+    } catch (testError) {
+      console.log("TEST: With foreignAssets failed:", testError.message);
+    }
+    
     // Create application transaction using v3 maker function
     try {
       console.log("Creating application transaction...");
