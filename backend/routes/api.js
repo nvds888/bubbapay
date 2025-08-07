@@ -129,12 +129,20 @@ router.post('/submit-app-creation', async (req, res) => {
     try {
       // Submit the signed transaction
       const submitResponse = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      
+      // DEBUG: Log the full response
+      console.log('Submit response:', JSON.stringify(submitResponse, null, 2));
+      
       txId = submitResponse.txId;
+      console.log('Extracted txId:', txId);
+      console.log('txId type:', typeof txId);
+      console.log('txId length:', txId?.length);
       
       // Wait for confirmation
       txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
       
     } catch (submitError) {
+      console.error('submitError details:', submitError);
       // Check if this is a "transaction already in ledger" error
       if (submitError.message && submitError.message.includes('transaction already in ledger')) {
         console.log('Transaction already in ledger, extracting txId and confirming...');
