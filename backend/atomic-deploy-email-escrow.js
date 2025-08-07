@@ -70,6 +70,7 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     console.log("Fetching suggested parameters...");
     let suggestedParams = await algodClient.getTransactionParams().do();
     
+    console.log("Debug - suggestedParams full object:", JSON.stringify(suggestedParams, null, 2));
     console.log("Processing parameters complete. Generating TEAL programs...");
     
     // Compile the TEAL programs - now using imported functions
