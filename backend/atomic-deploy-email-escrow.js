@@ -62,7 +62,7 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     // Convert to microUnits
     const microAmount = toMicroUnits(amount, targetAssetId);
     
-    // Get suggested parameters
+   // Get suggested parameters
 console.log("Fetching suggested parameters...");
 let suggestedParams;
 try {
@@ -73,20 +73,24 @@ try {
 }
 
 // Validate suggested parameters
+const firstRound = suggestedParams.firstRound ?? suggestedParams.firstValid;
+const lastRound = suggestedParams.lastRound ?? suggestedParams.lastValid;
+
 if (!suggestedParams || 
-    typeof suggestedParams.firstRound !== 'number' || 
-    typeof suggestedParams.lastRound !== 'number' || 
+    (firstRound === undefined || firstRound === null) || 
+    (lastRound === undefined || lastRound === null) || 
     !suggestedParams.genesisID || 
     !suggestedParams.genesisHash) {
-  console.error("Invalid suggested parameters:", suggestedParams);
-  throw new Error("Invalid transaction parameters: missing or invalid firstRound, lastRound, genesisID, or genesisHash");
+  console.error("Invalid suggested parameters:", JSON.stringify(suggestedParams, (key, value) => 
+    typeof value === 'bigint' ? value.toString() : value));
+  throw new Error("Invalid transaction parameters: missing or invalid firstRound/firstValid, lastRound/lastValid, genesisID, or genesisHash");
 }
 
 // Create clean parameters object 
 const processedParams = {
   fee: 1000,
-  firstRound: Number(suggestedParams.firstRound),
-  lastRound: Number(suggestedParams.lastRound),
+  firstRound: Number(firstRound), // Convert BigInt or number to number
+  lastRound: Number(lastRound),   // Convert BigInt or number to number
   genesisID: suggestedParams.genesisID,
   genesisHash: suggestedParams.genesisHash,
   flatFee: true
