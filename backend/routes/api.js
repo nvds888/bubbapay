@@ -127,12 +127,17 @@ router.post('/submit-app-creation', async (req, res) => {
     let txnResult;
 
     try {
+      // Submit the signed transaction
+      const submitResponse = await algodClient.sendRawTransaction(
+        Buffer.from(signedTxn, 'base64')
+      ).do();
+      txId = submitResponse.txId; // Note: Use 'txId' (not 'txid') for algosdk 3.4.0
+
       // Wait for confirmation
       txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
-      ;
       
       // Extract app ID from transaction result
-      const appId = txnResult['application-index']
+      const appId = txnResult['application-index'];
       
       if (!appId) {
         throw new Error('Application ID not found in transaction result');
