@@ -102,20 +102,26 @@ console.log("Debug - senderAddress valid?", algosdk.isValidAddress(senderAddress
 console.log("Debug - suggestedParams keys:", Object.keys(suggestedParams));
 console.log("Debug - targetAssetId:", targetAssetId);
 
-      // FIX: Use spread operator to keep all suggestedParams fields
-      const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
-        from: senderAddress,
-        approvalProgram: approvalProgram,
-        clearProgram: clearProgram,
-        numLocalInts: 0,
-        numLocalByteSlices: 0,
-        numGlobalInts: 2,
-        numGlobalByteSlices: 2,
-        onComplete: algosdk.OnApplicationComplete.NoOpOC,
-        foreignAssets: [targetAssetId],
-        suggestedParams: suggestedParams  // Pass the entire object as-is
+console.log("Debug - approvalProgram:", approvalProgram ? `Uint8Array(${approvalProgram.length})` : 'null/undefined');
+console.log("Debug - clearProgram:", clearProgram ? `Uint8Array(${clearProgram.length})` : 'null/undefined');
+console.log("Debug - foreignAssets:", [targetAssetId]);
+console.log("Debug - onComplete value:", algosdk.OnApplicationComplete.NoOpOC);
+
+// Try passing suggestedParams directly first
+const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
+  from: senderAddress,
+  approvalProgram: approvalProgram,
+  clearProgram: clearProgram,
+  numLocalInts: 0,
+  numLocalByteSlices: 0,
+  numGlobalInts: 2,
+  numGlobalByteSlices: 2,
+  onComplete: algosdk.OnApplicationComplete.NoOpOC,
+  foreignAssets: [targetAssetId],
+  suggestedParams: suggestedParams  // Pass directly without modification
 });
 
+// Then set fee after creation
 appCreateTxn.fee = 1000;
 appCreateTxn.flatFee = true;
 
