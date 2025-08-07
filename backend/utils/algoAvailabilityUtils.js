@@ -1,17 +1,6 @@
 const algosdk = require('algosdk');
 
 /**
- * Helper function to safely convert BigInt or number to regular number
- * @param {BigInt|number} value - Value to convert
- * @returns {number} Regular number
- */
-function safeToNumber(value) {
-  if (typeof value === 'bigint') {
-    return Number(value);
-  }
-  return typeof value === 'number' ? value : 0;
-}
-/**
  * Calculate comprehensive ALGO availability for escrow transactions
  * More accurate calculation that simulates the exact final state
  * @param {Object} accountInfo - Account information from algodClient.accountInformation()
@@ -65,8 +54,8 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
   const totalAlgoSentOut = baseAlgoSentOut + recipientFunding;
   
   // Current state
-  const currentBalance = safeToNumber(accountInfo.amount); 
-  const currentMinBalance = safeToNumber(accountInfo['min-balance'] || 0);
+  const currentBalance = accountInfo.amount; 
+  const currentMinBalance = accountInfo['min-balance'] || 0;
   const currentAvailableBalance = Math.max(0, currentBalance - currentMinBalance);
   
   // SIMULATION: Calculate final state after all transactions
