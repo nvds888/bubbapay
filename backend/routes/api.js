@@ -129,15 +129,10 @@ router.post('/submit-app-creation', async (req, res) => {
     try {
       // Wait for confirmation
       txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
-      
-      // DEBUG: Log without JSON.stringify to avoid BigInt error
-      console.log('txnResult keys:', Object.keys(txnResult));
-      console.log('txnResult application-index:', txnResult['application-index']);
-      console.log('txnResult applicationIndex:', txnResult.applicationIndex);
+      ;
       
       // Extract app ID from transaction result
-      const appId = txnResult['application-index'];
-      console.log('Attempted appId extraction:', appId);
+      const appId = txnResult['application-index']
       
       if (!appId) {
         throw new Error('Application ID not found in transaction result');
