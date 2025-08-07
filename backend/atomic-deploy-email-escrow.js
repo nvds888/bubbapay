@@ -126,7 +126,7 @@ console.log("Using targetAssetId:", targetAssetId);
       
       const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
         sender: senderAddress,
-        suggestedParams: processedParams,
+        suggestedParams: suggestedParams,
         onComplete: algosdk.OnApplicationComplete.NoOpOC,
         approvalProgram: approvalProgram,
         clearProgram: clearProgram,
@@ -134,7 +134,7 @@ console.log("Using targetAssetId:", targetAssetId);
         numLocalByteSlices: 0,
         numGlobalInts: 2,
         numGlobalByteSlices: 2,
-        foreignAssets: [Number(targetAssetId)]
+        foreignAssets: [targetAssetId]
       });
       
       // Encode the transaction for the frontend
