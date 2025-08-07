@@ -32,25 +32,6 @@ require('express').Router.prototype.route = function(path) {
   return originalRoute.call(this, path);
 };
 
-function safeJson(obj) {
-  return JSON.stringify(obj, (_, value) =>
-    typeof value === 'bigint' ? value.toString() : value,
-    2
-  );
-}
-
-
-function safeToNumber(value) {
-  if (typeof value === 'bigint') {
-    return Number(value);
-  }
-  if (typeof value === 'number') {
-    return value;
-  }
-  // Don't default to 0 for undefined/null - that's the bug!
-  return value; // Return the original value
-}
-
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
   // Create a hash using the private key and app ID for uniqueness
@@ -122,97 +103,86 @@ router.post('/generate-transactions', async (req, res) => {
   }
 });
 
+// Submit signed app creation transaction
 router.post('/submit-app-creation', async (req, res) => {
   try {
-    const {
-      signedTxn,
-      tempAccount,
-      amount,
-      microAmount,
-      recipientEmail,
-      senderAddress,
-      payRecipientFees,
-      assetId
-    } = req.body;
-
+    const { signedTxn, tempAccount, amount, microAmount, recipientEmail, senderAddress, payRecipientFees, assetId } = req.body;
+    
     if (!signedTxn || !tempAccount || !amount || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
     let txId;
+    let txnResult;
 
-    // Step 1: Submit transaction
     try {
-      const submitResponse = await algodClient
-        .sendRawTransaction(Buffer.from(signedTxn, 'base64'))
-        .do();
-
-      console.log('Submit response:', JSON.stringify(submitResponse, null, 2));
-
-      txId = submitResponse.txid;
+      // Submit the signed transaction
+      const submitResponse = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      txId = submitResponse.txId;
+      
+      // Wait for confirmation
+      txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
+      
     } catch (submitError) {
-      console.error('submitError details:', submitError);
-
-      // Handle "already in ledger" case
-      if (
-        submitError.message &&
-        submitError.message.includes('transaction already in ledger')
-      ) {
+      // Check if this is a "transaction already in ledger" error
+      if (submitError.message && submitError.message.includes('transaction already in ledger')) {
         console.log('Transaction already in ledger, extracting txId and confirming...');
-
+        
+        // Extract transaction ID from error message
         const txIdMatch = submitError.message.match(/transaction already in ledger: ([A-Z0-9]+)/);
         if (txIdMatch && txIdMatch[1]) {
           txId = txIdMatch[1];
           console.log(`Extracted txId from error: ${txId}`);
+          
+          // Wait for confirmation of the existing transaction
+          try {
+            txnResult = await algosdk.waitForConfirmation(algodClient, txId, 5);
+            console.log('Successfully confirmed existing transaction');
+          } catch (confirmError) {
+            console.error('Error confirming existing transaction:', confirmError);
+            throw new Error('Transaction was submitted but confirmation failed');
+          }
         } else {
           throw new Error('Could not extract transaction ID from duplicate submission error');
         }
       } else {
-        throw submitError; // Re-throw all other errors
+        // Re-throw other errors
+        throw submitError;
       }
     }
 
-    // Step 2: Wait for confirmation
-    await algosdk.waitForConfirmation(algodClient, txId, 5);
-
-    // Step 3: Get full confirmed txn info
-    const confirmedTxn = await algodClient.pendingTransactionInformation(txId).do();
-    const appId = confirmedTxn['applicationIndex'] || confirmedTxn['applicationIndex'];
-    console.log('Confirmed App ID:', appId);
-
+    // Extract app ID from transaction result
+    const appId = txnResult['application-index'];
+    
     if (!appId) {
-      console.log('Confirmed txn:', safeJson(confirmedTxn));
       throw new Error('Application ID not found in transaction result');
     }
 
-    // Step 4: Generate post-creation transactions
+    // Generate the second group of transactions
     const postAppTxns = await generatePostAppTransactions({
       appId,
       senderAddress,
-      microAmount,
+      microAmount: microAmount,
       tempAccount,
       payRecipientFees,
       assetId: assetId || getDefaultAssetId()
     });
-
-    // Step 5: Send response
+    
     res.status(200).json({
       appId,
       appAddress: postAppTxns.appAddress,
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: postAppTxns.tempAccount
     });
-
+    
   } catch (error) {
     console.error('Error submitting app creation:', error);
-    res.status(500).json({
-      error: 'Failed to submit app creation',
-      details: error.message
+    res.status(500).json({ 
+      error: 'Failed to submit app creation', 
+      details: error.message 
     });
   }
 });
-
-
 
 // Submit signed group transactions
 router.post('/submit-group-transactions', async (req, res) => {
@@ -230,7 +200,7 @@ router.post('/submit-group-transactions', async (req, res) => {
       const submitResponse = await algodClient.sendRawTransaction(
         signedTxns.map(txn => Buffer.from(txn, 'base64'))
       ).do();
-      txId = submitResponse.txid;
+      txId = submitResponse.txId;
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txId, 5);
@@ -431,16 +401,16 @@ router.post('/generate-optin', async (req, res) => {
     // Get suggested parameters
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      sender: recipientAddress,
-      receiver: recipientAddress,
-      closeRemainderTo: undefined,
-      revocationTarget: undefined,
-      amount: 0,
-      note: undefined,
-      assetIndex: assetId || getDefaultAssetId(),
-      suggestedParams: suggestedParams
-    });
+    const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParams(
+      recipientAddress, // from
+      recipientAddress, // to
+      undefined, // closeRemainderTo
+      undefined, // revocationTarget
+      0, // amount (0 for opt-in)
+      undefined, // note
+      assetId || getDefaultAssetId(), // assetIndex
+      suggestedParams // suggestedParams
+    );
     
     const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(optInTxn)).toString('base64');
     
@@ -464,12 +434,12 @@ router.post('/submit-optin', async (req, res) => {
     }
     
     // Submit the signed transaction
-    const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+    const { txId } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
     
     // Wait for confirmation
-    await algosdk.waitForConfirmation(algodClient, txid, 5);
+    await algosdk.waitForConfirmation(algodClient, txId, 5);
     
-    res.status(200).json({ success: true, txid });
+    res.status(200).json({ success: true, txId });
   } catch (error) {
     console.error('Error submitting opt-in transaction:', error);
     res.status(500).json({ error: 'Failed to submit opt-in transaction', details: error.message });
@@ -551,12 +521,12 @@ router.post('/claim-usdc', async (req, res) => {
     
     // Submit the signed transaction group
     try {
-      const { txid } = await algodClient.sendRawTransaction(
+      const { txId } = await algodClient.sendRawTransaction(
         signedTransactions.map(txn => Buffer.from(txn, 'base64'))
       ).do();
       
       // Wait for confirmation
-      await algosdk.waitForConfirmation(algodClient, txid, 5);
+      await algosdk.waitForConfirmation(algodClient, txId, 5);
       
       // Update the escrow record
       await escrowCollection.updateOne(
@@ -664,7 +634,7 @@ router.post('/fund-wallet', async (req, res) => {
     
     // Check temp account balance first
     const tempAccountInfo = await algodClient.accountInformation(tempAccountObj.addr).do();
-    const tempBalance = safeToNumber(tempAccountInfo.amount);
+    const tempBalance = tempAccountInfo.amount;
     
     console.log(`Temp account balance: ${tempBalance / 1e6} ALGO`);
     
@@ -692,26 +662,28 @@ router.post('/fund-wallet', async (req, res) => {
     const suggestedParams = await algodClient.getTransactionParams().do();
     
     // Create and sign the funding transaction FROM temp account TO recipient
-    const fundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: tempAccountObj.addr,
-      receiver: recipientAddress,
+    const fundingTxn = new algosdk.Transaction({
+      from: tempAccountObj.addr,
+      to: recipientAddress,
       amount: actualFundingAmount,
-      note: new Uint8Array(Buffer.from('AlgoSend fee coverage')),
-      suggestedParams: {
-        ...suggestedParams,
-        fee: fundingTransactionFee,
-        flatFee: true
-      }
+      fee: fundingTransactionFee,
+      flatFee: true,
+      firstRound: suggestedParams.firstRound,
+      lastRound: suggestedParams.lastRound,
+      genesisID: suggestedParams.genesisID,
+      genesisHash: suggestedParams.genesisHash,
+      type: 'pay',
+      note: new Uint8Array(Buffer.from('AlgoSend fee coverage'))
     });
     
     // Sign with temp account
     const signedTxn = algosdk.signTransaction(fundingTxn, tempAccountObj.sk);
     
     // Submit the transaction
-    const { txid } = await algodClient.sendRawTransaction(signedTxn.blob).do();
+    const { txId } = await algodClient.sendRawTransaction(signedTxn.blob).do();
     
     // Wait for confirmation
-    await algosdk.waitForConfirmation(algodClient, txid, 5);
+    await algosdk.waitForConfirmation(algodClient, txId, 5);
     
     // Mark escrow as funded
     await escrowCollection.updateOne(
@@ -757,8 +729,8 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
     const assets = accountInfo.assets || [];
 
     for (const asset of assets) {
-      if (Number(asset.assetId) === targetAssetId) {
-        const microBalance = safeToNumber(asset.amount);
+      if (asset['asset-id'] === targetAssetId) {
+        const microBalance = asset.amount;
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
       }
@@ -802,7 +774,7 @@ router.get('/asset-balance/:address', async (req, res) => {
 
     for (const asset of assets) {
       if (asset['asset-id'] === targetAssetId) {
-        const microBalance = safeToNumber(asset.amount);
+        const microBalance = asset.amount;
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
       }
@@ -957,10 +929,10 @@ router.post('/submit-reclaim', async (req, res) => {
     
     // Submit the signed transaction
     try {
-      const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      const { txId } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
       
       // Wait for confirmation
-      await algosdk.waitForConfirmation(algodClient, txid, 5);
+      await algosdk.waitForConfirmation(algodClient, txId, 5);
       
       // Update the escrow record
       await escrowCollection.updateOne(
@@ -1148,16 +1120,18 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
     // ✅ Just pass the common assets - TEAL will figure out which ones to opt out of
     const commonAssets = [31566704, 760037151, 2494786278, 2726252423]; // USDC, xUSD, MONKO, ALPHA
     
-    const deleteAppTxn = algosdk.makeApplicationCallTxnWithSuggestedParamsFromObject({
-      sender: senderAddress,
+    const deleteAppTxn = new algosdk.Transaction({
+      from: senderAddress,
       appIndex: appIdInt,
-      onComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
-      foreignAssets: commonAssets,
-      suggestedParams: {
-        ...suggestedParams,
-        fee: 3000,
-        flatFee: true
-      }
+      appOnComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
+      appForeignAssets: commonAssets, // ✅ Simple hardcoded list
+      fee: 3000,
+      flatFee: true,
+      firstRound: suggestedParams.firstRound,
+      lastRound: suggestedParams.lastRound,
+      genesisID: suggestedParams.genesisID,
+      genesisHash: suggestedParams.genesisHash,
+      type: 'appl'
     });
     
     const encodedTxns = [Buffer.from(algosdk.encodeUnsignedTransaction(deleteAppTxn)).toString('base64')];
@@ -1198,7 +1172,7 @@ router.post('/submit-cleanup', async (req, res) => {
       const submitResponse = await algodClient.sendRawTransaction(
         signedTxns.map(txn => Buffer.from(txn, 'base64'))
       ).do();
-      txId = submitResponse.txid;
+      txId = submitResponse.txId;
       
       // Wait for confirmation (same pattern as other endpoints)
       await algosdk.waitForConfirmation(algodClient, txId, 5);
