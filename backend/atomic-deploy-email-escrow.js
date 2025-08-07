@@ -114,9 +114,12 @@ console.log("Debug - targetAssetId:", targetAssetId);
         onComplete: algosdk.OnApplicationComplete.NoOpOC,
         foreignAssets: [targetAssetId],
         suggestedParams: {
-          ...suggestedParams,  // Spread the entire object
           fee: 1000,
-          flatFee: true
+          flatFee: true,
+          firstValid: suggestedParams.firstValid,
+          lastValid: suggestedParams.lastValid,
+          genesisID: suggestedParams.genesisID,
+          genesisHash: suggestedParams.genesisHash
         }
       });
 
