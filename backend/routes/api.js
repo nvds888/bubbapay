@@ -177,7 +177,7 @@ router.post('/submit-app-creation', async (req, res) => {
 
     // Step 3: Get full confirmed txn info
     const confirmedTxn = await algodClient.pendingTransactionInformation(txId).do();
-    const appId = confirmedTxn['created-application-index'] || confirmedTxn['application-index'];
+    const appId = confirmedTxn['applicationIndex'] || confirmedTxn['applicationIndex'];
     console.log('Confirmed App ID:', appId);
 
     if (!appId) {
