@@ -90,6 +90,15 @@ console.log("Processing parameters complete. Generating TEAL programs...");
     
     console.log("TEAL compilation successful");
     
+    console.log("Debug - OnApplicationComplete values:", {
+      NoOpOC: algosdk.OnApplicationComplete.NoOpOC,
+      OptInOC: algosdk.OnApplicationComplete.OptInOC,
+      CloseOutOC: algosdk.OnApplicationComplete.CloseOutOC,
+      ClearStateOC: algosdk.OnApplicationComplete.ClearStateOC,
+      UpdateApplicationOC: algosdk.OnApplicationComplete.UpdateApplicationOC,
+      DeleteApplicationOC: algosdk.OnApplicationComplete.DeleteApplicationOC
+    });
+
     try {
       console.log("TEST: Creating minimal app transaction...");
       const testTxn = algosdk.makeApplicationCreateTxnFromObject({
@@ -172,7 +181,7 @@ const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
   numLocalByteSlices: 0,
   numGlobalInts: 2,
   numGlobalByteSlices: 2,
-  onComplete: algosdk.OnApplicationComplete.NoOpOC,
+  onComplete: 0,
   foreignAssets: [targetAssetId],
   suggestedParams: suggestedParams  // Pass directly without modification
 });
