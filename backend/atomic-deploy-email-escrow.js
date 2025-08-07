@@ -181,7 +181,6 @@ const appCreateTxn = algosdk.makeApplicationCreateTxnFromObject({
   numLocalByteSlices: 0,
   numGlobalInts: 2,
   numGlobalByteSlices: 2,
-  onComplete: 0,
   foreignAssets: [targetAssetId],
   suggestedParams: suggestedParams  // Pass directly without modification
 });
