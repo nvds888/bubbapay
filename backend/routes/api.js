@@ -398,7 +398,9 @@ router.get('/check-optin/:address/:assetId', async (req, res) => {
   try {
     const accountInfo = await algodClient.accountInformation(req.params.address).do();
     const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
-    const hasOptedIn = accountInfo.assets?.some(asset => asset['asset-id'] === targetAssetId) || false;
+const hasOptedIn = accountInfo.assets?.some(asset => 
+  Number(asset['asset-id']) === targetAssetId  // Convert BigInt to number for comparison
+) || false;;
     res.status(200).json({ hasOptedIn, assetId: targetAssetId });
   } catch (error) {
     console.error('Error checking opt-in status:', error);

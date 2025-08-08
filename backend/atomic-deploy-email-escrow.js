@@ -331,7 +331,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
     });
 
     // Transaction 2: Close temp account and send remaining ALGO to platform
-    const closeAccountTxn = algosdk.makeApplicationCallTxnFromObject({
+    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: tempAccountObj.addr,
       receiver: PLATFORM_ADDRESS,
       amount: 0, // Implicit 0, all remaining goes to closeRemainderTo
