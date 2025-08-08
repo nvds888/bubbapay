@@ -1089,29 +1089,51 @@ router.post('/cleanup-contract', async (req, res) => {
     try {
       const appInfo = await algodClient.getApplicationByID(appIdInt).do();
       
+      // DEBUG: Log the entire app info structure
+      console.log('DEBUG - App info structure:', JSON.stringify(appInfo, null, 2));
+      console.log('DEBUG - Sender address:', senderAddress);
+      
       // Parse global state to check if completed
       let isCompleted = false;
       let isCreator = false;
+      let foundCreatorAddress = null;
       
       if (appInfo.params && appInfo.params['global-state']) {
+        console.log('DEBUG - Global state entries:', appInfo.params['global-state'].length);
+        
         for (const kv of appInfo.params['global-state']) {
           const key = Buffer.from(kv.key, 'base64').toString();
+          console.log(`DEBUG - Global state key: "${key}"`);
+          console.log(`DEBUG - Global state value:`, kv.value);
           
           if (key === 'claimed' && kv.value.uint === 1) {
             isCompleted = true;
+            console.log('DEBUG - Found claimed = 1');
           }
           
           if (key === 'creator') {
-            const creatorAddress = algosdk.encodeAddress(Buffer.from(kv.value.bytes, 'base64'));
-            isCreator = (creatorAddress === senderAddress);
+            try {
+              foundCreatorAddress = algosdk.encodeAddress(Buffer.from(kv.value.bytes, 'base64'));
+              isCreator = (foundCreatorAddress === senderAddress);
+              console.log('DEBUG - Found creator in global state:', foundCreatorAddress);
+              console.log('DEBUG - Sender matches creator:', isCreator);
+            } catch (addressError) {
+              console.error('DEBUG - Error decoding creator address:', addressError);
+            }
           }
         }
+      } else {
+        console.log('DEBUG - No global state found or wrong structure');
+        console.log('DEBUG - appInfo.params keys:', Object.keys(appInfo.params || {}));
       }
+      
+      console.log('DEBUG - Final isCreator result:', isCreator);
+      console.log('DEBUG - Final isCompleted result:', isCompleted);
       
       if (!isCreator) {
         return res.status(403).json({
           success: false,
-          error: 'Only the contract creator can clean up this contract'
+          error: `Only the contract creator can clean up this contract. Creator: ${foundCreatorAddress}, Sender: ${senderAddress}`
         });
       }
       
