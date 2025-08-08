@@ -162,6 +162,12 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     
     console.log(`Group transaction total fee budget: ${totalFeeNeeded / 1e6} ALGO`);
     
+    console.log("DEBUG - senderAddress type and value:", typeof senderAddress, senderAddress);
+console.log("DEBUG - appAddress type and value:", typeof appAddress, appAddress);
+console.log("DEBUG - tempAccount:", tempAccount);
+console.log("DEBUG - tempAccount.address type and value:", typeof tempAccount?.address, tempAccount?.address);
+console.log("DEBUG - suggestedParams keys:", Object.keys(suggestedParams));
+console.log("DEBUG - suggestedParams values:", suggestedParams);
     
     // 1. Fund the app with ALGO (back to 0.21 ALGO since no platform fee)
     const fundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -273,7 +279,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
       throw new Error("Invalid platform address - check PLATFORM_ADDRESS environment variable");
     }
     
-    const appIdInt = parseInt(appId);
+    const appIdInt = Number(appId); 
     
     // Reconstruct temporary account from private key
     const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
@@ -366,7 +372,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       throw new Error("Invalid sender address");
     }
     
-    const appIdInt = parseInt(appId);
+    const appIdInt = Number(appId); 
     const suggestedParams = await algodClient.getTransactionParams().do();
     
     // Calculate exact fee (1 inner transaction for asset transfer)
