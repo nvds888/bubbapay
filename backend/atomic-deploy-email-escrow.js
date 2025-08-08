@@ -264,7 +264,10 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
       appAddress,
       groupTransactions: encodedTxns,
       totalFee: actualTotalFee / 1e6,
-      tempAccount
+      tempAccount: {
+        address: tempAccountAddress,  // Use the clean string address
+        privateKey: tempAccount.privateKey  // Keep only the private key string
+      }
     };
   } catch (error) {
     console.error("Error in generatePostAppTransactions:", error);
