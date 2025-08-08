@@ -11,6 +11,7 @@ import {
 import { WalletUIProvider } from '@txnlab/use-wallet-ui-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
+import { fundWallet } from '../services/api';
 
 const getAssetInfo = (assetId) => {
   const assets = {
@@ -327,7 +328,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
   const [claimStatus, setClaimStatus] = useState('initial');
   const [isFunding, setIsFunding] = useState(false);
   const [autoClickTriggered, setAutoClickTriggered] = useState(false);
-  // CHANGE 16: Remove the duplicate assetInfo state from ClaimPageWithWallet
+  const [fundingDetails, setFundingDetails] = useState(null); // NEW: Track funding details
 
   // Auto-trigger wallet button click when component mounts
   useEffect(() => {
@@ -405,50 +406,57 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
   }, [accountAddress, escrowDetails]);
   
   // Fund wallet with fee coverage
-  const fundWallet = async () => {
-    if (!accountAddress || !tempPrivateKey || !appId) {
-      console.error("Missing required parameters for funding");
-      return false;
-    }
+const fundWallet = async () => {
+  if (!accountAddress || !tempPrivateKey || !appId) {
+    console.error("Missing required parameters for funding");
+    return false;
+  }
+  
+  setIsFunding(true);
+  setError(null);
+  
+  try {
+    console.log("Requesting fee coverage from temp account...");
     
-    setIsFunding(true);
-    setError(null);
+    const fundResponse = await axios.post(`${API_URL}/fund-wallet`, {
+      recipientAddress: accountAddress,
+      appId,
+      tempPrivateKey
+    });
     
-    try {
-      console.log("Requesting fee coverage from temp account...");
-      
-      const fundResponse = await axios.post(`${API_URL}/fund-wallet`, {
-        recipientAddress: accountAddress,
-        appId,
-        tempPrivateKey
-      });
-      
-      console.log("Fee coverage response:", fundResponse.data);
-      
-      if (fundResponse.data.success) {
-        if (fundResponse.data.alreadyFunded) {
-          console.log("Fee coverage was already provided for this escrow");
-        } else if (fundResponse.data.fundingAmount > 0) {
-          console.log(`Received ${fundResponse.data.fundingAmount} ALGO for transaction fees`);
+    console.log("Fee coverage response:", fundResponse);
+    
+    if (fundResponse.success) {
+      if (fundResponse.alreadyFunded) {
+        console.log("Fee coverage was already provided for this escrow");
+      } else if (fundResponse.fundingAmount > 0) {
+        // NEW: Handle conditional fee coverage
+        if (fundResponse.returnedToCreator) {
+          console.log(`Fee coverage returned to creator - you're already opted in! (${fundResponse.fundingAmount} ALGO saved)`);
+          // Show a brief success message about the optimization
+          setError(null); // Clear any previous errors
+        } else {
+          console.log(`Received ${fundResponse.fundingAmount} ALGO for transaction fees`);
           // Wait a moment for the transaction to propagate only if we actually sent funds
           await new Promise(resolve => setTimeout(resolve, 2000));
-        } else {
-          console.log("No fee coverage needed for this escrow");
         }
-        setIsFunding(false);
-        return true;
       } else {
-        console.log("Unexpected response from funding endpoint");
-        setIsFunding(false);
-        return true;
+        console.log("No fee coverage needed for this escrow");
       }
-    } catch (error) {
-      console.error('Error receiving fee coverage:', error);
-      setError(error.response?.data?.error || 'Failed to receive fee coverage. Please try again.');
       setIsFunding(false);
-      return false;
+      return true;
+    } else {
+      console.log("Unexpected response from funding endpoint");
+      setIsFunding(false);
+      return true;
     }
-  };
+  } catch (error) {
+    console.error('Error receiving fee coverage:', error);
+    setError(error.response?.data?.error || 'Failed to receive fee coverage. Please try again.');
+    setIsFunding(false);
+    return false;
+  }
+};
   
   // Handle USDC opt-in
   const handleOptIn = async () => {
@@ -585,20 +593,19 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
           </div>
           {/* CHANGE 7f: Claiming status message */}
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {claimStatus === 'claiming' 
-              ? `Claiming Your ${assetInfo?.symbol || 'Asset'}...` 
-              : (isFunding 
-                  ? 'Receiving Fee Coverage...' 
-                  // CHANGE 20: Use the helper in loading states where assetInfo might be null
-                  : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
-          </h3>
-          <p className="text-gray-600 text-sm">
-            {claimStatus === 'claiming' 
-              ? `Please wait while we process your claim` 
-              : (isFunding 
-                  ? 'Transferring ALGO for transaction fees from escrow' 
-                  : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
-          </p>
+  {claimStatus === 'claiming' 
+    ? `Claiming Your ${assetInfo?.symbol || 'Asset'}...` 
+    : (isFunding 
+        ? 'Optimizing Fee Coverage...' // CHANGED: More accurate message
+        : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
+</h3>
+<p className="text-gray-600 text-sm">
+  {claimStatus === 'claiming' 
+    ? `Please wait while we process your claim` 
+    : (isFunding 
+        ? 'Checking if you need transaction fees or if coverage can be returned to sender' // CHANGED
+        : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
+</p>
           
           <div className="mt-4 card card-compact inline-block">
             <div className="flex items-center space-x-3">

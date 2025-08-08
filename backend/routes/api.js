@@ -617,7 +617,7 @@ router.post('/claim-usdc', async (req, res) => {
   }
 });
 
-// Fund wallet - CORRECTED to use temp account instead of funder account
+// Updated /fund-wallet endpoint in api.js
 router.post('/fund-wallet', async (req, res) => {
   try {
     const { recipientAddress, appId, tempPrivateKey } = req.body;
@@ -666,6 +666,33 @@ router.post('/fund-wallet', async (req, res) => {
       });
     }
     
+    // NEW: Check if recipient is already opted into the asset
+    let shouldReturnToCreator = false;
+    let optInStatus = 'unknown';
+    
+    try {
+      const accountInfo = await algodClient.accountInformation(recipientAddress).do();
+      const targetAssetId = escrow.assetId || getDefaultAssetId();
+      
+      const hasOptedIn = accountInfo.assets?.some(asset => {
+        return Number(asset['asset-id']) === targetAssetId || Number(asset.assetId) === targetAssetId;
+      }) || false;
+      
+      if (hasOptedIn) {
+        shouldReturnToCreator = true;
+        optInStatus = 'already_opted_in';
+        console.log(`Recipient already opted in to asset ${targetAssetId}, returning fee coverage to creator`);
+      } else {
+        optInStatus = 'needs_optin';
+        console.log(`Recipient not opted in to asset ${targetAssetId}, sending fee coverage to recipient`);
+      }
+    } catch (optInCheckError) {
+      console.error('Error checking recipient opt-in status:', optInCheckError);
+      // If we can't check, default to sending to recipient (current behavior)
+      shouldReturnToCreator = false;
+      optInStatus = 'check_failed';
+    }
+    
     // Reconstruct temporary account from private key
     const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
     const publicKey = secretKeyUint8.slice(32, 64);
@@ -676,7 +703,7 @@ router.post('/fund-wallet', async (req, res) => {
       sk: secretKeyUint8
     };
     
-    console.log(`Funding wallet ${recipientAddress} from temp account ${tempAddress}`);
+    console.log(`Funding decision: ${shouldReturnToCreator ? 'return to creator' : 'send to recipient'}`);
     
     // Check temp account balance first
     const tempAccountInfo = await algodClient.accountInformation(tempAccountObj.addr).do();
@@ -704,15 +731,23 @@ router.post('/fund-wallet', async (req, res) => {
       });
     }
     
+    // NEW: Determine the receiver based on opt-in status
+    const fundingReceiver = shouldReturnToCreator ? escrow.senderAddress : recipientAddress;
+    const fundingNote = shouldReturnToCreator 
+      ? 'AlgoSend fee coverage returned to creator' 
+      : 'AlgoSend fee coverage';
+    
+    console.log(`Funding ${actualFundingAmount / 1e6} ALGO from ${tempAddress} to ${shouldReturnToCreator ? 'creator' : 'recipient'} (${fundingReceiver})`);
+    
     // Get suggested parameters for the transaction
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Create and sign the funding transaction FROM temp account TO recipient
+    // Create and sign the funding transaction
     const fundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: tempAccountObj.addr,
-      receiver: recipientAddress,
+      receiver: fundingReceiver, // NEW: Conditional receiver
       amount: actualFundingAmount,
-      note: new Uint8Array(Buffer.from('AlgoSend fee coverage')),
+      note: new Uint8Array(Buffer.from(fundingNote)), // NEW: Conditional note
       suggestedParams: {
         ...suggestedParams,
         fee: fundingTransactionFee,
@@ -732,16 +767,36 @@ router.post('/fund-wallet', async (req, res) => {
     // Mark escrow as funded
     await escrowCollection.updateOne(
       { _id: escrow._id },
-      { $set: { funded: true, fundedAt: new Date() } }
+      { 
+        $set: { 
+          funded: true, 
+          fundedAt: new Date(),
+          // NEW: Track where the funding went
+          fundingReturnedToCreator: shouldReturnToCreator,
+          recipientOptInStatus: optInStatus
+        } 
+      }
     );
     
-    console.log(`Successfully funded wallet with ${actualFundingAmount / 1e6} ALGO`);
+    // NEW: Create appropriate success message
+    const assetInfo = getAssetInfo(escrow.assetId);
+    let message;
+    
+    if (shouldReturnToCreator) {
+      message = `Fee coverage returned to creator - recipient already has ${assetInfo?.symbol || 'asset'} (${(actualFundingAmount / 1e6).toFixed(3)} ALGO)`;
+    } else {
+      message = `Wallet funded with ${(actualFundingAmount / 1e6).toFixed(3)} ALGO for transaction fees`;
+    }
+    
+    console.log(`Funding complete: ${message}`);
     
     res.status(200).json({
       success: true,
-      txId,
-      fundingAmount: actualFundingAmount / 1e6, // Convert to ALGO for display
-      message: `Wallet funded with ${(actualFundingAmount / 1e6).toFixed(3)} ALGO for transaction fees`
+      txId: txid,
+      fundingAmount: actualFundingAmount / 1e6,
+      returnedToCreator: shouldReturnToCreator, // NEW: Frontend can use this
+      optInStatus: optInStatus, // NEW: Frontend can use this
+      message
     });
     
   } catch (error) {

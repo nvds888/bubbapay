@@ -228,6 +228,16 @@ export const submitCleanupTransaction = async (data) => {
   }
 };
 
+// Wallet funding API
+export const fundWallet = async (data) => {
+  try {
+    const response = await apiClient.post('/fund-wallet', data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.error || 'Failed to fund wallet';
+  }
+};
+
 export default {
   generateTransactions,
   submitAppCreation,
@@ -243,12 +253,11 @@ export default {
   submitReclaimTransaction,
   fetchUSDCBalance,
   checkAlgoAvailability,
-  // New exports for asset support
   getSupportedAssets,
   getAssetInfo,
   getDefaultAssetId,
   fetchAssetBalance,
-  // NEW: Add cleanup functions
   generateCleanupTransaction,
-  submitCleanupTransaction
+  submitCleanupTransaction,
+  fundWallet
 };
