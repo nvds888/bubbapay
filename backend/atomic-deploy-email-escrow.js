@@ -145,7 +145,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       throw new Error("Invalid temporary account");
     }
     
-    const appIdInt = parseInt(appId);
+    const appIdInt = Number(appId); 
     const appAddress = algosdk.getApplicationAddress(appIdInt);
     console.log(`App address: ${appAddress}`);
     
