@@ -235,7 +235,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     });
     
     // 6. Send asset to the app
-    const sendAssetTxn = algosdk.makeAssetTransferTxnFromObject({
+    const sendAssetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       sender: senderAddress,
       receiver: appAddress,
       assetIndex: targetAssetId,
