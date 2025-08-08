@@ -144,9 +144,11 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     if (!tempAccount || !tempAccount.address) {
       throw new Error("Invalid temporary account");
     }
+    const tempAccountAddress = tempAccount.address.toString ? tempAccount.address.toString() : tempAccount.address;
     
     const appIdInt = Number(appId); 
-    const appAddress = algosdk.getApplicationAddress(appIdInt);
+    const appAddressObj = algosdk.getApplicationAddress(appIdInt);
+const appAddress = appAddressObj.toString();
     console.log(`App address: ${appAddress}`);
     
     // Get suggested parameters
@@ -180,7 +182,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     // 2. Fund the temporary account with minimal ALGO for claim transaction
     const tempFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: senderAddress,
-      receiver: tempAccount.address,
+      receiver: tempAccountAddress,
       amount: 102000,
       suggestedParams: { ...suggestedParams, fee: EXACT_FEES.TEMP_FUNDING, flatFee: true }
     });
@@ -190,7 +192,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     if (payRecipientFees) {
       recipientFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: senderAddress,
-        receiver: tempAccount.address,
+        receiver: tempAccountAddress,
         amount: 210000,
         note: new Uint8Array(Buffer.from('Recipient fee funding to temp account')),
         suggestedParams: { ...suggestedParams, fee: EXACT_FEES.RECIPIENT_FUNDING }
