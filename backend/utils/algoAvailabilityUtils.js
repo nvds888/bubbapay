@@ -66,7 +66,7 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
   
   // Current state
   const currentBalance = safeToNumber(accountInfo.amount); 
-  const currentMinBalance = safeToNumber(accountInfo['min-balance'] || 0);
+  const currentMinBalance = safeToNumber(accountInfo.minBalance || 0);
   const currentAvailableBalance = Math.max(0, currentBalance - currentMinBalance);
   
   // SIMULATION: Calculate final state after all transactions
@@ -213,12 +213,6 @@ async function checkAlgoAvailabilityForEscrow(algodClient, address, payRecipient
   try {
     // Fetch account information
     const accountInfo = await algodClient.accountInformation(address).do();
-    
-    console.log('=== MIN BALANCE DEBUG ===');
-console.log('Raw min-balance value:', accountInfo['min-balance']);
-console.log('Type of min-balance:', typeof accountInfo['min-balance']);
-console.log('safeToNumber result:', safeToNumber(accountInfo['min-balance']));
-console.log('=== END DEBUG ===');
 
     // Calculate availability with accurate simulation
     const availability = calculateAlgoAvailability(accountInfo, payRecipientFees);
