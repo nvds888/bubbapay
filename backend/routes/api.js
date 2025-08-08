@@ -1148,7 +1148,7 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
     // ✅ Just pass the common assets - TEAL will figure out which ones to opt out of
     const commonAssets = [31566704, 760037151, 2494786278, 2726252423]; // USDC, xUSD, MONKO, ALPHA
     
-    const deleteAppTxn = algosdk.makeApplicationCallTxnWithSuggestedParamsFromObject({
+    const deleteAppTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
       onComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,

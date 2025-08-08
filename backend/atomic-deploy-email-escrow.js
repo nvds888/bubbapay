@@ -213,7 +213,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     }
     
     // 4. Opt the app into asset
-    const optInTxn = algosdk.makeApplicationCallTxnWithSuggestedParamsFromObject({
+    const optInTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("opt_in_asset"))],
@@ -222,7 +222,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     });
     
     // 5. Set the amount
-    const setAmountTxn = algosdk.makeApplicationCallTxnWithSuggestedParamsFromObject({
+    const setAmountTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
       appArgs: [
@@ -233,7 +233,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     });
     
     // 6. Send asset to the app
-    const sendAssetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    const sendAssetTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       receiver: appAddress,
       assetIndex: targetAssetId,
@@ -315,7 +315,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
     let suggestedParams = await algodClient.getTransactionParams().do();
     
     // Transaction 1: App call to claim funds
-    const claimTxn = algosdk.makeApplicationCallTxnWithSuggestedParamsFromObject({
+    const claimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: tempAccountObj.addr,
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("claim"))],
@@ -325,7 +325,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
     });
 
     // Transaction 2: Close temp account and send remaining ALGO to platform
-    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    const closeAccountTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: tempAccountObj.addr,
       receiver: PLATFORM_ADDRESS,
       amount: 0, // Implicit 0, all remaining goes to closeRemainderTo
@@ -393,7 +393,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     // Calculate exact fee (1 inner transaction for asset transfer)
     const exactFee = calculateTransactionFee(true, 1); // 2000 microALGO
     
-    const reclaimTxn = algosdk.makeApplicationCallTxnWithSuggestedParamsFromObject({
+    const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("reclaim"))],
