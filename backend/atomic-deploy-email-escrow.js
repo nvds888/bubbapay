@@ -216,6 +216,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     const optInTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
       appArgs: [new Uint8Array(Buffer.from("opt_in_asset"))],
       foreignAssets: [targetAssetId],
       suggestedParams: { ...suggestedParams, fee: EXACT_FEES.OPT_IN, flatFee: true }
@@ -225,6 +226,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     const setAmountTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
       appArgs: [
         new Uint8Array(Buffer.from("set_amount")),
         algosdk.encodeUint64(microAmount)
@@ -233,7 +235,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     });
     
     // 6. Send asset to the app
-    const sendAssetTxn = algosdk.makeApplicationCallTxnFromObject({
+    const sendAssetTxn = algosdk.makeAssetTransferTxnFromObject({
       sender: senderAddress,
       receiver: appAddress,
       assetIndex: targetAssetId,
@@ -318,6 +320,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
     const claimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: tempAccountObj.addr,
       appIndex: appIdInt,
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
       appArgs: [new Uint8Array(Buffer.from("claim"))],
       accounts: [recipientAddress], // Where to send asset
       foreignAssets: [targetAssetId],
@@ -396,6 +399,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
       appArgs: [new Uint8Array(Buffer.from("reclaim"))],
       foreignAssets: [targetAssetId],
       suggestedParams: { 
