@@ -197,7 +197,7 @@ router.post('/submit-app-creation', async (req, res) => {
 
     // Step 5: Send response
     res.status(200).json({
-      appId,
+      appId: Number(appId),  // Convert BigInt to number
       appAddress: postAppTxns.appAddress,
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: postAppTxns.tempAccount
@@ -274,7 +274,7 @@ router.post('/submit-group-transactions', async (req, res) => {
     const claimUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claim?app=${appId}#key=${tempAccount.privateKey}`;
     
     const escrowRecord = {
-      appId: parseInt(appId),
+      appId: Number(appId),
       appAddress,
       network: 'mainnet',
       assetId: assetId || getDefaultAssetId(),
