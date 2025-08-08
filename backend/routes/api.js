@@ -398,9 +398,23 @@ router.get('/check-optin/:address/:assetId', async (req, res) => {
   try {
     const accountInfo = await algodClient.accountInformation(req.params.address).do();
     const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
-const hasOptedIn = accountInfo.assets?.some(asset => 
-  Number(asset['asset-id']) === targetAssetId  // Convert BigInt to number for comparison
-) || false;;
+    
+    // DEBUG: Log the asset structure
+    console.log('DEBUG - Account assets:', accountInfo.assets?.slice(0, 2)); // Just first 2 for brevity
+    console.log('DEBUG - Looking for asset ID:', targetAssetId);
+    console.log('DEBUG - Asset field names:', accountInfo.assets?.[0] ? Object.keys(accountInfo.assets[0]) : 'No assets');
+    
+    const hasOptedIn = accountInfo.assets?.some(asset => {
+      // Try both possible field names and log what we find
+      const assetId1 = asset['asset-id'];
+      const assetId2 = asset.assetId;
+      console.log(`DEBUG - Asset: asset-id=${assetId1} (type: ${typeof assetId1}), assetId=${assetId2} (type: ${typeof assetId2})`);
+      
+      return Number(asset['asset-id']) === targetAssetId || Number(asset.assetId) === targetAssetId;
+    }) || false;
+    
+    console.log('DEBUG - Has opted in result:', hasOptedIn);
+    
     res.status(200).json({ hasOptedIn, assetId: targetAssetId });
   } catch (error) {
     console.error('Error checking opt-in status:', error);
