@@ -1098,11 +1098,12 @@ router.post('/cleanup-contract', async (req, res) => {
       let isCreator = false;
       let foundCreatorAddress = null;
       
-      if (appInfo.params && appInfo.params['global-state']) {
-        console.log('DEBUG - Global state entries:', appInfo.params['global-state'].length);
+      if (appInfo.params && appInfo.params.globalState) {
+        console.log('DEBUG - Global state entries:', appInfo.params.globalState.length);
         
-        for (const kv of appInfo.params['global-state']) {
-          const key = Buffer.from(kv.key, 'base64').toString();
+        for (const kv of appInfo.params.globalState) {
+          const keyBytes = new Uint8Array(Object.values(kv.key));
+const key = Buffer.from(keyBytes).toString();
           console.log(`DEBUG - Global state key: "${key}"`);
           console.log(`DEBUG - Global state value:`, kv.value);
           
@@ -1113,7 +1114,8 @@ router.post('/cleanup-contract', async (req, res) => {
           
           if (key === 'creator') {
             try {
-              foundCreatorAddress = algosdk.encodeAddress(Buffer.from(kv.value.bytes, 'base64'));
+              const addressBytes = new Uint8Array(Object.values(kv.value.bytes));
+foundCreatorAddress = algosdk.encodeAddress(addressBytes);
               isCreator = (foundCreatorAddress === senderAddress);
               console.log('DEBUG - Found creator in global state:', foundCreatorAddress);
               console.log('DEBUG - Sender matches creator:', isCreator);
