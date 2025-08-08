@@ -252,7 +252,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
     algosdk.assignGroupID(txnGroup);
     
     // Verify total fees
-    const actualTotalFee = txnGroup.reduce((sum, txn) => sum + txn.fee, 0);
+    const actualTotalFee = txnGroup.reduce((sum, txn) => sum + Number(txn.fee), 0);
     console.log(`Actual group fee total: ${actualTotalFee / 1e6} ALGO`);
     
     // Convert to base64 for transmission
