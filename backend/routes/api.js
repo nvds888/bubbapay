@@ -1090,7 +1090,7 @@ router.post('/cleanup-contract', async (req, res) => {
       const appInfo = await algodClient.getApplicationByID(appIdInt).do();
       
       // DEBUG: Log the entire app info structure
-      console.log('DEBUG - App info structure:', JSON.stringify(appInfo, null, 2));
+      console.log('DEBUG - App info structure:', safeJson(appInfo));
       console.log('DEBUG - Sender address:', senderAddress);
       
       // Parse global state to check if completed
