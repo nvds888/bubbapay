@@ -603,7 +603,7 @@ const fundWallet = async () => {
   {claimStatus === 'claiming' 
     ? `Please wait while we process your claim` 
     : (isFunding 
-        ? 'Checking if you need transaction fees or if coverage can be returned to sender' // CHANGED
+        ? 'Checking if you need fee coverage' 
         : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
 </p>
           
