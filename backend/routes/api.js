@@ -1107,7 +1107,7 @@ const key = Buffer.from(keyBytes).toString();
           console.log(`DEBUG - Global state key: "${key}"`);
           console.log(`DEBUG - Global state value:`, kv.value);
           
-          if (key === 'claimed' && kv.value.uint === 1) {
+          if (key === 'claimed' && Number(kv.value.uint) === 1) {
             isCompleted = true;
             console.log('DEBUG - Found claimed = 1');
           }
