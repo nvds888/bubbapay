@@ -162,21 +162,13 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     
     console.log(`Group transaction total fee budget: ${totalFeeNeeded / 1e6} ALGO`);
     
-    // Create base parameters with v3 structure
-    const baseParams = {
-      firstRound: Number(suggestedParams.firstRound),
-      lastRound: Number(suggestedParams.lastRound),
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      flatFee: true
-    };
     
     // 1. Fund the app with ALGO (back to 0.21 ALGO since no platform fee)
     const fundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: senderAddress,
       receiver: appAddress,
       amount: 210000,
-      suggestedParams: { ...baseParams, fee: EXACT_FEES.FUNDING }
+      suggestedParams: { ...suggestedParams, fee: EXACT_FEES.FUNDING, flatFee: true }
     });
     
     // 2. Fund the temporary account with minimal ALGO for claim transaction
@@ -184,7 +176,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       sender: senderAddress,
       receiver: tempAccount.address,
       amount: 102000,
-      suggestedParams: { ...baseParams, fee: EXACT_FEES.TEMP_FUNDING }
+      suggestedParams: { ...suggestedParams, fee: EXACT_FEES.TEMP_FUNDING, flatFee: true }
     });
     
     // 3. Send cover fee to temporary account (if enabled)
@@ -195,7 +187,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
         receiver: tempAccount.address,
         amount: 210000,
         note: new Uint8Array(Buffer.from('Recipient fee funding to temp account')),
-        suggestedParams: { ...baseParams, fee: EXACT_FEES.RECIPIENT_FUNDING }
+        suggestedParams: { ...suggestedParams, fee: EXACT_FEES.RECIPIENT_FUNDING }
       });
     }
     
@@ -205,7 +197,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       appIndex: appIdInt,
       appArgs: [new Uint8Array(Buffer.from("opt_in_asset"))],
       foreignAssets: [targetAssetId],
-      suggestedParams: { ...baseParams, fee: EXACT_FEES.OPT_IN }
+      suggestedParams: { ...suggestedParams, fee: EXACT_FEES.OPT_IN, flatFee: true }
     });
     
     // 5. Set the amount
@@ -216,7 +208,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
         new Uint8Array(Buffer.from("set_amount")),
         algosdk.encodeUint64(microAmount)
       ],
-      suggestedParams: { ...baseParams, fee: EXACT_FEES.SET_AMOUNT }
+      suggestedParams: { ...suggestedParams, fee: EXACT_FEES.SET_AMOUNT, flatFee: true }
     });
     
     // 6. Send asset to the app
@@ -225,7 +217,7 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
       receiver: appAddress,
       assetIndex: targetAssetId,
       amount: microAmount,
-      suggestedParams: { ...baseParams, fee: EXACT_FEES.SEND_ASSET }
+      suggestedParams: { ...suggestedParams, fee: EXACT_FEES.SEND_ASSET, flatFee: true }
     });
     
     // Group transactions (no platform fee)
@@ -301,15 +293,6 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
     // Get suggested parameters
     let suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Create base parameters for both transactions
-    const baseParams = {
-      firstRound: suggestedParams.firstRound,
-      lastRound: suggestedParams.lastRound,
-      genesisID: suggestedParams.genesisID,
-      genesisHash: suggestedParams.genesisHash,
-      flatFee: true
-    };
-    
     // Transaction 1: App call to claim funds
     const claimTxn = algosdk.makeApplicationCallTxnWithSuggestedParamsFromObject({
       sender: tempAccountObj.addr,
@@ -317,7 +300,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
       appArgs: [new Uint8Array(Buffer.from("claim"))],
       accounts: [recipientAddress], // Where to send asset
       foreignAssets: [targetAssetId],
-      suggestedParams: { ...baseParams, fee: calculateTransactionFee(true, 1) } // 2000 microALGO
+      suggestedParams: { ...suggestedParams, fee: calculateTransactionFee(true, 1), flatFee: true } // 2000 microALGO
     });
 
     // Transaction 2: Close temp account and send remaining ALGO to platform
@@ -327,7 +310,7 @@ async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddres
       amount: 0, // Implicit 0, all remaining goes to closeRemainderTo
       closeRemainderTo: PLATFORM_ADDRESS, // KEY: This closes the account
       note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
-      suggestedParams: { ...baseParams, fee: 1000 } // Standard fee for payment transaction
+      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true } // Standard fee for payment transaction
     });
 
     // Group the transactions together
