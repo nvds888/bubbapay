@@ -1089,27 +1089,19 @@ router.post('/cleanup-contract', async (req, res) => {
     try {
       const appInfo = await algodClient.getApplicationByID(appIdInt).do();
       
-      // DEBUG: Log the entire app info structure
-      console.log('DEBUG - App info structure:', safeJson(appInfo));
-      console.log('DEBUG - Sender address:', senderAddress);
-      
       // Parse global state to check if completed
       let isCompleted = false;
       let isCreator = false;
       let foundCreatorAddress = null;
       
       if (appInfo.params && appInfo.params.globalState) {
-        console.log('DEBUG - Global state entries:', appInfo.params.globalState.length);
         
         for (const kv of appInfo.params.globalState) {
           const keyBytes = new Uint8Array(Object.values(kv.key));
 const key = Buffer.from(keyBytes).toString();
-          console.log(`DEBUG - Global state key: "${key}"`);
-          console.log(`DEBUG - Global state value:`, kv.value);
           
           if (key === 'claimed' && Number(kv.value.uint) === 1) {
             isCompleted = true;
-            console.log('DEBUG - Found claimed = 1');
           }
           
           if (key === 'creator') {
@@ -1117,8 +1109,6 @@ const key = Buffer.from(keyBytes).toString();
               const addressBytes = new Uint8Array(Object.values(kv.value.bytes));
 foundCreatorAddress = algosdk.encodeAddress(addressBytes);
               isCreator = (foundCreatorAddress === senderAddress);
-              console.log('DEBUG - Found creator in global state:', foundCreatorAddress);
-              console.log('DEBUG - Sender matches creator:', isCreator);
             } catch (addressError) {
               console.error('DEBUG - Error decoding creator address:', addressError);
             }
@@ -1128,9 +1118,6 @@ foundCreatorAddress = algosdk.encodeAddress(addressBytes);
         console.log('DEBUG - No global state found or wrong structure');
         console.log('DEBUG - appInfo.params keys:', Object.keys(appInfo.params || {}));
       }
-      
-      console.log('DEBUG - Final isCreator result:', isCreator);
-      console.log('DEBUG - Final isCompleted result:', isCompleted);
       
       if (!isCreator) {
         return res.status(403).json({

@@ -214,6 +214,12 @@ async function checkAlgoAvailabilityForEscrow(algodClient, address, payRecipient
     // Fetch account information
     const accountInfo = await algodClient.accountInformation(address).do();
     
+    console.log('=== MIN BALANCE DEBUG ===');
+console.log('Raw min-balance value:', accountInfo['min-balance']);
+console.log('Type of min-balance:', typeof accountInfo['min-balance']);
+console.log('safeToNumber result:', safeToNumber(accountInfo['min-balance']));
+console.log('=== END DEBUG ===');
+
     // Calculate availability with accurate simulation
     const availability = calculateAlgoAvailability(accountInfo, payRecipientFees);
     
