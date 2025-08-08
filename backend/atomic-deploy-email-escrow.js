@@ -208,7 +208,7 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
         receiver: tempAccountAddress,
         amount: 210000,
         note: new Uint8Array(Buffer.from('Recipient fee funding to temp account')),
-        suggestedParams: { ...suggestedParams, fee: EXACT_FEES.RECIPIENT_FUNDING }
+        suggestedParams: { ...suggestedParams, fee: EXACT_FEES.RECIPIENT_FUNDING, flatFee: true }
       });
     }
     
