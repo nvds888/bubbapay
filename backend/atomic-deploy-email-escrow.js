@@ -144,7 +144,20 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     if (!tempAccount || !tempAccount.address) {
       throw new Error("Invalid temporary account");
     }
-    const tempAccountAddress = tempAccount.address.toString ? tempAccount.address.toString() : tempAccount.address;
+
+    let tempAccountAddress;
+if (tempAccount.address && tempAccount.address.publicKey && typeof tempAccount.address.publicKey === 'object') {
+  // The publicKey was JSON-serialized, convert it back to Uint8Array and encode address
+  const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
+  tempAccountAddress = algosdk.encodeAddress(publicKeyArray);
+} else if (typeof tempAccount.address === 'string') {
+  // Already a string address
+  tempAccountAddress = tempAccount.address;
+} else {
+  throw new Error("Invalid temporary account address format");
+}
+
+console.log("DEBUG - Reconstructed tempAccountAddress:", tempAccountAddress);
     
     const appIdInt = Number(appId); 
     const appAddressObj = algosdk.getApplicationAddress(appIdInt);
