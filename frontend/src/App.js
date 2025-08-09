@@ -14,6 +14,7 @@ import SendFlow from './components/SendFlow';
 import ClaimPage from './components/ClaimPage';
 import TransactionsPage from './components/TransactionsPage';
 import SuccessPage from './components/SuccessPage';
+import CampaignPage from './components/CampaignPage';
 import SigningPage from './components/SigningPage';
 import DocumentationPage from './components/DocumentationPage';
 import '@txnlab/use-wallet-ui-react/dist/style.css';
@@ -76,8 +77,13 @@ function AppContent() {
               <Route path="/docs" element={
                 <div className="max-w-4xl mx-auto px-4">
                   <DocumentationPage />
-                </div>
+                </div>   
               } />
+              <Route path="/campaigns" element={
+  <div className="max-w-4xl mx-auto px-4">
+    <CampaignPage />
+  </div>
+} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
