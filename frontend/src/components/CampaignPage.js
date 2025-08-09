@@ -72,7 +72,7 @@ function CampaignPage() {
             </div>
             <h3 className="text-2xl font-bold text-white mb-4">Quality Growth</h3>
             <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              Users invest their own tokens to refer others. Only quality referrals earn rewards.
+            Users invest their own tokens (or Algo for fees) to refer others Only quality referrals earn rewards.
             </p>
             <div className="text-purple-100 text-sm">
               ✓ Skin-in-the-game approach<br/>
@@ -156,7 +156,7 @@ function CampaignPage() {
             </div>
             <h3 className="text-2xl font-bold text-white mb-4">Quality Growth</h3>
             <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              Users invest their own tokens to refer others. Only quality referrals earn rewards.
+              Users invest their own tokens (or Algo for fees fees) to refer others. Only quality referrals earn rewards.
             </p>
             <div className="text-purple-100 text-sm">
               ✓ Skin-in-the-game approach<br/>
@@ -264,8 +264,8 @@ function CampaignPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white">Planeify Plane Spotting Campaign</h3>
-                <p className="text-purple-200">Grow the plane spotting community</p>
+                <h3 className="text-2xl font-bold text-white">Planeify Campaign</h3>
+                <p className="text-purple-200">Grow the Planeify plane spotting community</p>
               </div>
             </div>
             
