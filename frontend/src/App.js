@@ -46,6 +46,21 @@ function AppContent() {
       </div>
     );
   }
+
+  const isCampaignPage = location.pathname === '/campaigns';
+
+if (isCampaignPage) {
+  // Campaign page has its own full-screen design
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar hideWalletConnection={false} />
+      <main className="flex-grow">
+        <CampaignPage />
+      </main>
+      <Footer />
+    </div>
+  );
+}
   
   // All other pages get normal wallet functionality
   return (
@@ -79,11 +94,6 @@ function AppContent() {
                   <DocumentationPage />
                 </div>   
               } />
-              <Route path="/campaigns" element={
-  <div className="max-w-4xl mx-auto px-4">
-    <CampaignPage />
-  </div>
-} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
