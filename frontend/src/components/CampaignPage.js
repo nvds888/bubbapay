@@ -30,7 +30,7 @@ function CampaignPage() {
             Turn your users into growth engines.
           </p>
           <p className="text-xl text-purple-300 mb-8 max-w-3xl mx-auto">
-            Launch referral campaigns where users earn rewards for onboarding real, engaged members to your project.
+            Create campaign tokens, set validation rules, and let your community onboard new users. You handle rewards, we handle tracking.
           </p>
           
           {/* Coming Soon Badge */}
@@ -43,7 +43,7 @@ function CampaignPage() {
         </div>
 
         {/* Value Proposition */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           
           {/* Setup Card */}
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-purple-300/20 hover:bg-white/15 transition-all duration-300 group">
@@ -54,12 +54,12 @@ function CampaignPage() {
             </div>
             <h3 className="text-2xl font-bold text-white mb-4">5-Minute Setup</h3>
             <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              Create referral campaigns instantly. No smart contracts, no dev work.
+              Create campaign tokens instantly or use your existing tokens. Set validation rules and launch.
             </p>
             <div className="text-purple-100 text-sm">
+              ✓ Auto campaign token creation<br/>
               ✓ Custom validation rules<br/>
-              ✓ Automatic token creation<br/>
-              ✓ Zero upfront costs
+              ✓ Dashboard with analytics
             </div>
           </div>
 
@@ -88,14 +88,98 @@ function CampaignPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-white mb-4">Proven Results</h3>
+            <h3 className="text-2xl font-bold text-white mb-4">Data & Tracking</h3>
             <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              Track real engagement. Reward actual usage, not just signups.
+              We track on-chain behavior and provide campaign dashboards. You control reward distribution.
             </p>
             <div className="text-purple-100 text-sm">
               ✓ On-chain verification<br/>
-              ✓ Custom success metrics<br/>
-              ✓ Transparent tracking
+              ✓ Custom dashboard access<br/>
+              ✓ You control rewards
+            </div>
+          </div>
+        </div>
+
+        {/* Token Options */}
+        <div className="bg-gradient-to-r from-purple-600/10 to-pink-600/10 backdrop-blur-lg rounded-2xl p-6 border border-purple-300/20 mb-16">
+          <h3 className="text-xl font-bold text-white text-center mb-4">Two Token Options</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-white mb-2">Auto Campaign Token</h4>
+              <p className="text-purple-200 text-sm">
+                We create a campaign-specific token. Lower barrier for affiliates to participate.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-white mb-2">Your Project Token</h4>
+              <p className="text-purple-200 text-sm">
+                Use your existing token. Higher upfront cost for affiliates, but builds token utility.
+              </p>
+            </div>
+          </div>
+        </div>
+          
+          {/* Setup Card */}
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-purple-300/20 hover:bg-white/15 transition-all duration-300 group">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-4">5-Minute Setup</h3>
+            <p className="text-purple-200 mb-4 leading-relaxed text-lg">
+              Create campaign tokens instantly or use your existing tokens. Set validation rules and launch.
+            </p>
+            <div className="text-purple-100 text-sm">
+              ✓ Auto campaign token creation<br/>
+              ✓ Custom validation rules<br/>
+              ✓ Dashboard with analytics
+            </div>
+          </div>
+
+          {/* Growth Card */}
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-purple-300/20 hover:bg-white/15 transition-all duration-300 group">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-4">Quality Growth</h3>
+            <p className="text-purple-200 mb-4 leading-relaxed text-lg">
+              Users invest their own tokens to refer others. Only quality referrals earn rewards.
+            </p>
+            <div className="text-purple-100 text-sm">
+              ✓ Skin-in-the-game approach<br/>
+              ✓ Behavior-based validation<br/>
+              ✓ Anti-spam protection built-in
+            </div>
+          </div>
+
+          {/* Results Card */}
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-purple-300/20 hover:bg-white/15 transition-all duration-300 group">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-4">Data & Tracking</h3>
+            <p className="text-purple-200 mb-4 leading-relaxed text-lg">
+              We track on-chain behavior and provide campaign dashboards. You control reward distribution.
+            </p>
+            <div className="text-purple-100 text-sm">
+              ✓ On-chain verification<br/>
+              ✓ Custom dashboard access<br/>
+              ✓ You control rewards
             </div>
           </div>
         </div>
@@ -111,7 +195,7 @@ function CampaignPage() {
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Create Campaign</h3>
               <p className="text-purple-200 text-sm">
-                Set your rules, rewards & validation criteria
+                Auto-create campaign tokens or use existing ones
               </p>
             </div>
 
@@ -139,9 +223,9 @@ function CampaignPage() {
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-white shadow-lg shadow-green-500/25">
                 4
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">Both Get Paid</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">Project Rewards</h3>
               <p className="text-purple-200 text-sm">
-                Automatic rewards for quality referrals
+                You distribute rewards based on our tracking data
               </p>
             </div>
           </div>
@@ -187,29 +271,29 @@ function CampaignPage() {
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div>
-                <h4 className="text-lg font-semibold text-white mb-3">Campaign Rules</h4>
+                <h4 className="text-lg font-semibold text-white mb-3">Campaign Setup</h4>
                 <ul className="space-y-1 text-purple-200 text-sm">
-                  <li>• Claim the referral link</li>
-                  <li>• Create Planeify account</li>
-                  <li>• Log 3 plane spots in first week</li>
+                  <li>• Uses Planeify campaign token</li>
+                  <li>• Affiliates send via BubbaPay</li>
+                  <li>• Automatic tracking enabled</li>
                 </ul>
               </div>
               
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-3">Validation Rules</h4>
+                <ul className="space-y-1 text-purple-200 text-sm">
+                  <li>• Claim the referral link</li>
+                  <li>• Sign up with wallet to Planeify</li>
+                  <li>• BubbaPay tracks completion</li>
+                </ul>
+              </div>
+
               <div>
                 <h4 className="text-lg font-semibold text-white mb-3">Rewards</h4>
                 <ul className="space-y-1 text-purple-200 text-sm">
                   <li>• <strong>Referrer:</strong> 20 free spots</li>
                   <li>• <strong>New user:</strong> 20 free spots</li>
-                  <li>• Both get premium features</li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="text-lg font-semibold text-white mb-3">Why It Works</h4>
-                <ul className="space-y-1 text-purple-200 text-sm">
-                  <li>• Users invest tokens upfront</li>
-                  <li>• Validates actual engagement</li>
-                  <li>• Both sides win with activity</li>
+                  <li>• Planeify distributes rewards</li>
                 </ul>
               </div>
             </div>
@@ -268,7 +352,7 @@ function CampaignPage() {
         <div className="text-center">
           <h2 className="text-4xl font-bold text-white mb-4">Turn Users Into Growth Engines</h2>
           <p className="text-xl text-purple-200 mb-8 max-w-2xl mx-auto">
-            Launch your first campaign in minutes. No upfront costs, no complex integrations.
+            Create campaign tokens, track on-chain behavior, control your rewards. We provide the tools, you drive growth.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
@@ -285,11 +369,10 @@ function CampaignPage() {
           </div>
           
           <div className="text-purple-300 text-sm space-y-1">
-            <p>✓ 5-minute setup • ✓ Zero upfront costs • ✓ Quality user growth</p>
+            <p>✓ Campaign token creation • ✓ On-chain tracking • ✓ Custom dashboards</p>
           </div>
         </div>
       </div>
-    </div>
   );
 }
 
