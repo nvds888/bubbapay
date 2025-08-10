@@ -1619,27 +1619,33 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     // Group all transactions
     algosdk.assignGroupID(transactions);
     
-    // Sign transactions that the temp account is responsible for - SIMPLIFIED
+    // Sign transactions that the temp account is responsible for - FIXED ORDER-BASED APPROACH
 const signedTransactions = [];
 let userTxnIndex = -1;
 
-// We know the transaction order, so we can handle each position specifically
-for (let i = 0; i < transactions.length; i++) {
-  // Find the user opt-in transaction (it's the one sent by recipientAddress)
-  const isUserOptIn = transactions[i].type === 'axfer' && 
-                      transactions[i].amount === 0 && 
-                      transactions[i].assetIndex === targetAssetId;
-  
-  if (isUserOptIn) {
-    // User transaction - leave unsigned for user to sign
-    signedTransactions.push(null);
-    userTxnIndex = i;
-  } else {
-    // Temp account transaction - sign it
-    const signedTxn = algosdk.signTransaction(transactions[i], tempAccountObj.sk);
-    signedTransactions.push(Buffer.from(signedTxn.blob).toString('base64'));
-  }
+// We know exactly which transaction is the user's based on how we built the array
+let currentIndex = 0;
+
+// Transaction 1: Fee coverage (temp account) - if applicable
+if (feeCoverageAmount > 0) {
+  const signedTxn = algosdk.signTransaction(transactions[currentIndex], tempAccountObj.sk);
+  signedTransactions.push(Buffer.from(signedTxn.blob).toString('base64'));
+  currentIndex++;
 }
+
+// Transaction 2: User opt-in (user account) - ALWAYS at this position
+signedTransactions.push(null); // User must sign this
+userTxnIndex = currentIndex;
+currentIndex++;
+
+// Transaction 3: App call claim (temp account)
+const signedClaimTxn = algosdk.signTransaction(transactions[currentIndex], tempAccountObj.sk);
+signedTransactions.push(Buffer.from(signedClaimTxn.blob).toString('base64'));
+currentIndex++;
+
+// Transaction 4: Close account (temp account)
+const signedCloseTxn = algosdk.signTransaction(transactions[currentIndex], tempAccountObj.sk);
+signedTransactions.push(Buffer.from(signedCloseTxn.blob).toString('base64'));
     
     // Encode unsigned transactions for user to sign
     const unsignedTransactions = transactions.map(txn => 
