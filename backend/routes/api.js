@@ -1669,4 +1669,89 @@ signedTransactions.push(Buffer.from(signedCloseTxn.blob).toString('base64'));
   }
 });
 
+// Submit optimized claim transactions
+router.post('/submit-optimized-claim', async (req, res) => {
+  try {
+    const { signedTransactions, appId, recipientAddress, tempPrivateKey, type } = req.body;
+    
+    if (!signedTransactions || !Array.isArray(signedTransactions) || !appId || !recipientAddress || !tempPrivateKey) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    // SECURITY: Hash the private key to look up the escrow
+    const claimHash = hashPrivateKey(tempPrivateKey, appId);
+    
+    // Check if escrow exists and is not claimed
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    const escrow = await escrowCollection.findOne({ 
+      claimHash: claimHash,
+      appId: parseInt(appId)
+    });
+    
+    if (!escrow) {
+      return res.status(404).json({ error: 'Invalid claim link or escrow not found' });
+    }
+    
+    if (escrow.claimed) {
+      return res.status(400).json({ error: 'Funds have already been claimed' });
+    }
+    
+    // Submit the signed transaction group
+    try {
+      const { txid } = await algodClient.sendRawTransaction(
+        signedTransactions.map(txn => Buffer.from(txn, 'base64'))
+      ).do();
+      
+      // Wait for confirmation
+      await algosdk.waitForConfirmation(algodClient, txid, 5);
+      
+      // Update the escrow record
+      await escrowCollection.updateOne(
+        { _id: escrow._id },
+        { 
+          $set: { 
+            claimed: true,
+            claimedAt: new Date(),
+            claimedBy: recipientAddress,
+            claimType: type // Track which flow was used
+          } 
+        }
+      );
+      
+      const assetInfo = getAssetInfo(escrow.assetId);
+      let message = `Successfully claimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}`;
+      
+      if (type === 'optimized-claim') {
+        message += '. Fee coverage was returned to creator.';
+      } else if (type === 'optin-and-claim') {
+        message += '. Opted in and claimed in one transaction.';
+      }
+      
+      res.status(200).json({
+        success: true,
+        amount: escrow.amount,
+        claimType: type,
+        message
+      });
+    } catch (error) {
+      console.error('Error submitting optimized claim transaction:', error);
+      
+      // Check if this is an app rejection
+      if (error.message.includes('rejected')) {
+        return res.status(400).json({
+          success: false,
+          error: 'Claim rejected by the smart contract. The funds may have already been claimed.'
+        });
+      }
+      
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error processing optimized claim:', error);
+    res.status(500).json({ error: 'Failed to process optimized claim', details: error.message });
+  }
+});
+
 module.exports = router;
