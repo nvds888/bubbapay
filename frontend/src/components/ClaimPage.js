@@ -364,6 +364,8 @@ const [isOptedIn, setIsOptedIn] = useState(false); // Track opt-in status
   useEffect(() => {
     const checkWalletStatus = async () => {
       if (!accountAddress || !escrowDetails) return;
+
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       setClaimStatus('checking');
       setIsLoading(true);
