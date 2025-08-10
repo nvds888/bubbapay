@@ -1619,22 +1619,27 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     // Group all transactions
     algosdk.assignGroupID(transactions);
     
-    // Sign transactions that the temp account is responsible for
-    const signedTransactions = [];
-    let userTxnIndex = -1;
-    
-    for (let i = 0; i < transactions.length; i++) {
-      if (transactions[i].from.publicKey && 
-          algosdk.encodeAddress(transactions[i].from.publicKey) === tempAccountObj.addr) {
-        // Temp account transaction - sign it
-        const signedTxn = algosdk.signTransaction(transactions[i], tempAccountObj.sk);
-        signedTransactions.push(Buffer.from(signedTxn.blob).toString('base64'));
-      } else {
-        // User transaction - leave unsigned for user to sign
-        signedTransactions.push(null);
-        userTxnIndex = i;
-      }
-    }
+    // Sign transactions that the temp account is responsible for - SIMPLIFIED
+const signedTransactions = [];
+let userTxnIndex = -1;
+
+// We know the transaction order, so we can handle each position specifically
+for (let i = 0; i < transactions.length; i++) {
+  // Find the user opt-in transaction (it's the one sent by recipientAddress)
+  const isUserOptIn = transactions[i].type === 'axfer' && 
+                      transactions[i].amount === 0 && 
+                      transactions[i].assetIndex === targetAssetId;
+  
+  if (isUserOptIn) {
+    // User transaction - leave unsigned for user to sign
+    signedTransactions.push(null);
+    userTxnIndex = i;
+  } else {
+    // Temp account transaction - sign it
+    const signedTxn = algosdk.signTransaction(transactions[i], tempAccountObj.sk);
+    signedTransactions.push(Buffer.from(signedTxn.blob).toString('base64'));
+  }
+}
     
     // Encode unsigned transactions for user to sign
     const unsignedTransactions = transactions.map(txn => 
