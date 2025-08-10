@@ -1423,7 +1423,7 @@ router.post('/generate-optimized-claim', async (req, res) => {
     if (escrow.payRecipientFees) {
       // Check temp account balance
       const tempAccountInfo = await algodClient.accountInformation(tempAddress).do();
-      const tempBalance = tempAccountInfo.amount;
+      const tempBalance = safeToNumber(tempAccountInfo.amount);
       
       // Reserve amounts for the transactions in this group
       const claimTxnFee = 2000; // App call with inner txn
@@ -1549,7 +1549,7 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     if (escrow.payRecipientFees) {
       // Check temp account balance
       const tempAccountInfo = await algodClient.accountInformation(tempAddress).do();
-      const tempBalance = tempAccountInfo.amount;
+      const tempBalance = safeToNumber(tempAccountInfo.amount);
       
       // Reserve amounts for the transactions in this group
       const claimTxnFee = 2000; // App call with inner txn

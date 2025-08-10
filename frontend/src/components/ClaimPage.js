@@ -360,43 +360,52 @@ const [isOptedIn, setIsOptedIn] = useState(false); // Track opt-in status
     }
   }, [activeAddress]);
   
-  // Check wallet status when connected
-  useEffect(() => {
-    const checkWalletStatus = async () => {
-      if (!accountAddress || !escrowDetails) return;
-
-      await new Promise(resolve => setTimeout(resolve, 500));
+  // Check wallet status when connected - HANDLES UNFUNDED ACCOUNTS
+useEffect(() => {
+  const checkWalletStatus = async () => {
+    if (!accountAddress || !escrowDetails) return;
+    
+    setClaimStatus('checking');
+    setIsLoading(true);
+    
+    try {
+      // Check opt-in status - handle unfunded accounts
+      const targetAssetId = escrowDetails.assetId || 31566704;
+      const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
+      const hasOptedIn = optInResponse.data.hasOptedIn;
       
-      setClaimStatus('checking');
-      setIsLoading(true);
+      setIsOptedIn(hasOptedIn);
       
-      try {
-        // Check opt-in status
-        const targetAssetId = escrowDetails.assetId || 31566704;
-        const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
-        const hasOptedIn = optInResponse.data.hasOptedIn;
-        
-        setIsOptedIn(hasOptedIn);
-        
-        // Set status based on opt-in status
-        if (hasOptedIn) {
-          setClaimStatus('ready-to-claim-optimized'); // User is opted in - can do optimized claim
-        } else {
-          setClaimStatus('ready-to-optin-and-claim'); // User needs to opt-in - can do combined flow
-        }
-        
+      // Set status based on opt-in status
+      if (hasOptedIn) {
+        setClaimStatus('ready-to-claim-optimized');
+      } else {
+        setClaimStatus('ready-to-optin-and-claim');
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error checking wallet status:', error);
+      
+      // Handle unfunded account case
+      if (error.response?.status === 404 || 
+          error.response?.data?.error?.includes('account does not exist') ||
+          error.response?.data?.error?.includes('account not found')) {
+        console.log('Unfunded account detected, assuming needs opt-in');
+        setIsOptedIn(false);
+        setClaimStatus('ready-to-optin-and-claim'); // Unfunded accounts need opt-in
         setIsLoading(false);
-      } catch (error) {
-        console.error('Error checking wallet status:', error);
+      } else {
         setError('Failed to check your wallet status');
         setIsLoading(false);
       }
-    };
-    
-    if (accountAddress && escrowDetails) {
-      checkWalletStatus();
     }
-  }, [accountAddress, escrowDetails]);
+  };
+  
+  if (accountAddress && escrowDetails) {
+    checkWalletStatus();
+  }
+}, [accountAddress, escrowDetails]);
   
   // Handle optimized claim (for users already opted in)
 const handleOptimizedClaim = async () => {
