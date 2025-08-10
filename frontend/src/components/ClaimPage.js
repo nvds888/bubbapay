@@ -329,6 +329,7 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
   const [isFunding, setIsFunding] = useState(false);
   const [autoClickTriggered, setAutoClickTriggered] = useState(false);
   const [fundingDetails, setFundingDetails] = useState(null); // NEW: Track funding details
+const [isOptedIn, setIsOptedIn] = useState(false); // Track opt-in status
 
   // Auto-trigger wallet button click when component mounts
   useEffect(() => {
@@ -368,28 +369,18 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
       setIsLoading(true);
       
       try {
-        // STEP 1: If the sender pays for recipient fees, fund the wallet FIRST
-        if (escrowDetails.payRecipientFees) {
-          console.log("Escrow includes fee coverage, funding wallet...");
-          const fundingSuccess = await fundWallet();
-          if (!fundingSuccess) {
-            setError('Failed to receive fee coverage. Please try again.');
-            setIsLoading(false);
-            return;
-          }
-          console.log("Wallet funded successfully with fee coverage");
-        }
-        
-        // CHANGE 4: Update opt-in status check
-        const targetAssetId = escrowDetails.assetId || 10458941; // Default to USDC
+        // Check opt-in status
+        const targetAssetId = escrowDetails.assetId || 31566704;
         const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
         const hasOptedIn = optInResponse.data.hasOptedIn;
         
-        // STEP 3: Determine next step based on opt-in status
-        if (!hasOptedIn) {
-          setClaimStatus('need-optin');
+        setIsOptedIn(hasOptedIn);
+        
+        // Set status based on opt-in status
+        if (hasOptedIn) {
+          setClaimStatus('ready-to-claim-optimized'); // User is opted in - can do optimized claim
         } else {
-          setClaimStatus('ready-to-claim');
+          setClaimStatus('ready-to-optin-and-claim'); // User needs to opt-in - can do combined flow
         }
         
         setIsLoading(false);
@@ -405,141 +396,117 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
     }
   }, [accountAddress, escrowDetails]);
   
-  // Fund wallet with fee coverage
-const fundWallet = async () => {
-  if (!accountAddress || !tempPrivateKey || !appId) {
-    console.error("Missing required parameters for funding");
-    return false;
-  }
+  // Handle optimized claim (for users already opted in)
+const handleOptimizedClaim = async () => {
+  if (!accountAddress || !tempPrivateKey || !appId) return;
   
-  setIsFunding(true);
+  setIsLoading(true);
   setError(null);
+  setClaimStatus('claiming');
   
   try {
-    console.log("Requesting fee coverage from temp account...");
+    console.log("Generating optimized claim transaction...");
     
-    const fundResponse = await axios.post(`${API_URL}/fund-wallet`, {
-      recipientAddress: accountAddress,
+    const response = await axios.post(`${API_URL}/generate-optimized-claim`, {
+      tempPrivateKey,
       appId,
-      tempPrivateKey
+      recipientAddress: accountAddress,
+      assetId: escrowDetails.assetId
     });
     
-    console.log("Fee coverage response:", fundResponse);
+    console.log("Submitting optimized claim transaction...");
     
-    if (fundResponse.success) {
-      if (fundResponse.alreadyFunded) {
-        console.log("Fee coverage was already provided for this escrow");
-      } else if (fundResponse.fundingAmount > 0) {
-        // NEW: Handle conditional fee coverage
-        if (fundResponse.returnedToCreator) {
-          console.log(`Fee coverage returned to creator - you're already opted in! (${fundResponse.fundingAmount} ALGO saved)`);
-          // Show a brief success message about the optimization
-          setError(null); // Clear any previous errors
-        } else {
-          console.log(`Received ${fundResponse.fundingAmount} ALGO for transaction fees`);
-          // Wait a moment for the transaction to propagate only if we actually sent funds
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      } else {
-        console.log("No fee coverage needed for this escrow");
-      }
-      setIsFunding(false);
-      return true;
+    const submitData = {
+      signedTransactions: response.data.signedTransactions,
+      appId,
+      recipientAddress: accountAddress,
+      tempPrivateKey,
+      type: 'optimized-claim'
+    };
+    
+    const claimResponse = await axios.post(`${API_URL}/submit-optimized-claim`, submitData);
+    
+    if (claimResponse.data.success) {
+      console.log(`${assetInfo?.symbol || 'Asset'} claimed successfully with optimized flow!`);
+      setClaimStatus('success');
     } else {
-      console.log("Unexpected response from funding endpoint");
-      setIsFunding(false);
-      return true;
+      setError(claimResponse.data.error || 'Failed to claim');
+      setClaimStatus('ready-to-claim-optimized');
     }
+    
+    setIsLoading(false);
   } catch (error) {
-    console.error('Error receiving fee coverage:', error);
-    setError(error.response?.data?.error || 'Failed to receive fee coverage. Please try again.');
-    setIsFunding(false);
-    return false;
+    console.error(`Error with optimized claim:`, error);
+    setError(error.response?.data?.error || `Failed to claim ${assetInfo?.symbol || 'asset'}. Please try again.`);
+    setClaimStatus('ready-to-claim-optimized');
+    setIsLoading(false);
+  }
+};
+
+// Handle opt-in and claim (for users who need to opt-in)
+const handleOptInAndClaim = async () => {
+  if (!accountAddress || !tempPrivateKey || !appId) return;
+  
+  setIsLoading(true);
+  setError(null);
+  setClaimStatus('claiming');
+  
+  try {
+    console.log("Generating opt-in and claim group transaction...");
+    
+    const response = await axios.post(`${API_URL}/generate-optin-and-claim`, {
+      tempPrivateKey,
+      appId,
+      recipientAddress: accountAddress,
+      assetId: escrowDetails.assetId
+    });
+    
+    console.log("Group transaction generated, user needs to sign opt-in transaction");
+    
+    // Decode the user's transaction (opt-in) for signing
+    const userTxnIndex = response.data.userTxnIndex;
+    const unsignedTxns = response.data.unsignedTransactions.map(txnB64 => {
+      const txnUint8 = new Uint8Array(Buffer.from(txnB64, 'base64'));
+      return algosdk.decodeUnsignedTransaction(txnUint8);
+    });
+    
+    // User only signs their transaction (the opt-in)
+    const userTxnToSign = [unsignedTxns[userTxnIndex]];
+    const signedUserTxns = await signTransactions(userTxnToSign);
+    
+    // Combine user's signed transaction with temp account's pre-signed transactions
+    const finalSignedTxns = [...response.data.partiallySignedTransactions];
+    finalSignedTxns[userTxnIndex] = Buffer.from(signedUserTxns[0]).toString('base64');
+    
+    console.log("Submitting complete group transaction...");
+    
+    const submitData = {
+      signedTransactions: finalSignedTxns,
+      appId,
+      recipientAddress: accountAddress,
+      tempPrivateKey,
+      type: 'optin-and-claim'
+    };
+    
+    const claimResponse = await axios.post(`${API_URL}/submit-optimized-claim`, submitData);
+    
+    if (claimResponse.data.success) {
+      console.log(`${assetInfo?.symbol || 'Asset'} opted in and claimed successfully!`);
+      setClaimStatus('success');
+    } else {
+      setError(claimResponse.data.error || 'Failed to opt-in and claim');
+      setClaimStatus('ready-to-optin-and-claim');
+    }
+    
+    setIsLoading(false);
+  } catch (error) {
+    console.error(`Error with opt-in and claim:`, error);
+    setError(error.response?.data?.error || `Failed to opt-in and claim ${assetInfo?.symbol || 'asset'}. Please try again.`);
+    setClaimStatus('ready-to-optin-and-claim');
+    setIsLoading(false);
   }
 };
   
-  // Handle USDC opt-in
-  const handleOptIn = async () => {
-    if (!accountAddress) return;
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // CHANGE 5: Update opt-in transaction generation
-      const response = await axios.post(`${API_URL}/generate-optin`, {
-        recipientAddress: accountAddress,
-        assetId: escrowDetails.assetId || 10458941
-      });
-      
-      const txnUint8 = new Uint8Array(Buffer.from(response.data.transaction, 'base64'));
-      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
-      
-      const signedTxns = await signTransactions([txn]);
-      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
-      
-      await axios.post(`${API_URL}/submit-optin`, {
-        signedTxn: signedTxnBase64
-      });
-      
-      setClaimStatus('ready-to-claim');
-      setIsLoading(false);
-    // CHANGE 8: Update error handling for asset-specific errors
-    } catch (error) {
-      console.error(`Error opting into ${assetInfo?.symbol || 'asset'}:`, error);
-      setError(`Failed to opt into ${assetInfo?.symbol || 'asset'}. Please try again.`);
-      setIsLoading(false);
-    }
-  };
-  
-  // Handle USDC claim
-  const handleClaim = async () => {
-    if (!accountAddress || !tempPrivateKey || !appId) return;
-    
-    setIsLoading(true);
-    setError(null);
-    setClaimStatus('claiming');
-    
-    try {
-      console.log("Generating claim transaction...");
-      
-      // CHANGE 6: Update claim transaction generation
-      const response = await axios.post(`${API_URL}/generate-claim`, {
-        tempPrivateKey,
-        appId,
-        recipientAddress: accountAddress,
-        assetId: escrowDetails.assetId
-      });
-      
-      console.log("Submitting claim transaction...");
-      
-      const submitData = {
-        signedTransactions: response.data.signedTransactions,
-        appId,
-        recipientAddress: accountAddress,
-        tempPrivateKey
-      };
-      
-      const claimResponse = await axios.post(`${API_URL}/claim-usdc`, submitData);
-      
-      if (claimResponse.data.success) {
-        // CHANGE 17: Update console.log messages to be asset-agnostic
-        console.log(`${assetInfo?.symbol || 'Asset'} claimed successfully!`);
-        setClaimStatus('success');
-      } else {
-        setError(claimResponse.data.error || 'Failed to claim USDC');
-        setClaimStatus('ready-to-claim');
-      }
-      
-      setIsLoading(false);
-    // CHANGE 9: Update claim error handling
-    } catch (error) {
-      console.error(`Error claiming ${assetInfo?.symbol || 'asset'}:`, error);
-      setError(error.response?.data?.error || `Failed to claim ${assetInfo?.symbol || 'asset'}. Please try again.`);
-      setClaimStatus('ready-to-claim');
-      setIsLoading(false);
-    }
-  };
   
   // Format functions
   const formatAmount = (amount) => parseFloat(amount).toFixed(2);
@@ -595,16 +562,12 @@ const fundWallet = async () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
   {claimStatus === 'claiming' 
     ? `Claiming Your ${assetInfo?.symbol || 'Asset'}...` 
-    : (isFunding 
-        ? 'Optimizing Fee Coverage...' // CHANGED: More accurate message
-        : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
+    : `Preparing claim for ${assetInfo?.symbol || 'Asset'}`}
 </h3>
 <p className="text-gray-600 text-sm">
   {claimStatus === 'claiming' 
-    ? `Please wait while we process your claim` 
-    : (isFunding 
-        ? 'Checking if you need fee coverage' 
-        : `Setting up your wallet for ${getDisplaySymbol(assetInfo)}`)}
+    ? `Processing your atomic transaction...` 
+    : `Checking your wallet setup...`}
 </p>
           
           <div className="mt-4 card card-compact inline-block">
@@ -624,31 +587,41 @@ const fundWallet = async () => {
       );
     }
     
-    if (claimStatus === 'need-optin') {
+    // User needs to opt-in - show combined opt-in and claim button
+    if (claimStatus === 'ready-to-optin-and-claim') {
       return (
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
-              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
               </svg>
             </div>
           </div>
           
-          {/* CHANGE 7g: Opt-in section title */}
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">
-            {assetInfo?.symbol || 'Asset'} Opt-in Required
-          </h3>
-          {/* CHANGE 7h: Opt-in description */}
-          <p className="text-gray-600 mb-4 text-sm">
-            Your wallet needs to opt-in to {assetInfo?.name || 'asset'} before you can receive the funds.
-            This is a one-time setup.
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Ready to Opt-in & Claim!</h2>
+          <p className="text-gray-600 mb-2">
+            Get your <span className="text-blue-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> in one transaction
+          </p>
+          <p className="text-gray-500 text-sm mb-6">
+            This will opt your wallet into {assetInfo?.name || 'the asset'} and claim your funds atomically
           </p>
           
+          {escrowDetails?.payRecipientFees && (
+            <div className="mb-4 card card-compact inline-block">
+              <div className="flex items-center space-x-2 text-green-600">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm">Fees covered by sender</span>
+              </div>
+            </div>
+          )}
+          
           <button
-            onClick={handleOptIn}
+            onClick={handleOptInAndClaim}
             disabled={isLoading}
-            className="btn-primary px-4 py-2 font-medium"
+            className="btn-primary px-6 py-3 font-medium"
           >
             {isLoading ? (
               <span className="flex items-center space-x-2">
@@ -656,19 +629,26 @@ const fundWallet = async () => {
                 <span>Processing...</span>
               </span>
             ) : (
-              // CHANGE 7i: Opt-in button text
-              `Opt-in to ${assetInfo?.symbol || 'Asset'}`
+              <span className="flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span>Opt-in & Claim {assetInfo?.symbol || 'Asset'}</span>
+              </span>
             )}
           </button>
           
           {error && (
-            <div className="mt-3 text-red-600 text-sm">{error}</div>
+            <div className="mt-4 status-error">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
           )}
         </div>
       );
     }
     
-    if (claimStatus === 'ready-to-claim') {
+    // User is already opted in - show optimized claim button
+    if (claimStatus === 'ready-to-claim-optimized') {
       return (
         <div className="text-center">
           <div className="flex justify-center mb-4">
@@ -680,19 +660,23 @@ const fundWallet = async () => {
           </div>
           
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Ready to Claim!</h2>
-          {/* CHANGE 7j: Ready to claim message */}
           <p className="text-gray-600 mb-6">
             Claim your <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> now
           </p>
           
           {escrowDetails?.payRecipientFees && (
-            <div className="mb-4 text-xs text-gray-500">
-              Fees covered by sender
+            <div className="mb-4 card card-compact inline-block">
+              <div className="flex items-center space-x-2 text-green-600">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-sm">Fee coverage will be returned to creator</span>
+              </div>
             </div>
           )}
           
           <button
-            onClick={handleClaim}
+            onClick={handleOptimizedClaim}
             disabled={isLoading}
             className="btn-primary px-6 py-3 font-medium"
           >
@@ -706,7 +690,6 @@ const fundWallet = async () => {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
-                {/* CHANGE 7k: Claim button text */}
                 <span>Claim {assetInfo?.symbol || 'Asset'}</span>
               </span>
             )}
@@ -734,15 +717,19 @@ const fundWallet = async () => {
             </div>
             
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">Successfully Claimed! 🎉</h2>
-            {/* CHANGE 7l: Success message */}
-            <p className="text-gray-600 mb-2">
-              <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been transferred to your wallet
-            </p>
-            {escrowDetails?.payRecipientFees && (
-              <p className="text-gray-500 text-xs mb-2">
-                Fees covered by sender
-              </p>
-            )}
+<p className="text-gray-600 mb-2">
+  <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been transferred to your wallet
+</p>
+{isOptedIn ? (
+  <p className="text-gray-500 text-xs mb-2">
+    Fee coverage returned to creator - you were already opted in!
+  </p>
+) : (
+  <p className="text-gray-500 text-xs mb-2">
+    Opted in and claimed in one atomic transaction
+    {escrowDetails?.payRecipientFees && " - fees covered by sender"}
+  </p>
+)}
             <p className="text-gray-500 text-sm">
               Wallet: <span className="font-mono">{formatAddress(accountAddress)}</span>
             </p>

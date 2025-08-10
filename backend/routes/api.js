@@ -1373,4 +1373,289 @@ async function waitForConfirmation(client, txId, timeout) {
   }
 }
 
+// Generate optimized claim transaction group for users already opted in
+router.post('/generate-optimized-claim', async (req, res) => {
+  try {
+    const { tempPrivateKey, appId, recipientAddress, assetId } = req.body;
+    
+    if (!tempPrivateKey || !appId || !recipientAddress) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    // SECURITY: Hash the private key to look up the escrow
+    const claimHash = hashPrivateKey(tempPrivateKey, appId);
+    
+    // Check if escrow exists using the hash
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    const escrow = await escrowCollection.findOne({ 
+      claimHash: claimHash,
+      appId: parseInt(appId)
+    });
+    
+    if (!escrow) {
+      return res.status(404).json({ error: 'Invalid claim link or escrow not found' });
+    }
+    
+    if (escrow.claimed) {
+      return res.status(400).json({ error: 'Funds have already been claimed' });
+    }
+    
+    // Reconstruct temporary account from private key
+    const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
+    const publicKey = secretKeyUint8.slice(32, 64);
+    const tempAddress = algosdk.encodeAddress(publicKey);
+    
+    const tempAccountObj = {
+      addr: tempAddress,
+      sk: secretKeyUint8
+    };
+    
+    console.log("Generating optimized claim for user already opted in");
+    
+    // Get suggested parameters
+    const suggestedParams = await algodClient.getTransactionParams().do();
+    const targetAssetId = assetId || escrow.assetId || getDefaultAssetId();
+    
+    // Calculate fee coverage amount to return to creator (if applicable)
+    let feeCoverageAmount = 0;
+    if (escrow.payRecipientFees) {
+      // Check temp account balance
+      const tempAccountInfo = await algodClient.accountInformation(tempAddress).do();
+      const tempBalance = tempAccountInfo.amount;
+      
+      // Reserve amounts for the transactions in this group
+      const claimTxnFee = 2000; // App call with inner txn
+      const returnFeeTxnFee = 1000; // Payment to creator
+      const closeTxnFee = 1000; // Payment to close account
+      const minimumBalance = 100000; // Keep some minimum for closure
+      
+      const totalReserved = claimTxnFee + returnFeeTxnFee + closeTxnFee + minimumBalance;
+      feeCoverageAmount = Math.max(0, tempBalance - totalReserved);
+      
+      console.log(`Fee coverage amount to return to creator: ${feeCoverageAmount / 1e6} ALGO`);
+    }
+    
+    const transactions = [];
+    
+    // Transaction 1: App call to claim funds (sends asset to user)
+    const claimTxn = algosdk.makeApplicationCallTxnFromObject({
+      sender: tempAccountObj.addr,
+      appIndex: parseInt(appId),
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
+      appArgs: [new Uint8Array(Buffer.from("claim"))],
+      accounts: [recipientAddress],
+      foreignAssets: [targetAssetId],
+      suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
+    });
+    transactions.push(claimTxn);
+    
+    // Transaction 2: Return fee coverage to creator (if applicable)
+    if (feeCoverageAmount > 0) {
+      const returnFeeTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        sender: tempAccountObj.addr,
+        receiver: escrow.senderAddress,
+        amount: feeCoverageAmount,
+        note: new Uint8Array(Buffer.from('AlgoSend fee coverage returned to creator')),
+        suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+      });
+      transactions.push(returnFeeTxn);
+    }
+
+    // Transaction 3: Close temp account and send remaining balance to platform
+    const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
+    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: tempAccountObj.addr,
+      receiver: PLATFORM_ADDRESS,
+      amount: 0, // All remaining balance goes to closeRemainderTo
+      closeRemainderTo: PLATFORM_ADDRESS,
+      note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
+      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+    });
+    transactions.push(closeAccountTxn);
+
+    // Group the transactions
+    algosdk.assignGroupID(transactions);
+
+    // Sign all transactions with temp account
+    const signedTransactions = transactions.map(txn => {
+      const signedTxn = algosdk.signTransaction(txn, tempAccountObj.sk);
+      return Buffer.from(signedTxn.blob).toString('base64');
+    });
+
+    console.log(`Optimized claim transaction group created (${transactions.length} transactions)`);
+    
+    res.status(200).json({
+      signedTransactions,
+      txnId: claimTxn.txID(),
+      type: 'optimized-claim',
+      feeCoverageReturned: feeCoverageAmount > 0,
+      feeCoverageAmount: feeCoverageAmount / 1e6
+    });
+  } catch (error) {
+    console.error('Error generating optimized claim transaction:', error);
+    res.status(500).json({ error: 'Failed to generate optimized claim transaction', details: error.message });
+  }
+});
+
+// Generate opt-in and claim group transaction for users who need to opt-in
+router.post('/generate-optin-and-claim', async (req, res) => {
+  try {
+    const { tempPrivateKey, appId, recipientAddress, assetId } = req.body;
+    
+    if (!tempPrivateKey || !appId || !recipientAddress) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    // SECURITY: Hash the private key to look up the escrow
+    const claimHash = hashPrivateKey(tempPrivateKey, appId);
+    
+    // Check if escrow exists using the hash
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    const escrow = await escrowCollection.findOne({ 
+      claimHash: claimHash,
+      appId: parseInt(appId)
+    });
+    
+    if (!escrow) {
+      return res.status(404).json({ error: 'Invalid claim link or escrow not found' });
+    }
+    
+    if (escrow.claimed) {
+      return res.status(400).json({ error: 'Funds have already been claimed' });
+    }
+    
+    // Reconstruct temporary account from private key
+    const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
+    const publicKey = secretKeyUint8.slice(32, 64);
+    const tempAddress = algosdk.encodeAddress(publicKey);
+    
+    const tempAccountObj = {
+      addr: tempAddress,
+      sk: secretKeyUint8
+    };
+    
+    console.log("Generating opt-in and claim group transaction");
+    
+    // Get suggested parameters
+    const suggestedParams = await algodClient.getTransactionParams().do();
+    const targetAssetId = assetId || escrow.assetId || getDefaultAssetId();
+    
+    // Calculate fee coverage amount (if escrow includes fee coverage)
+    let feeCoverageAmount = 0;
+    if (escrow.payRecipientFees) {
+      // Check temp account balance
+      const tempAccountInfo = await algodClient.accountInformation(tempAddress).do();
+      const tempBalance = tempAccountInfo.amount;
+      
+      // Reserve amounts for the transactions in this group
+      const claimTxnFee = 2000; // App call with inner txn
+      const optInTxnFee = 1000; // Asset opt-in (user pays this)
+      const feeCoverageTxnFee = 1000; // Payment txn to user
+      const closeTxnFee = 1000; // Payment to close account
+      const minimumBalance = 100000; // Keep some minimum for closure
+      
+      const totalReserved = claimTxnFee + feeCoverageTxnFee + closeTxnFee + minimumBalance;
+      // Note: We don't include optInTxnFee because user pays for their own opt-in
+      feeCoverageAmount = Math.max(0, tempBalance - totalReserved);
+      
+      console.log(`Fee coverage amount: ${feeCoverageAmount / 1e6} ALGO`);
+    }
+    
+    // Build transaction group
+    const transactions = [];
+    
+    // Transaction 1: Fee coverage from temp account to user (if applicable)
+    if (feeCoverageAmount > 0) {
+      const feeCoverageTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        sender: tempAccountObj.addr,
+        receiver: recipientAddress,
+        amount: feeCoverageAmount,
+        note: new Uint8Array(Buffer.from('AlgoSend fee coverage')),
+        suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+      });
+      transactions.push(feeCoverageTxn);
+    }
+    
+    // Transaction 2: User opts into asset
+    const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      sender: recipientAddress,
+      receiver: recipientAddress,
+      closeRemainderTo: undefined,
+      revocationTarget: undefined,
+      amount: 0,
+      assetIndex: targetAssetId,
+      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+    });
+    transactions.push(optInTxn);
+    
+    // Transaction 3: App call to claim funds (sends asset to user)
+    const claimTxn = algosdk.makeApplicationCallTxnFromObject({
+      sender: tempAccountObj.addr,
+      appIndex: parseInt(appId),
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
+      appArgs: [new Uint8Array(Buffer.from("claim"))],
+      accounts: [recipientAddress],
+      foreignAssets: [targetAssetId],
+      suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
+    });
+    transactions.push(claimTxn);
+    
+    // Transaction 4: Close temp account and send remaining balance to platform
+    const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
+    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: tempAccountObj.addr,
+      receiver: PLATFORM_ADDRESS,
+      amount: 0, // All remaining balance goes to closeRemainderTo
+      closeRemainderTo: PLATFORM_ADDRESS,
+      note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
+      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+    });
+    transactions.push(closeAccountTxn);
+    
+    // Group all transactions
+    algosdk.assignGroupID(transactions);
+    
+    // Sign transactions that the temp account is responsible for
+    const signedTransactions = [];
+    let userTxnIndex = -1;
+    
+    for (let i = 0; i < transactions.length; i++) {
+      if (transactions[i].from.publicKey && 
+          algosdk.encodeAddress(transactions[i].from.publicKey) === tempAccountObj.addr) {
+        // Temp account transaction - sign it
+        const signedTxn = algosdk.signTransaction(transactions[i], tempAccountObj.sk);
+        signedTransactions.push(Buffer.from(signedTxn.blob).toString('base64'));
+      } else {
+        // User transaction - leave unsigned for user to sign
+        signedTransactions.push(null);
+        userTxnIndex = i;
+      }
+    }
+    
+    // Encode unsigned transactions for user to sign
+    const unsignedTransactions = transactions.map(txn => 
+      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
+    );
+
+    console.log(`Opt-in and claim group transaction created (${transactions.length} transactions)`);
+    
+    res.status(200).json({
+      unsignedTransactions,
+      partiallySignedTransactions: signedTransactions,
+      userTxnIndex,
+      txnId: claimTxn.txID(),
+      type: 'optin-and-claim',
+      feeCoverageProvided: feeCoverageAmount > 0,
+      feeCoverageAmount: feeCoverageAmount / 1e6
+    });
+  } catch (error) {
+    console.error('Error generating opt-in and claim transaction:', error);
+    res.status(500).json({ error: 'Failed to generate opt-in and claim transaction', details: error.message });
+  }
+});
+
 module.exports = router;
