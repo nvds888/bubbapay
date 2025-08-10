@@ -474,20 +474,22 @@ const handleOptInAndClaim = async () => {
     
     console.log("Group transaction generated, user needs to sign opt-in transaction");
     
-    // Decode the user's transaction (opt-in) for signing
-    const userTxnIndex = response.data.userTxnIndex;
-    const unsignedTxns = response.data.unsignedTransactions.map(txnB64 => {
-      const txnUint8 = new Uint8Array(Buffer.from(txnB64, 'base64'));
-      return algosdk.decodeUnsignedTransaction(txnUint8);
-    });
-    
-    // User only signs their transaction (the opt-in)
-    const userTxnToSign = [unsignedTxns[userTxnIndex]];
-    const signedUserTxns = await signTransactions(userTxnToSign);
-    
-    // Combine user's signed transaction with temp account's pre-signed transactions
-    const finalSignedTxns = [...response.data.partiallySignedTransactions];
-    finalSignedTxns[userTxnIndex] = Buffer.from(signedUserTxns[0]).toString('base64');
+    // Decode ALL transactions for signing (wallet needs to see the complete group)
+const userTxnIndex = response.data.userTxnIndex;
+const unsignedTxns = response.data.unsignedTransactions.map(txnB64 => {
+  const txnUint8 = new Uint8Array(Buffer.from(txnB64, 'base64'));
+  return algosdk.decodeUnsignedTransaction(txnUint8);
+});
+
+// Send ENTIRE group to wallet, but only user's transaction will be signable
+const signedUserTxns = await signTransactions(unsignedTxns);
+
+// Extract only the user's signed transaction (others will be null/undefined)
+const userSignedTxn = signedUserTxns[userTxnIndex];
+
+// Combine user's signed transaction with temp account's pre-signed transactions
+const finalSignedTxns = [...response.data.partiallySignedTransactions];
+finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
     
     console.log("Submitting complete group transaction...");
     
