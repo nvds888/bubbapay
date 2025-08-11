@@ -302,7 +302,7 @@ function AmountStep({
                         </div>
                         <div className="flex justify-between font-medium border-t border-gray-200 pt-1">
                           <span>Recoverable total:</span>
-                          <span>0.310000 ALGO</span>
+                          <span>0.460000 ALGO</span>
                         </div>
                       </div>
                     </div>
