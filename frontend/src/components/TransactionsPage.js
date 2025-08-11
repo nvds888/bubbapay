@@ -309,7 +309,7 @@ function TransactionsPage() {
               <div className="text-sm">
                 <p className="font-medium text-green-800">Contracts Ready for Cleanup:</p>
                 <p className="text-green-700 mt-1">
-  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} Claimed contracts can be cleaned up to recover ~{(transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.31).toFixed(2)} ALGO in locked funds.
+  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} Claimed contracts can be cleaned up to recover ~{(transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.46).toFixed(2)} ALGO in locked funds.
 </p>
               </div>
             </div>
@@ -424,7 +424,7 @@ function TransactionsPage() {
                             disabled={isCleaningUp}
                             className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
                           >
-                            Clean Up (0.31 ALGO)
+                            Clean Up (0.46 ALGO)
                           </button>
                         )}
                         
