@@ -390,7 +390,7 @@ router.get('/check-optin/:address/:assetId', async (req, res) => {
     
     const hasOptedIn = accountInfo.assets?.some(asset => {
       
-      return Number(asset['asset-id']) === targetAssetId;
+      return Number(asset['asset-id']) === targetAssetId || Number(asset.assetId) === targetAssetId;
     }) || false;
     
     console.log('DEBUG - Has opted in result:', hasOptedIn);
@@ -496,7 +496,7 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
     const assets = accountInfo.assets || [];
 
     for (const asset of assets) {
-      if (Number(asset['asset-id']) === targetAssetId) {
+      if (Number(asset.assetId) === targetAssetId) {
         const microBalance = safeToNumber(asset.amount);
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;
