@@ -1,10 +1,10 @@
-// routes/api.js - Complete Updated Implementation with Corrected Fee Flow
+// routes/api.js
 
 const express = require('express');
 const router = express.Router();
 const { MongoClient, ObjectId } = require('mongodb');
 const sgMail = require('@sendgrid/mail');
-const crypto = require('crypto'); // Add crypto for hashing
+const crypto = require('crypto'); 
 const { 
   generateUnsignedDeployTransactions, 
   generatePostAppTransactions,
@@ -37,8 +37,7 @@ function safeToNumber(value) {
   if (typeof value === 'number') {
     return value;
   }
-  // Don't default to 0 for undefined/null - that's the bug!
-  return value; // Return the original value
+  return value; 
 }
 
 // Helper function to hash private keys securely
@@ -158,7 +157,7 @@ router.post('/submit-app-creation', async (req, res) => {
           throw new Error('Could not extract transaction ID from duplicate submission error');
         }
       } else {
-        throw submitError; // Re-throw all other errors
+        throw submitError; 
       }
     }
 
@@ -187,7 +186,7 @@ router.post('/submit-app-creation', async (req, res) => {
 
     // Step 5: Send response
     res.status(200).json({
-      appId: Number(appId),  // Convert BigInt to number
+      appId: Number(appId), 
       appAddress: postAppTxns.appAddress,
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: postAppTxns.tempAccount
@@ -257,7 +256,7 @@ router.post('/submit-group-transactions', async (req, res) => {
     const db = req.app.locals.db;
     const escrowCollection = db.collection('escrows');
     
-    // SECURITY: Hash the private key instead of storing it directly
+    // Hash the private key instead of storing it directly
     const claimHash = hashPrivateKey(tempAccount.privateKey, appId);
     
     // Generate claim URL with hashed reference (private key still in URL for signing)
@@ -383,24 +382,15 @@ router.get('/user-escrows/:address', async (req, res) => {
   }
 });
 
-// Check if user has opted into USDC (with assetId)
+// Check if user has opted into asset
 router.get('/check-optin/:address/:assetId', async (req, res) => {
   try {
     const accountInfo = await algodClient.accountInformation(req.params.address).do();
     const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
     
-    // DEBUG: Log the asset structure
-    console.log('DEBUG - Account assets:', accountInfo.assets?.slice(0, 2)); // Just first 2 for brevity
-    console.log('DEBUG - Looking for asset ID:', targetAssetId);
-    console.log('DEBUG - Asset field names:', accountInfo.assets?.[0] ? Object.keys(accountInfo.assets[0]) : 'No assets');
-    
     const hasOptedIn = accountInfo.assets?.some(asset => {
-      // Try both possible field names and log what we find
-      const assetId1 = asset['asset-id'];
-      const assetId2 = asset.assetId;
-      console.log(`DEBUG - Asset: asset-id=${assetId1} (type: ${typeof assetId1}), assetId=${assetId2} (type: ${typeof assetId2})`);
       
-      return Number(asset['asset-id']) === targetAssetId || Number(asset.assetId) === targetAssetId;
+      return Number(asset['asset-id']) === targetAssetId;
     }) || false;
     
     console.log('DEBUG - Has opted in result:', hasOptedIn);
@@ -412,7 +402,7 @@ router.get('/check-optin/:address/:assetId', async (req, res) => {
   }
 });
 
-// Check if user has opted into USDC (without assetId)
+// Check if user has opted in (without assetId)
 router.get('/check-optin/:address', async (req, res) => {
   try {
     const accountInfo = await algodClient.accountInformation(req.params.address).do();
@@ -506,7 +496,7 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
     const assets = accountInfo.assets || [];
 
     for (const asset of assets) {
-      if (Number(asset.assetId) === targetAssetId) {
+      if (Number(asset['asset-id']) === targetAssetId) {
         const microBalance = safeToNumber(asset.amount);
         assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
         break;

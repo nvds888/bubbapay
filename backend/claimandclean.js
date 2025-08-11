@@ -21,7 +21,7 @@ function safeToNumber(value) {
   if (typeof value === 'number') {
     return value;
   }
-  return value; // Return the original value
+  return value; 
 }
 
 // Helper function to hash private keys securely
@@ -440,7 +440,7 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
     return { 
       transactions: encodedTxns,
       totalFee: 3000 / 1e6,
-      estimatedRecovery: "0.31 ALGO", // 0.1 app reserve + 0.21 app funding
+      estimatedRecovery: "0.46 ALGO", // 0.25 app reserve + 0.21 app funding
       description: "Delete application and recover all ALGO + assets"
     };
   } catch (error) {
@@ -541,7 +541,6 @@ router.post('/cleanup-contract', async (req, res) => {
     const cleanupTxns = await generateCleanupTransaction({
       appId: appIdInt,
       senderAddress
-      // ✅ No assetId needed!
     });
     
     res.json({

@@ -24,7 +24,7 @@ function calculateTransactionFee(hasInnerTxn = false, innerTxnCount = 1) {
   return baseFee + innerFee;
 }
 
-// EXACT FEE CONTROL - Updated without platform fee
+// EXACT FEE CONTROL
 const EXACT_FEES = {
   FUNDING: 1000,           // Payment to fund app (reduced amount)
   TEMP_FUNDING: 1000,      // Payment to fund temp account
@@ -177,12 +177,6 @@ const appAddress = appAddressObj.toString();
     
     console.log(`Group transaction total fee budget: ${totalFeeNeeded / 1e6} ALGO`);
     
-    console.log("DEBUG - senderAddress type and value:", typeof senderAddress, senderAddress);
-console.log("DEBUG - appAddress type and value:", typeof appAddress, appAddress);
-console.log("DEBUG - tempAccount:", tempAccount);
-console.log("DEBUG - tempAccount.address type and value:", typeof tempAccount?.address, tempAccount?.address);
-console.log("DEBUG - suggestedParams keys:", Object.keys(suggestedParams));
-console.log("DEBUG - suggestedParams values:", suggestedParams);
     
     // 1. Fund the app with ALGO (back to 0.21 ALGO since no platform fee)
     const fundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -275,95 +269,6 @@ console.log("DEBUG - suggestedParams values:", suggestedParams);
   }
 }
 
-// Generate claim transaction with v3 compatibility
-async function generateClaimTransaction({ appId, tempPrivateKey, recipientAddress, assetId = null }) {
-  const targetAssetId = assetId || getDefaultAssetId();
-
-  try {
-    console.log("Generating claim transaction group with temp account closure for app:", appId);
-    
-    // Validate inputs
-    if (!appId || isNaN(parseInt(appId))) {
-      throw new Error("Invalid app ID");
-    }
-    
-    if (!tempPrivateKey || typeof tempPrivateKey !== 'string') {
-      throw new Error("Invalid temporary private key");
-    }
-    
-    if (!algosdk.isValidAddress(recipientAddress)) {
-      throw new Error("Invalid recipient address");
-    }
-    
-    if (!algosdk.isValidAddress(PLATFORM_ADDRESS)) {
-      throw new Error("Invalid platform address - check PLATFORM_ADDRESS environment variable");
-    }
-    
-    const appIdInt = Number(appId); 
-    
-    // Reconstruct temporary account from private key
-    const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
-    
-    // Extract public key from secret key (last 32 bytes) and get address
-    const publicKey = secretKeyUint8.slice(32, 64);
-    const address = algosdk.encodeAddress(publicKey);
-    
-    const tempAccountObj = {
-      addr: address,
-      sk: secretKeyUint8
-    };
-    
-    console.log("Reconstructed temp account address:", tempAccountObj.addr);
-    console.log("Platform address for closure:", PLATFORM_ADDRESS);
-    
-    // Get suggested parameters
-    let suggestedParams = await algodClient.getTransactionParams().do();
-    
-    // Transaction 1: App call to claim funds
-    const claimTxn = algosdk.makeApplicationCallTxnFromObject({
-      sender: tempAccountObj.addr,
-      appIndex: appIdInt,
-      onComplete: algosdk.OnApplicationComplete.NoOpOC,
-      appArgs: [new Uint8Array(Buffer.from("claim"))],
-      accounts: [recipientAddress], // Where to send asset
-      foreignAssets: [targetAssetId],
-      suggestedParams: { ...suggestedParams, fee: calculateTransactionFee(true, 1), flatFee: true } // 2000 microALGO
-    });
-
-    // Transaction 2: Close temp account and send remaining ALGO to platform
-    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: tempAccountObj.addr,
-      receiver: PLATFORM_ADDRESS,
-      amount: 0, // Implicit 0, all remaining goes to closeRemainderTo
-      closeRemainderTo: PLATFORM_ADDRESS, // KEY: This closes the account
-      note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
-      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true } // Standard fee for payment transaction
-    });
-
-    // Group the transactions together
-    const txnGroup = [claimTxn, closeAccountTxn];
-    algosdk.assignGroupID(txnGroup);
-
-    // Sign both transactions with temp account
-    const signedClaimTxn = algosdk.signTransaction(claimTxn, tempAccountObj.sk);
-    const signedCloseTxn = algosdk.signTransaction(closeAccountTxn, tempAccountObj.sk);
-
-    console.log(`Claim transaction group created and signed (2 transactions)`);
-    console.log(`Expected platform revenue: ~${(100000 - 3000) / 1e6} ALGO per claim`); // ~0.097 ALGO
-    
-    // Return group transaction format (changed from single transaction)
-    return { 
-      signedTransactions: [
-        Buffer.from(signedClaimTxn.blob).toString('base64'),
-        Buffer.from(signedCloseTxn.blob).toString('base64')
-      ],
-      txnId: claimTxn.txID()
-    };
-  } catch (error) {
-    console.error("Error in generateClaimTransaction:", error);
-    throw new Error(`Failed to create claim transaction: ${error.message}`);
-  }
-}
 
 // Safer TEAL compilation with error handling
 async function compileProgram(programSource) {
@@ -423,10 +328,9 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 }
 
 
-// Export functions for use by API
+// Export functions 
 module.exports = {
   generateUnsignedDeployTransactions,
   generatePostAppTransactions,
-  generateClaimTransaction,
   generateReclaimTransaction,
 };
