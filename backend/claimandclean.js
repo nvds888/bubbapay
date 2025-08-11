@@ -13,6 +13,17 @@ const ALGOD_PORT = process.env.ALGOD_PORT || '';
 
 const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
 
+// Helper function to safely convert BigInt to Number
+function safeToNumber(value) {
+  if (typeof value === 'bigint') {
+    return Number(value);
+  }
+  if (typeof value === 'number') {
+    return value;
+  }
+  return value; // Return the original value
+}
+
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
   const hash = crypto.createHash('sha256');
@@ -70,7 +81,7 @@ router.post('/generate-optimized-claim', async (req, res) => {
     if (escrow.payRecipientFees) {
       // Check temp account balance
       const tempAccountInfo = await algodClient.accountInformation(tempAddress).do();
-      const tempBalance = tempAccountInfo.amount;
+      const tempBalance = safeToNumber(tempAccountInfo.amount);
       
       // Reserve amounts for the transactions in this group
       const claimTxnFee = 2000; // App call with inner txn
@@ -196,7 +207,7 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     if (escrow.payRecipientFees) {
       // Check temp account balance
       const tempAccountInfo = await algodClient.accountInformation(tempAddress).do();
-      const tempBalance = tempAccountInfo.amount;
+      const tempBalance = safeToNumber(tempAccountInfo.amount);
       
       // Reserve amounts for the transactions in this group
       const claimTxnFee = 2000; // App call with inner txn
