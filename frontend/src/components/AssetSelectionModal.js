@@ -7,7 +7,7 @@ function AssetSelectionModal({ isOpen, onClose, selectedAssetId, onAssetSelect }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-start justify-center pt-32 z-[60] pointer-events-none">
+    <div className="fixed inset-0 flex items-start justify-center pt-20 z-[60] pointer-events-none">
       <div className="bg-white rounded-lg shadow-xl border border-gray-200 max-w-sm w-full mx-4 pointer-events-auto">
         <div className="flex justify-between items-center p-4 border-b border-gray-100">
           <h3 className="text-base font-medium text-gray-900">Select Asset</h3>
