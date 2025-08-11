@@ -294,7 +294,7 @@ function AmountStep({
                       <div className="text-xs text-gray-500 space-y-1 ml-4">
                         <div className="flex justify-between">
                           <span>• App reserve balance:</span>
-                          <span>0.100000 ALGO</span>
+                          <span>0.250000 ALGO</span>
                         </div>
                         <div className="flex justify-between">
                           <span>• App contract funding:</span>

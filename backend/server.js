@@ -4,8 +4,9 @@ const morgan = require('morgan');
 const dotenv = require('dotenv');
 const { MongoClient } = require('mongodb');
 const sgMail = require('@sendgrid/mail');
-const rateLimit = require('express-rate-limit'); // Add this import
+const rateLimit = require('express-rate-limit');
 const apiRoutes = require('./routes/api');
+const claimAndCleanRoutes = require('./claimandclean'); // ✅ Correct import
 const mcpRoutes = require('./routes/mcpapi');
 const fs = require('fs');
 const path = require('path');
@@ -40,26 +41,22 @@ const PORT = process.env.PORT || 5000;
 
 // Trust proxy for rate limiting (required for Render/Heroku/etc.)
 if (process.env.NODE_ENV === 'production') {
-  // In production, trust specific proxy hops (adjust based on your hosting)
-  app.set('trust proxy', 1); // Trust first proxy (e.g., Render, Vercel, etc.)
+  app.set('trust proxy', 1);
 } else {
-  // In development, don't trust proxies for more accurate rate limiting
   app.set('trust proxy', false);
 }
 
 // Set up SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// MongoDB connection - FIXED OPTIONS
+// MongoDB connection
 const connectToDatabase = async () => {
   try {
     const client = new MongoClient(process.env.MONGODB_URI, {
-      // Connection pooling and timeout settings
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 10000,
-      // Additional options for stability
       retryWrites: true,
       w: 'majority'
     });
@@ -68,7 +65,6 @@ const connectToDatabase = async () => {
     console.log('Connected to MongoDB Atlas successfully');
     const db = client.db('algosend');
     
-    // Test the connection
     await db.admin().ping();
     console.log('MongoDB ping successful');
     
@@ -84,42 +80,37 @@ const connectToDatabase = async () => {
 // RATE LIMITING CONFIGURATION
 // ===============================
 
-// General API rate limit (more permissive)
 const generalRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per 15 minutes
+  max: 100,
   message: {
     error: 'Too many requests from this IP, please try again later.',
     retryAfter: '15 minutes'
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for health checks
     return req.path === '/api/health' || req.path === '/api/mcp/health';
   }
 });
 
-// Strict rate limit for transaction endpoints (more restrictive)
 const transactionRateLimit = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 20, // limit each IP to 10 transaction requests per 5 minutes
+  max: 20,
   message: {
     error: 'Transaction rate limit exceeded. Please wait before creating another transfer.',
     retryAfter: '5 minutes'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use a custom key generator to be more specific about what we're rate limiting
   keyGenerator: (req) => {
     return req.ip + ':transactions';
   }
 });
 
-// Claim rate limit (moderate)
 const claimRateLimit = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 20, // limit each IP to 20 claim attempts per 10 minutes
+  max: 20,
   message: {
     error: 'Too many claim attempts. Please wait before trying again.',
     retryAfter: '10 minutes'
@@ -131,10 +122,9 @@ const claimRateLimit = rateLimit({
   }
 });
 
-// Very strict rate limit for opt-in operations
 const optInRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // limit each IP to 5 opt-in requests per hour
+  max: 5,
   message: {
     error: 'Opt-in rate limit exceeded. Please wait before trying again.',
     retryAfter: '1 hour'
@@ -146,7 +136,7 @@ const optInRateLimit = rateLimit({
   }
 });
 
-// Middleware
+// Basic middleware
 app.use(cors({
   origin: [
     'http://localhost:3000', 
@@ -163,7 +153,7 @@ app.use(morgan('dev'));
 // Apply general rate limiting to all API routes
 app.use('/api', generalRateLimit);
 
-// Health check routes (keep existing, not rate limited)
+// Health check routes (not rate limited)
 app.get('/api/health', async (req, res) => {
   const health = {
     status: 'healthy',
@@ -173,7 +163,6 @@ app.get('/api/health', async (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   };
 
-  // Test database connection
   try {
     if (req.app.locals.db) {
       await req.app.locals.db.admin().ping();
@@ -192,7 +181,6 @@ app.get('/api/health', async (req, res) => {
   res.status(statusCode).json(health);
 });
 
-// MCP-specific health check
 app.get('/api/mcp/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -212,25 +200,32 @@ const startServer = async () => {
     // Make db available to routes
     app.locals.db = db;
     
-    // Apply specific rate limits to sensitive endpoints BEFORE registering routes
+    // ✅ FIXED: Apply specific rate limits BEFORE registering routes
+    // Transaction endpoints
     app.use('/api/generate-transactions', transactionRateLimit);
     app.use('/api/submit-app-creation', transactionRateLimit);
     app.use('/api/submit-group-transactions', transactionRateLimit);
     app.use('/api/generate-reclaim', transactionRateLimit);
     app.use('/api/submit-reclaim', transactionRateLimit);
+    app.use('/api/cleanup-contract', transactionRateLimit);
+    app.use('/api/submit-cleanup', transactionRateLimit);
     
-    // Apply claim rate limits
+    // Claim endpoints
+    app.use('/api/generate-optimized-claim', claimRateLimit);
+    app.use('/api/submit-optimized-claim', claimRateLimit);
     app.use('/api/generate-claim', claimRateLimit);
     app.use('/api/claim-usdc', claimRateLimit);
     app.use('/api/fund-wallet', claimRateLimit);
     
-    // Apply opt-in rate limits
+    // Opt-in endpoints
     app.use('/api/generate-optin', optInRateLimit);
     app.use('/api/submit-optin', optInRateLimit);
+    app.use('/api/generate-optin-and-claim', optInRateLimit);
     
-    // Register API routes
-    app.use('/api', apiRoutes);           // Your existing routes
-    app.use('/api/mcp', mcpRoutes);       // New MCP routes
+    // ✅ FIXED: Register API routes AFTER rate limits and database connection
+    app.use('/api', apiRoutes);
+    app.use('/api', claimAndCleanRoutes);
+    app.use('/api/mcp', mcpRoutes);
     
     // Start listening
     app.listen(PORT, () => {
@@ -238,7 +233,7 @@ const startServer = async () => {
       console.log(`📍 Main API: http://localhost:${PORT}/api`);
       console.log(`🤖 MCP API: http://localhost:${PORT}/api/mcp`);
       console.log(`💚 Health: http://localhost:${PORT}/api/health`);
-      console.log(`🛡️  Rate limiting enabled - in-memory storage`);
+      console.log(`🛡️  Rate limiting enabled - layered protection`);
       console.log(`🗄️  Database: Connected to MongoDB Atlas`);
     });
   } catch (error) {

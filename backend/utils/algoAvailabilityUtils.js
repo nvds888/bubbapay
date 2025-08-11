@@ -23,7 +23,7 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
   const TRANSACTION_COSTS = {
     // Phase 1: App Creation Transaction
     APP_CREATION_FEE: 1000,             // 0.001 ALGO - transaction fee
-    APP_CREATION_MIN_BALANCE: 100000,   // 0.1 ALGO - app creation increases min balance
+    APP_CREATION_MIN_BALANCE: 250000,   // 0.25 ALGO - app creation increases min balance
     
     // Phase 2: Group Transaction Fees
     GROUP_TXN_1_FEE: 1000,              // 0.001 ALGO - Payment (contract funding)

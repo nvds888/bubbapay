@@ -104,23 +104,6 @@ export const submitOptInTransaction = async (data) => {
   }
 };
 
-export const generateClaimTransaction = async (data) => {
-  try {
-    const response = await apiClient.post('/generate-claim', data);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data?.error || 'Failed to generate claim transaction';
-  }
-};
-
-export const claimUsdc = async (data) => {
-  try {
-    const response = await apiClient.post('/claim-usdc', data);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data?.error || 'Failed to claim USDC';
-  }
-};
 
 // Generate reclaim transaction
 export const generateReclaimTransaction = async (data) => {
@@ -228,15 +211,6 @@ export const submitCleanupTransaction = async (data) => {
   }
 };
 
-// Wallet funding API
-export const fundWallet = async (data) => {
-  try {
-    const response = await apiClient.post('/fund-wallet', data);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data?.error || 'Failed to fund wallet';
-  }
-};
 
 export default {
   generateTransactions,
@@ -247,8 +221,6 @@ export default {
   checkOptInStatus,
   generateOptInTransaction,
   submitOptInTransaction,
-  generateClaimTransaction,
-  claimUsdc,
   generateReclaimTransaction,
   submitReclaimTransaction,
   fetchUSDCBalance,
@@ -259,5 +231,4 @@ export default {
   fetchAssetBalance,
   generateCleanupTransaction,
   submitCleanupTransaction,
-  fundWallet
 };

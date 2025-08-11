@@ -11,7 +11,6 @@ import {
 import { WalletUIProvider } from '@txnlab/use-wallet-ui-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
-import { fundWallet } from '../services/api';
 
 const getAssetInfo = (assetId) => {
   const assets = {
@@ -552,7 +551,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
               </p>
               {escrowDetails.payRecipientFees && (
                 <div className="mt-2 text-xs text-gray-500">
-                  Transaction fees covered by sender
+                  Fees covered by sender
                 </div>
               )}
             </div>
@@ -579,7 +578,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
 </h3>
 <p className="text-gray-600 text-sm">
   {claimStatus === 'claiming' 
-    ? `Processing your atomic transaction...` 
+    ? `Processing your transaction...` 
     : `Checking your wallet setup...`}
 </p>
           
@@ -617,7 +616,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
             Get your <span className="text-blue-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> in one transaction
           </p>
           <p className="text-gray-500 text-sm mb-6">
-            This will opt your wallet into {assetInfo?.name || 'the asset'} and claim your funds atomically
+            This will opt your wallet into {assetInfo?.name || 'the asset'} and claim your funds
           </p>
           
           {escrowDetails?.payRecipientFees && (
