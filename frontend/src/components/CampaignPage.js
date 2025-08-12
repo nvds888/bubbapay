@@ -54,7 +54,7 @@ function CampaignPage() {
             </div>
             <h3 className="text-2xl font-bold text-white mb-4">5-Minute Setup</h3>
             <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              Create campaign tokens instantly or use your existing tokens. Set validation rules and launch.
+              Create campaign tokens instantly or use your existing ASA. Set validation rules and launch.
             </p>
             <div className="text-purple-100 text-sm">
               ✓ Auto campaign token creation<br/>
@@ -123,65 +123,11 @@ function CampaignPage() {
               </div>
               <h4 className="text-lg font-semibold text-white mb-2">Your Project Token</h4>
               <p className="text-purple-200 text-sm">
-                Use your existing token. Higher upfront cost for affiliates, but builds token utility.
+                Use your existing ASA. Higher upfront cost for affiliates, but direct token utility.
               </p>
             </div>
           </div>
         </div>
-          
-          {/* Setup Card */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-purple-300/20 hover:bg-white/15 transition-all duration-300 group">
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-4">5-Minute Setup</h3>
-            <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              Create campaign tokens instantly or use your existing tokens. Set validation rules and launch.
-            </p>
-            <div className="text-purple-100 text-sm">
-              ✓ Auto campaign token creation<br/>
-              ✓ Custom validation rules<br/>
-              ✓ Dashboard with analytics
-            </div>
-          </div>
-
-          {/* Growth Card */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-purple-300/20 hover:bg-white/15 transition-all duration-300 group">
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-4">Quality Growth</h3>
-            <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              Users invest their own tokens (or Algo for fees fees) to refer others. Only quality referrals earn rewards.
-            </p>
-            <div className="text-purple-100 text-sm">
-              ✓ Skin-in-the-game approach<br/>
-              ✓ Behavior-based validation<br/>
-              ✓ Anti-spam protection built-in
-            </div>
-          </div>
-
-          {/* Results Card */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-purple-300/20 hover:bg-white/15 transition-all duration-300 group">
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-4">Data & Tracking</h3>
-            <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              We track on-chain behavior and provide campaign dashboards. You control reward distribution.
-            </p>
-            <div className="text-purple-100 text-sm">
-              ✓ On-chain verification<br/>
-              ✓ Custom dashboard access<br/>
-              ✓ You control rewards
-            </div>
-          </div>
         </div>
 
         {/* Simple Flow */}
@@ -195,7 +141,7 @@ function CampaignPage() {
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Create Campaign</h3>
               <p className="text-purple-200 text-sm">
-                Auto-create campaign tokens or use existing ones
+                Auto-create campaign token or use existing ones
               </p>
             </div>
 
@@ -359,13 +305,7 @@ function CampaignPage() {
             <button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold px-8 py-4 rounded-2xl shadow-xl shadow-purple-500/25 transition-all duration-300 transform hover:scale-105">
               Get Early Access
             </button>
-            
-            <Link 
-              to="/docs"
-              className="bg-white/10 backdrop-blur-lg border border-white/20 text-white font-semibold px-8 py-4 rounded-2xl hover:bg-white/20 transition-all duration-300"
-            >
-              Learn More
-            </Link>
+        
           </div>
           
           <div className="text-purple-300 text-sm space-y-1">
