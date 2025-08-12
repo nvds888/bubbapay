@@ -25,19 +25,36 @@ function SuccessPage() {
   // Get the claim URL from location state if available
   const claimUrl = location.state?.claimUrl;
   const isShareable = location.state?.isShareable;
-  
-  // SECURITY: Browser History Protection - Clear sensitive data from history
-  useEffect(() => {
-    if (claimUrl) {
-      window.history.replaceState(
-        { ...location.state, claimUrl: null }, 
-        '', 
-        window.location.pathname
-      );
+
+  const loadTransactionState = () => {
+    try {
+      const saved = localStorage.getItem('bubbapay_txn_state');
+      if (!saved) return null;
+      
+      const state = JSON.parse(saved);
+      
+      // Check if expired
+      if (Date.now() > state.expiresAt) {
+        localStorage.removeItem('bubbapay_txn_state');
+        return null;
+      }
+      
+      return state;
+    } catch (error) {
+      console.warn('Failed to load transaction state:', error);
+      localStorage.removeItem('bubbapay_txn_state');
+      return null;
     }
-  }, [claimUrl, location.state]);
+  };
+
+  const clearTransactionState = () => {
+    try {
+      localStorage.removeItem('bubbapay_txn_state');
+    } catch (error) {
+      console.warn('Failed to clear transaction state:', error);
+    }
+  };
   
-  // Fetch escrow details when component mounts
   useEffect(() => {
     const fetchEscrowDetails = async () => {
       if (!escrowId) return;
@@ -47,13 +64,45 @@ function SuccessPage() {
       
       try {
         const response = await axios.get(`${API_URL}/escrow/${escrowId}`);
-        // If we have a claim URL from navigation state, use that instead of what's in the database
-        const escrowData = {
-          ...response.data,
-          // Override with location state if available
-          claimUrl: claimUrl || response.data.claimUrl,
-          isShareable: isShareable !== undefined ? isShareable : response.data.isShareable
-        };
+        let escrowData = response.data;
+        
+        // If we have a claim URL from navigation state, use that
+        if (claimUrl) {
+          escrowData = {
+            ...escrowData,
+            claimUrl: claimUrl,
+            isShareable: isShareable !== undefined ? isShareable : escrowData.isShareable
+          };
+          
+          // NEW: Clear localStorage if this came from successful completion
+          if (location.state?.fromCompletion) {
+            clearTransactionState();
+            console.log('Cleared localStorage after successful completion');
+          }
+        } 
+        // If no claimUrl in navigation state, try localStorage fallback
+        else if (!escrowData.claimUrl) {
+          console.log('No claim URL in navigation state, checking localStorage...');
+          const savedState = loadTransactionState();
+          
+          if (savedState?.txnData?.appId && savedState?.txnData?.tempAccount?.privateKey) {
+            // Check if this matches our escrow
+            if (Number(savedState.txnData.appId) === Number(escrowData.appId)) {
+              console.log('Reconstructing claim URL from localStorage...');
+              const reconstructedClaimUrl = `${window.location.origin}/claim?app=${escrowData.appId}#key=${savedState.txnData.tempAccount.privateKey}`;
+              
+              escrowData = {
+                ...escrowData,
+                claimUrl: reconstructedClaimUrl,
+                isShareable: escrowData.isShareable !== false
+              };
+              
+              // Clear localStorage since we're now showing the success page
+              clearTransactionState();
+              console.log('Claim URL reconstructed and localStorage cleared');
+            }
+          }
+        }
         
         setEscrowDetails(escrowData);
         
@@ -72,8 +121,14 @@ function SuccessPage() {
           setEscrowDetails({
             claimUrl,
             isShareable: isShareable !== undefined ? isShareable : true,
-            // We don't have other details, but we have the critical claim URL
           });
+          
+          // NEW: Clear localStorage even in error case if from completion
+          if (location.state?.fromCompletion) {
+            clearTransactionState();
+            console.log('Cleared localStorage after successful completion (error case)');
+          }
+          
           setIsLoading(false);
         } else {
           setError('Failed to fetch transfer details');
@@ -83,7 +138,7 @@ function SuccessPage() {
     };
     
     fetchEscrowDetails();
-  }, [escrowId, claimUrl, isShareable]);
+  }, [escrowId, claimUrl, isShareable, location.state?.fromCompletion]);
   
   // SECURITY: URL Obfuscation function
   const obfuscateUrl = (url) => {
