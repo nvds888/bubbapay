@@ -11,6 +11,58 @@ import { fetchAssetBalance, checkAlgoAvailability, getDefaultAssetId, getAssetIn
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
+// PERSISTENCE HELPERS
+const STORAGE_KEY = 'bubbapay_txn_state';
+const STORAGE_EXPIRY = 30 * 60 * 1000; // 30 minutes
+
+const saveTransactionState = (data, formData, accountAddress) => {
+  try {
+    const stateToSave = {
+      txnData: data,
+      formData,
+      accountAddress,
+      timestamp: Date.now(),
+      expiresAt: Date.now() + STORAGE_EXPIRY
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    console.log('Transaction state saved to localStorage');
+  } catch (error) {
+    console.warn('Failed to save transaction state:', error);
+  }
+};
+
+const loadTransactionState = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return null;
+    
+    const state = JSON.parse(saved);
+    
+    // Check if expired
+    if (Date.now() > state.expiresAt) {
+      localStorage.removeItem(STORAGE_KEY);
+      console.log('Saved transaction state expired, cleared');
+      return null;
+    }
+    
+    console.log('Transaction state loaded from localStorage');
+    return state;
+  } catch (error) {
+    console.warn('Failed to load transaction state:', error);
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+};
+
+const clearTransactionState = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    console.log('Transaction state cleared');
+  } catch (error) {
+    console.warn('Failed to clear transaction state:', error);
+  }
+};
+
 function SendFlow() {
   const navigate = useNavigate();
   const { activeAddress, signTransactions } = useWallet();
@@ -48,6 +100,47 @@ function SendFlow() {
   // Asset state
   const [selectedAssetId, setSelectedAssetId] = useState(getDefaultAssetId());
   const [selectedAssetInfo, setSelectedAssetInfo] = useState(() => getAssetInfo(getDefaultAssetId()));
+  
+  // NEW: Recovery state
+  const [isRecovering, setIsRecovering] = useState(false);
+
+  // NEW: Load saved state on mount
+  useEffect(() => {
+    const savedState = loadTransactionState();
+    if (savedState && savedState.txnData) {
+      console.log('Recovering transaction state...');
+      setIsRecovering(true);
+      
+      // Restore all the saved state
+      setTxnData(savedState.txnData);
+      setFormData(savedState.formData);
+      setInternalAccountAddress(savedState.accountAddress);
+      
+      // If we have an appId, we're at the funding stage
+      if (savedState.txnData.appId) {
+        setCurrentStep(3); // Go to confirm step
+        
+        // Show recovery message
+        setTimeout(() => {
+          setError('Transaction recovered! Continue with the funding step.');
+          setTimeout(() => setError(null), 5000);
+          setIsRecovering(false);
+        }, 1000);
+      } else {
+        setIsRecovering(false);
+      }
+    }
+  }, []);
+
+  // NEW: Clear state on successful completion or component unmount
+  useEffect(() => {
+    return () => {
+      // Only clear if we're navigating away without completing
+      if (!window.location.pathname.includes('/success/')) {
+        // Don't clear immediately - let it expire naturally in case user comes back
+      }
+    };
+  }, []);
   
   // Update internal account address when prop changes
   useEffect(() => {
@@ -282,13 +375,19 @@ function SendFlow() {
       });
       
       // Save the app ID for the next step
-      setTxnData({
+      const updatedTxnData = {
         ...currentTxnData,
         appId: response.data.appId,
         appAddress: response.data.appAddress,
         groupTransactions: response.data.groupTransactions,
         tempAccount: response.data.tempAccount
-      });
+      };
+      
+      setTxnData(updatedTxnData);
+      
+      // NEW: Save state to localStorage after successful app creation
+      saveTransactionState(updatedTxnData, formData, effectiveAccountAddress);
+      
     } catch (error) {
       console.error('Error signing transaction:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit transaction');
@@ -336,6 +435,9 @@ function SendFlow() {
         assetId: selectedAssetId
       });
       
+      // NEW: Clear saved state on successful completion
+      clearTransactionState();
+      
       // Generate claim URL ourselves to match the backend version
       const generatedClaimUrl = `${window.location.origin}/claim?app=${txnData.appId}#key=${txnData.tempAccount.privateKey}`;
       
@@ -352,6 +454,7 @@ function SendFlow() {
       
       // Clear transaction data so user can start fresh if they try again
       setTxnData(null);
+      clearTransactionState();
     } finally {
       setIsLoading(false);
     }
@@ -377,7 +480,27 @@ function SendFlow() {
         ...prev,
         amount: '' // Clear the amount field when switching assets
       }));
+      
+      // Clear any saved state when asset changes
+      clearTransactionState();
+      setTxnData(null);
     }
+  };
+
+  // NEW: Recovery banner
+  const RecoveryBanner = () => {
+    if (!isRecovering) return null;
+    
+    return (
+      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center space-x-2">
+          <div className="w-4 h-4 spinner"></div>
+          <span className="text-blue-800 text-sm font-medium">
+            Recovering your transaction...
+          </span>
+        </div>
+      </div>
+    );
   };
 
   // Render current step
@@ -436,6 +559,9 @@ function SendFlow() {
   
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-6">
+      {/* NEW: Recovery Banner */}
+      <RecoveryBanner />
+      
       {/* Compact step indicator - hide for MCP users */}
       {!mcpSessionData && (
         <div className="mb-6">
