@@ -104,7 +104,7 @@ function SendFlow() {
   // NEW: Recovery state
   const [isRecovering, setIsRecovering] = useState(false);
 
-  // NEW: Load saved state on mount
+  // NEW: Load saved state on mount and check for completed escrow
   useEffect(() => {
     const savedState = loadTransactionState();
     if (savedState && savedState.txnData) {
@@ -116,21 +116,66 @@ function SendFlow() {
       setFormData(savedState.formData);
       setInternalAccountAddress(savedState.accountAddress);
       
-      // If we have an appId, we're at the funding stage
+      // If we have an appId, check if escrow already exists and is funded
       if (savedState.txnData.appId) {
-        setCurrentStep(3); // Go to confirm step
-        
-        // Show recovery message
-        setTimeout(() => {
-          setError('Transaction recovered! Continue with the funding step.');
-          setTimeout(() => setError(null), 5000);
-          setIsRecovering(false);
-        }, 1000);
+        checkEscrowCompletion(savedState.txnData.appId);
       } else {
         setIsRecovering(false);
       }
     }
   }, []);
+
+  // NEW: Check if escrow is already completed
+  const checkEscrowCompletion = async (appId) => {
+    try {
+      // Check if escrow already exists and is funded
+      const response = await axios.get(`${API_URL}/escrow/${appId}`);
+      const escrow = response.data;
+      
+      if (escrow && escrow.funded && !escrow.claimed) {
+        // Escrow is completed! Navigate to success page
+        console.log('Found completed escrow, navigating to success...');
+        
+        // Generate claim URL if not in response
+        const claimUrl = escrow.claimUrl || 
+          `${window.location.origin}/claim?app=${appId}#key=${txnData?.tempAccount?.privateKey}`;
+        
+        // Clear the saved state since we're completing the flow
+        clearTransactionState();
+        
+        // Navigate to success page
+        navigate(`/success/${escrow._id}`, { 
+          state: { 
+            claimUrl: claimUrl,
+            isShareable: escrow.isShareable 
+          } 
+        });
+        return;
+      }
+      
+      // Escrow not completed yet, continue with funding flow
+      setCurrentStep(3); // Go to confirm step
+      
+      // Show recovery message
+      setTimeout(() => {
+        setError('Transaction recovered! Continue with the funding step.');
+        setTimeout(() => setError(null), 5000);
+        setIsRecovering(false);
+      }, 1000);
+      
+    } catch (error) {
+      // Escrow doesn't exist yet or API error, continue with funding flow
+      console.log('Escrow not found or not completed, continuing with funding...');
+      setCurrentStep(3); // Go to confirm step
+      
+      // Show recovery message
+      setTimeout(() => {
+        setError('Transaction recovered! Continue with the funding step.');
+        setTimeout(() => setError(null), 5000);
+        setIsRecovering(false);
+      }, 1000);
+    }
+  };
 
   // NEW: Clear state on successful completion or component unmount
   useEffect(() => {
