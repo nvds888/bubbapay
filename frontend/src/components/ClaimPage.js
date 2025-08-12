@@ -513,7 +513,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
     setIsLoading(false);
   } catch (error) {
     console.error(`Error with opt-in and claim:`, error);
-    setError(error.response?.data?.error || `Failed to opt-in and claim ${assetInfo?.symbol || 'asset'}. Please try again.`);
+    setError(error.response?.data?.error || `Failed to opt-in and claim ${assetInfo?.symbol || 'asset'}. You have insufficient Algo.`);
     setClaimStatus('ready-to-optin-and-claim');
     setIsLoading(false);
   }
