@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useWallet } from '@txnlab/use-wallet-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
@@ -9,7 +9,6 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 function TransactionsPage() {
   const { activeAddress, signTransactions } = useWallet();
-  const navigate = useNavigate();
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -18,10 +17,6 @@ function TransactionsPage() {
   // ADD: Cleanup state
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [cleanupStatus, setCleanupStatus] = useState({ appId: null, status: '' });
-  
-  // NEW: Incomplete escrows state
-  const [incompleteEscrows, setIncompleteEscrows] = useState([]);
-  const [incompleteLoading, setIncompleteLoading] = useState(false);
   
   // ADD: Helper function to get asset symbol from transaction
   const getAssetSymbol = (transaction) => {
@@ -42,84 +37,30 @@ function TransactionsPage() {
     return { symbol: 'USDC', name: 'USDC' };
   };
   
-  // UPDATED: Fetch user transactions and incomplete escrows when component mounts
+  // Fetch user transactions when component mounts
   useEffect(() => {
-    const fetchAllData = async () => {
+    const fetchTransactions = async () => {
       if (!activeAddress) {
         setIsLoading(false);
         return;
       }
       
       setIsLoading(true);
-      setIncompleteLoading(true);
       setError(null);
       
       try {
-        // Fetch completed transactions
-        const transactionsResponse = await axios.get(`${API_URL}/user-escrows/${activeAddress}`);
-        
-        // Filter out incomplete ones from main transactions (only show funded/completed)
-        const completedTransactions = transactionsResponse.data.filter(tx => 
-          tx.status !== 'app_created'
-        );
-        setTransactions(completedTransactions);
-        
-        // Fetch incomplete escrows separately
-        const incompleteResponse = await axios.get(`${API_URL}/incomplete-escrows/${activeAddress}`);
-        setIncompleteEscrows(incompleteResponse.data);
-        
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError('Failed to fetch your transactions');
-      } finally {
+        const response = await axios.get(`${API_URL}/user-escrows/${activeAddress}`);
+        setTransactions(response.data);
         setIsLoading(false);
-        setIncompleteLoading(false);
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+        setError('Failed to fetch your transactions');
+        setIsLoading(false);
       }
     };
     
-    fetchAllData();
+    fetchTransactions();
   }, [activeAddress]);
-  
-  // NEW: Function to continue an incomplete escrow
-  const continueIncompleteEscrow = async (escrowId) => {
-    try {
-      const response = await axios.post(`${API_URL}/continue-escrow/${escrowId}`, {
-        senderAddress: activeAddress
-      });
-      
-      const escrowData = response.data;
-      
-      // Navigate to SendFlow with URL parameters to continue the flow
-      const params = new URLSearchParams({
-        continue_escrow: escrowId,
-        app_id: escrowData.appId
-      });
-      
-      navigate(`/?${params.toString()}`);
-    } catch (error) {
-      console.error('Error continuing escrow:', error);
-      alert('Failed to continue transfer: ' + (error.response?.data?.error || error.message));
-    }
-  };
-
-  // NEW: Function to delete an incomplete escrow
-  const deleteIncompleteEscrow = async (escrowId) => {
-    if (!window.confirm('Are you sure you want to delete this incomplete transfer? This cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await axios.delete(`${API_URL}/incomplete-escrow/${escrowId}`, {
-        data: { senderAddress: activeAddress }
-      });
-      
-      // Remove from local state
-      setIncompleteEscrows(prev => prev.filter(e => e._id !== escrowId));
-    } catch (error) {
-      console.error('Error deleting incomplete escrow:', error);
-      alert('Failed to delete incomplete transfer');
-    }
-  };
   
   // Format USDC amount
   const formatAmount = (amount) => {
@@ -202,6 +143,8 @@ function TransactionsPage() {
     }
   };
   
+  // REPLACE the handleCleanup function in TransactionsPage.js with this:
+
   const handleCleanup = async (appId) => {
     if (!window.confirm("Clean up this contract to recover locked ALGO? This will permanently delete the contract.")) {
       return;
@@ -366,95 +309,16 @@ function TransactionsPage() {
               <div className="text-sm">
                 <p className="font-medium text-green-800">Contracts Ready for Cleanup:</p>
                 <p className="text-green-700 mt-1">
-                  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} Claimed contracts can be cleaned up to recover ~{(transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.46).toFixed(2)} ALGO in locked funds.
-                </p>
+  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} Claimed contracts can be cleaned up to recover ~{(transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.46).toFixed(2)} ALGO in locked funds.
+</p>
               </div>
             </div>
           </div>
         )}
       </div>
       
-      {/* NEW: Incomplete Escrows Section */}
-      {incompleteEscrows.length > 0 && (
-        <div className="card card-normal">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <svg className="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900">Incomplete Transfers</h3>
-            </div>
-            <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
-              {incompleteEscrows.length} pending
-            </span>
-          </div>
-
-          <p className="text-gray-600 text-sm mb-4">
-            These transfers had their smart contracts created but were not funded. Complete them or clean them up.
-          </p>
-
-          <div className="space-y-3">
-            {incompleteEscrows.map((escrow) => {
-              const assetInfo = getAssetInfo(escrow.assetId);
-              
-              return (
-                <div key={escrow._id} className="border border-gray-200 rounded-lg p-4 bg-amber-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <span className="font-semibold text-gray-900">
-                          {escrow.amount} {assetInfo?.symbol || 'tokens'}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {formatDate(escrow.createdAt)}
-                        </span>
-                      </div>
-                      
-                      <div className="text-sm text-gray-600">
-                        {escrow.recipientEmail ? (
-                          <span>To: {escrow.recipientEmail}</span>
-                        ) : (
-                          <span className="inline-flex items-center">
-                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                            </svg>
-                            Shareable Link
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="text-xs text-amber-700 mt-1">
-                        App ID: {escrow.appId} • Created but not funded
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => continueIncompleteEscrow(escrow._id)}
-                        className="btn-primary px-3 py-1 text-xs font-medium"
-                      >
-                        Complete
-                      </button>
-                      <button
-                        onClick={() => deleteIncompleteEscrow(escrow._id)}
-                        className="btn-ghost text-red-600 hover:text-red-700 px-2 py-1 text-xs"
-                        title="Delete incomplete transfer"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      
       {/* Transactions list */}
-      {transactions.length === 0 && incompleteEscrows.length === 0 ? (
+      {transactions.length === 0 ? (
         <div className="card card-normal text-center py-8">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
@@ -472,7 +336,7 @@ function TransactionsPage() {
             Send Crypto
           </Link>
         </div>
-      ) : transactions.length > 0 ? (
+      ) : (
         <div className="card overflow-hidden">
           {/* Desktop table */}
           <div className="hidden lg:block overflow-x-auto">
@@ -671,7 +535,7 @@ function TransactionsPage() {
             ))}
           </div>
         </div>
-      ) : null}
+      )}
       
       {/* Send more button */}
       <div className="text-center">
