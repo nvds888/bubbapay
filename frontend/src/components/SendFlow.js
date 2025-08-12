@@ -13,7 +13,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 // PERSISTENCE HELPERS
 const STORAGE_KEY = 'bubbapay_txn_state';
-const STORAGE_EXPIRY = 30 * 60 * 1000; // 30 minutes
+const STORAGE_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
 const saveTransactionState = (data, formData, accountAddress) => {
   try {
