@@ -11,58 +11,6 @@ import { fetchAssetBalance, checkAlgoAvailability, getDefaultAssetId, getAssetIn
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-// PERSISTENCE HELPERS
-const STORAGE_KEY = 'bubbapay_txn_state';
-const STORAGE_EXPIRY = 5 * 60 * 1000; // 5 minutes
-
-const saveTransactionState = (data, formData, accountAddress) => {
-  try {
-    const stateToSave = {
-      txnData: data,
-      formData,
-      accountAddress,
-      timestamp: Date.now(),
-      expiresAt: Date.now() + STORAGE_EXPIRY
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    console.log('Transaction state saved to localStorage');
-  } catch (error) {
-    console.warn('Failed to save transaction state:', error);
-  }
-};
-
-const loadTransactionState = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return null;
-    
-    const state = JSON.parse(saved);
-    
-    // Check if expired
-    if (Date.now() > state.expiresAt) {
-      localStorage.removeItem(STORAGE_KEY);
-      console.log('Saved transaction state expired, cleared');
-      return null;
-    }
-    
-    console.log('Transaction state loaded from localStorage');
-    return state;
-  } catch (error) {
-    console.warn('Failed to load transaction state:', error);
-    localStorage.removeItem(STORAGE_KEY);
-    return null;
-  }
-};
-
-const clearTransactionState = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    console.log('Transaction state cleared');
-  } catch (error) {
-    console.warn('Failed to clear transaction state:', error);
-  }
-};
-
 function SendFlow() {
   const navigate = useNavigate();
   const { activeAddress, signTransactions } = useWallet();
@@ -100,145 +48,6 @@ function SendFlow() {
   // Asset state
   const [selectedAssetId, setSelectedAssetId] = useState(getDefaultAssetId());
   const [selectedAssetInfo, setSelectedAssetInfo] = useState(() => getAssetInfo(getDefaultAssetId()));
-  
-  // NEW: Recovery state
-  const [isRecovering, setIsRecovering] = useState(false);
-
-  // NEW: Load saved state on mount and check for completed escrow
-  useEffect(() => {
-    const savedState = loadTransactionState();
-    if (savedState && savedState.txnData) {
-      console.log('Checking if recovery should apply...');
-      
-      // Only recover if user hasn't started typing a new transaction
-      const isFormEmpty = !formData.amount && !formData.recipientEmail;
-      
-      if (isFormEmpty) {
-        console.log('Recovering transaction state...');
-        setIsRecovering(true);
-        
-        // Restore all the saved state
-        setTxnData(savedState.txnData);
-        setFormData(savedState.formData);
-        setInternalAccountAddress(savedState.accountAddress);
-        
-        // If we have an appId, check if escrow already exists and is funded
-        if (savedState.txnData.appId) {
-          checkEscrowCompletion(savedState.txnData.appId);
-        } 
-        // 🔥 NEW: Check for pending transaction (network error case)
-        else if (savedState.txnData.pendingTxId && savedState.txnData.pendingSubmission) {
-          console.log('Found pending transaction, checking if it succeeded...');
-          checkPendingTransaction(savedState.txnData.pendingTxId, savedState);
-        } 
-        else {
-          setIsRecovering(false);
-        }
-      } else {
-        // User has started a new transaction, clear old state
-        console.log('User started new transaction, clearing old state...');
-        clearTransactionState();
-      }
-    }
-  }, []); // Run once on mount
-  
-  // 🔥 NEW: Add this function after the useEffect
-  const checkPendingTransaction = async (txId, savedState) => {
-    try {
-      console.log('Checking pending transaction status:', txId);
-      
-      // Check Algorand network directly for transaction status
-      const algodClient = new algosdk.Algodv2('', 'https://mainnet-api.algonode.cloud', '');
-      const txnInfo = await algodClient.pendingTransactionInformation(txId).do();
-      
-      if (txnInfo['application-index']) {
-        const appId = txnInfo['application-index'];
-        console.log('Pending transaction succeeded! Found appId:', appId);
-        
-        // Update saved state with recovered appId
-        const recoveredTxnData = {
-          ...savedState.txnData,
-          appId: appId,
-          pendingSubmission: false // Clear pending flag
-        };
-        
-        setTxnData(recoveredTxnData);
-        saveTransactionState(recoveredTxnData, savedState.formData, savedState.accountAddress);
-        
-        // Now check if escrow is already funded
-        checkEscrowCompletion(appId);
-        
-      } else {
-        console.log('Transaction found but no app created yet');
-        setError('App creation still processing. Please wait a moment...');
-        setTimeout(() => {
-          setError(null);
-          setIsRecovering(false);
-        }, 3000);
-      }
-      
-    } catch (error) {
-      console.log('Pending transaction not found or not confirmed yet:', error);
-      setError('Transaction may still be processing. Please try refreshing in a moment.');
-      setTimeout(() => {
-        setError(null);
-        setIsRecovering(false);
-      }, 5000);
-    }
-  };
-
-  // NEW: Check if escrow is already completed
-  const checkEscrowCompletion = async (appId) => {
-    try {
-      // Check if escrow already exists and is funded
-      const response = await axios.get(`${API_URL}/escrow/${appId}`);
-      const escrow = response.data;
-      
-      if (escrow && escrow.funded && !escrow.claimed) {
-        // Escrow is completed! Navigate to success page
-        console.log('Found completed escrow, navigating to success...');
-        
-        // Generate claim URL if not in response
-        const claimUrl = escrow.claimUrl || 
-          `${window.location.origin}/claim?app=${appId}#key=${txnData?.tempAccount?.privateKey}`;
-        
-        // Clear the saved state since we're completing the flow
-        clearTransactionState();
-        
-        // Navigate to success page
-        navigate(`/success/${escrow._id}`, { 
-          state: { 
-            claimUrl: claimUrl,
-            isShareable: escrow.isShareable 
-          } 
-        });
-        return;
-      }
-      
-      // Escrow not completed yet, continue with funding flow
-      setCurrentStep(3); // Go to confirm step
-      
-      // Show recovery message
-      setTimeout(() => {
-        setError('Transaction recovered! Continue with the funding step.');
-        setTimeout(() => setError(null), 5000);
-        setIsRecovering(false);
-      }, 1000);
-      
-    } catch (error) {
-      // Escrow doesn't exist yet or API error, continue with funding flow
-      console.log('Escrow not found or not completed, continuing with funding...');
-      setCurrentStep(3); // Go to confirm step
-      
-      // Show recovery message
-      setTimeout(() => {
-        setError('Transaction recovered! Continue with the funding step.');
-        setTimeout(() => setError(null), 5000);
-        setIsRecovering(false);
-      }, 1000);
-    }
-  };
-
   
   // Update internal account address when prop changes
   useEffect(() => {
@@ -392,9 +201,6 @@ function SendFlow() {
       return null;
     }
     
-    // NEW: Clear any existing saved state when starting a new transaction
-    clearTransactionState();
-    
     // If we have MCP session data, use its transaction data
     if (mcpSessionData && mcpSessionData.deployTransaction) {
       const mcpTxnData = {
@@ -462,16 +268,6 @@ function SendFlow() {
       
       // Convert the signed transaction to base64
       const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
-
-      const txId = txn.txID();
-    const pendingState = {
-      ...currentTxnData,
-      pendingTxId: txId,  // Save this for recovery
-      pendingSubmission: true,
-      submissionTime: Date.now()
-    };
-    saveTransactionState(pendingState, formData, effectiveAccountAddress);
-    console.log('Saved pending transaction for recovery:', txId);
       
       // Submit the signed transaction
       const response = await axios.post(`${API_URL}/submit-app-creation`, {
@@ -486,19 +282,13 @@ function SendFlow() {
       });
       
       // Save the app ID for the next step
-      const updatedTxnData = {
+      setTxnData({
         ...currentTxnData,
         appId: response.data.appId,
         appAddress: response.data.appAddress,
         groupTransactions: response.data.groupTransactions,
         tempAccount: response.data.tempAccount
-      };
-      
-      setTxnData(updatedTxnData);
-      
-      // NEW: Save state to localStorage after successful app creation
-      saveTransactionState(updatedTxnData, formData, effectiveAccountAddress);
-      
+      });
     } catch (error) {
       console.error('Error signing transaction:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit transaction');
@@ -546,9 +336,6 @@ function SendFlow() {
         assetId: selectedAssetId
       });
       
-      // NEW: Clear saved state on successful completion
-      clearTransactionState();
-      
       // Generate claim URL ourselves to match the backend version
       const generatedClaimUrl = `${window.location.origin}/claim?app=${txnData.appId}#key=${txnData.tempAccount.privateKey}`;
       
@@ -565,7 +352,6 @@ function SendFlow() {
       
       // Clear transaction data so user can start fresh if they try again
       setTxnData(null);
-      clearTransactionState();
     } finally {
       setIsLoading(false);
     }
@@ -591,27 +377,7 @@ function SendFlow() {
         ...prev,
         amount: '' // Clear the amount field when switching assets
       }));
-      
-      // Clear any saved state when asset changes (prevents interference)
-      clearTransactionState();
-      setTxnData(null);
     }
-  };
-
-  // NEW: Recovery banner
-  const RecoveryBanner = () => {
-    if (!isRecovering) return null;
-    
-    return (
-      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 spinner"></div>
-          <span className="text-blue-800 text-sm font-medium">
-            Recovering your transaction...
-          </span>
-        </div>
-      </div>
-    );
   };
 
   // Render current step
@@ -670,9 +436,6 @@ function SendFlow() {
   
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-6">
-      {/* NEW: Recovery Banner */}
-      <RecoveryBanner />
-      
       {/* Compact step indicator - hide for MCP users */}
       {!mcpSessionData && (
         <div className="mb-6">
