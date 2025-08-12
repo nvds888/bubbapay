@@ -108,22 +108,33 @@ function SendFlow() {
   useEffect(() => {
     const savedState = loadTransactionState();
     if (savedState && savedState.txnData) {
-      console.log('Recovering transaction state...');
-      setIsRecovering(true);
+      console.log('Checking if recovery should apply...');
       
-      // Restore all the saved state
-      setTxnData(savedState.txnData);
-      setFormData(savedState.formData);
-      setInternalAccountAddress(savedState.accountAddress);
+      // Only recover if user hasn't started typing a new transaction
+      const isFormEmpty = !formData.amount && !formData.recipientEmail;
       
-      // If we have an appId, check if escrow already exists and is funded
-      if (savedState.txnData.appId) {
-        checkEscrowCompletion(savedState.txnData.appId);
+      if (isFormEmpty) {
+        console.log('Recovering transaction state...');
+        setIsRecovering(true);
+        
+        // Restore all the saved state
+        setTxnData(savedState.txnData);
+        setFormData(savedState.formData);
+        setInternalAccountAddress(savedState.accountAddress);
+        
+        // If we have an appId, check if escrow already exists and is funded
+        if (savedState.txnData.appId) {
+          checkEscrowCompletion(savedState.txnData.appId);
+        } else {
+          setIsRecovering(false);
+        }
       } else {
-        setIsRecovering(false);
+        // User has started a new transaction, clear old state
+        console.log('User started new transaction, clearing old state...');
+        clearTransactionState();
       }
     }
-  }, []);
+  }, []); // Run once on mount
 
   // NEW: Check if escrow is already completed
   const checkEscrowCompletion = async (appId) => {
@@ -339,6 +350,9 @@ function SendFlow() {
       return null;
     }
     
+    // NEW: Clear any existing saved state when starting a new transaction
+    clearTransactionState();
+    
     // If we have MCP session data, use its transaction data
     if (mcpSessionData && mcpSessionData.deployTransaction) {
       const mcpTxnData = {
@@ -526,7 +540,7 @@ function SendFlow() {
         amount: '' // Clear the amount field when switching assets
       }));
       
-      // Clear any saved state when asset changes
+      // Clear any saved state when asset changes (prevents interference)
       clearTransactionState();
       setTxnData(null);
     }
