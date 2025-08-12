@@ -125,7 +125,13 @@ function SendFlow() {
         // If we have an appId, check if escrow already exists and is funded
         if (savedState.txnData.appId) {
           checkEscrowCompletion(savedState.txnData.appId);
-        } else {
+        } 
+        // 🔥 NEW: Check for pending transaction (network error case)
+        else if (savedState.txnData.pendingTxId && savedState.txnData.pendingSubmission) {
+          console.log('Found pending transaction, checking if it succeeded...');
+          checkPendingTransaction(savedState.txnData.pendingTxId, savedState);
+        } 
+        else {
           setIsRecovering(false);
         }
       } else {
@@ -135,6 +141,51 @@ function SendFlow() {
       }
     }
   }, []); // Run once on mount
+  
+  // 🔥 NEW: Add this function after the useEffect
+  const checkPendingTransaction = async (txId, savedState) => {
+    try {
+      console.log('Checking pending transaction status:', txId);
+      
+      // Check Algorand network directly for transaction status
+      const algodClient = new algosdk.Algodv2('', 'https://mainnet-api.algonode.cloud', '');
+      const txnInfo = await algodClient.pendingTransactionInformation(txId).do();
+      
+      if (txnInfo['application-index']) {
+        const appId = txnInfo['application-index'];
+        console.log('Pending transaction succeeded! Found appId:', appId);
+        
+        // Update saved state with recovered appId
+        const recoveredTxnData = {
+          ...savedState.txnData,
+          appId: appId,
+          pendingSubmission: false // Clear pending flag
+        };
+        
+        setTxnData(recoveredTxnData);
+        saveTransactionState(recoveredTxnData, savedState.formData, savedState.accountAddress);
+        
+        // Now check if escrow is already funded
+        checkEscrowCompletion(appId);
+        
+      } else {
+        console.log('Transaction found but no app created yet');
+        setError('App creation still processing. Please wait a moment...');
+        setTimeout(() => {
+          setError(null);
+          setIsRecovering(false);
+        }, 3000);
+      }
+      
+    } catch (error) {
+      console.log('Pending transaction not found or not confirmed yet:', error);
+      setError('Transaction may still be processing. Please try refreshing in a moment.');
+      setTimeout(() => {
+        setError(null);
+        setIsRecovering(false);
+      }, 5000);
+    }
+  };
 
   // NEW: Check if escrow is already completed
   const checkEscrowCompletion = async (appId) => {
@@ -188,15 +239,6 @@ function SendFlow() {
     }
   };
 
-  // NEW: Clear state on successful completion or component unmount
-  useEffect(() => {
-    return () => {
-      // Only clear if we're navigating away without completing
-      if (!window.location.pathname.includes('/success/')) {
-        // Don't clear immediately - let it expire naturally in case user comes back
-      }
-    };
-  }, []);
   
   // Update internal account address when prop changes
   useEffect(() => {
@@ -420,6 +462,16 @@ function SendFlow() {
       
       // Convert the signed transaction to base64
       const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
+
+      const txId = txn.txID();
+    const pendingState = {
+      ...currentTxnData,
+      pendingTxId: txId,  // Save this for recovery
+      pendingSubmission: true,
+      submissionTime: Date.now()
+    };
+    saveTransactionState(pendingState, formData, effectiveAccountAddress);
+    console.log('Saved pending transaction for recovery:', txId);
       
       // Submit the signed transaction
       const response = await axios.post(`${API_URL}/submit-app-creation`, {
