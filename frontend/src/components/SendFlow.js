@@ -45,6 +45,10 @@ function SendFlow() {
   // MCP session data
   const [mcpSessionData, setMcpSessionData] = useState(null);
   
+  // NEW: Database state management
+  const [currentEscrow, setCurrentEscrow] = useState(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  
   // Asset state
   const [selectedAssetId, setSelectedAssetId] = useState(getDefaultAssetId());
   const [selectedAssetInfo, setSelectedAssetInfo] = useState(() => getAssetInfo(getDefaultAssetId()));
@@ -56,6 +60,68 @@ function SendFlow() {
   
   // Use internal account address for balance and ALGO checks
   const effectiveAccountAddress = internalAccountAddress || activeAddress;
+  
+  // NEW: Check for incomplete escrows on wallet connection
+  useEffect(() => {
+    const checkForIncompleteEscrows = async () => {
+      if (!effectiveAccountAddress || mcpSessionData) return;
+      
+      try {
+        const response = await axios.get(`${API_URL}/incomplete-escrows/${effectiveAccountAddress}`);
+        const incompleteEscrows = response.data;
+        
+        if (incompleteEscrows.length > 0) {
+          // For simplicity, auto-recover the most recent incomplete escrow
+          const mostRecent = incompleteEscrows[0];
+          await recoverFromEscrow(mostRecent);
+        }
+      } catch (error) {
+        console.error('Error checking for incomplete escrows:', error);
+        // Don't show error to user, just continue with normal flow
+      }
+    };
+    
+    checkForIncompleteEscrows();
+  }, [effectiveAccountAddress, mcpSessionData]);
+  
+  // NEW: Recovery function
+  const recoverFromEscrow = async (escrow) => {
+    try {
+      setRecoveryMode(true);
+      setCurrentEscrow(escrow);
+      
+      // Pre-fill form data from escrow
+      setFormData({
+        amount: escrow.amount.toString(),
+        recipientEmail: escrow.recipientEmail || '',
+        isShareableLink: escrow.isShareable,
+        payRecipientFees: escrow.payRecipientFees
+      });
+      
+      // Set asset info
+      setSelectedAssetId(escrow.assetId);
+      setSelectedAssetInfo(getAssetInfo(escrow.assetId));
+      
+      // Set transaction data from escrow
+      setTxnData({
+        appId: escrow.appId,
+        appAddress: escrow.appAddress,
+        groupTransactions: escrow.groupTransactions,
+        tempAccount: escrow.tempAccount,
+        amount: escrow.amount,
+        microAmount: escrow.amount * 1e6
+      });
+      
+      // Jump to confirm step since app is already created
+      setCurrentStep(3);
+      
+      console.log('Recovered incomplete escrow:', escrow._id);
+    } catch (error) {
+      console.error('Error recovering from escrow:', error);
+      setError('Failed to recover incomplete transaction');
+    }
+  };
+  
   
   // Fetch USDC balance and ALGO availability when account changes
   useEffect(() => {
@@ -96,19 +162,6 @@ function SendFlow() {
     
     getBalances();
   }, [effectiveAccountAddress, formData.payRecipientFees, selectedAssetId]);
-  
-  // Load MCP session if present in URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const mcpSession = urlParams.get('mcp_session');
-    const escrowId = urlParams.get('escrow_id');
-    
-    if (mcpSession) {
-      loadMCPSession(mcpSession);
-    } else if (escrowId) {
-      loadMCPEscrow(escrowId);
-    }
-  }, []);
   
   const loadMCPSession = async (sessionToken) => {
     try {
@@ -213,6 +266,11 @@ function SendFlow() {
       return mcpTxnData;
     }
     
+    // NEW: If we're in recovery mode and have current escrow, skip generation
+    if (recoveryMode && currentEscrow && txnData) {
+      return txnData;
+    }
+    
     setIsLoading(true);
     setError(null);
     
@@ -240,6 +298,11 @@ function SendFlow() {
   // Handle first transaction signing (app creation)
   const handleSignFirstTransaction = async () => {
     try {
+      // NEW: Skip if we're in recovery mode (app already created)
+      if (recoveryMode && currentEscrow) {
+        return;
+      }
+      
       // Generate transaction if it doesn't exist yet
       let currentTxnData = txnData;
       if (!currentTxnData) {
@@ -281,10 +344,23 @@ function SendFlow() {
         assetId: selectedAssetId
       });
       
+      // NEW: Save escrow data and set current escrow
+      setCurrentEscrow({
+        _id: response.data.escrowId,
+        appId: response.data.appId,
+        appAddress: response.data.appAddress,
+        amount: currentTxnData.amount,
+        isShareable: formData.isShareableLink,
+        recipientEmail: formData.isShareableLink ? null : formData.recipientEmail,
+        payRecipientFees: formData.payRecipientFees,
+        assetId: selectedAssetId
+      });
+      
       // Save the app ID for the next step
       setTxnData({
         ...currentTxnData,
         appId: response.data.appId,
+        escrowId: response.data.escrowId, // NEW: Store escrow ID
         appAddress: response.data.appAddress,
         groupTransactions: response.data.groupTransactions,
         tempAccount: response.data.tempAccount
@@ -333,7 +409,8 @@ function SendFlow() {
         recipientEmail: formData.isShareableLink ? null : formData.recipientEmail,
         senderAddress: effectiveAccountAddress,
         payRecipientFees: formData.payRecipientFees,
-        assetId: selectedAssetId
+        assetId: selectedAssetId,
+        escrowId: txnData.escrowId || (currentEscrow?._id) // NEW: Pass escrow ID
       });
       
       // Generate claim URL ourselves to match the backend version
@@ -350,14 +427,16 @@ function SendFlow() {
       console.error('Error signing group transactions:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit group transactions');
       
-      // Clear transaction data so user can start fresh if they try again
-      setTxnData(null);
+      // NEW: Don't clear transaction data in recovery mode
+      if (!recoveryMode) {
+        setTxnData(null);
+      }
     } finally {
       setIsLoading(false);
     }
   };
   
-  // NEW: Handle asset selection
+  // Handle asset selection
   const handleAssetSelect = (assetId, assetInfo, forceRefresh = false) => {
     const isAssetChanging = assetId !== selectedAssetId;
     
@@ -372,7 +451,7 @@ function SendFlow() {
     }
     
     // CRITICAL FIX: Reset amount to prevent accidental transactions (only when asset actually changes)
-    if (isAssetChanging) {
+    if (isAssetChanging && !recoveryMode) { // NEW: Don't reset in recovery mode
       setFormData(prev => ({
         ...prev,
         amount: '' // Clear the amount field when switching assets
@@ -398,7 +477,6 @@ function SendFlow() {
             algoAvailability={algoAvailability}
             algoLoading={algoLoading}
             algoError={algoError}
-            // NEW: Add these props
             selectedAssetId={selectedAssetId}
             onAssetSelect={handleAssetSelect}
           />
@@ -427,6 +505,8 @@ function SendFlow() {
             mcpSessionData={mcpSessionData}
             onWalletConnect={handleMCPWalletConnect}
             selectedAssetInfo={selectedAssetInfo}
+            recoveryMode={recoveryMode} // NEW: Pass recovery mode
+            currentEscrow={currentEscrow} // NEW: Pass current escrow
           />
         );
       default:
@@ -436,6 +516,15 @@ function SendFlow() {
   
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-6">
+      {/* Recovery indicator */}
+      {recoveryMode && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-blue-800 text-sm">
+            📋 Resuming incomplete transaction from {new Date(currentEscrow?.createdAt).toLocaleString()}
+          </p>
+        </div>
+      )}
+      
       {/* Compact step indicator - hide for MCP users */}
       {!mcpSessionData && (
         <div className="mb-6">

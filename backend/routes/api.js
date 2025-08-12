@@ -137,7 +137,6 @@ router.post('/submit-app-creation', async (req, res) => {
         .do();
 
       console.log('Submit response:', JSON.stringify(submitResponse, null, 2));
-
       txId = submitResponse.txid;
     } catch (submitError) {
       console.error('submitError details:', submitError);
@@ -184,12 +183,54 @@ router.post('/submit-app-creation', async (req, res) => {
       assetId: assetId || getDefaultAssetId()
     });
 
-    // Step 5: Send response
+    // Step 5: SAVE TO DATABASE IMMEDIATELY (NEW!)
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    // Hash the private key for lookup
+    const claimHash = hashPrivateKey(tempAccount.privateKey, appId);
+    
+    // Generate claim URL
+    const claimUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claim?app=${appId}#key=${tempAccount.privateKey}`;
+    
+    const escrowRecord = {
+      appId: Number(appId),
+      appAddress: postAppTxns.appAddress,
+      network: 'mainnet',
+      assetId: assetId || getDefaultAssetId(),
+      recipientEmail: recipientEmail || null,
+      isShareable: !recipientEmail,
+      authorizedClaimer: tempAccount.address,
+      claimHash: claimHash,
+      amount: parseFloat(amount),
+      createdAt: new Date(),
+      claimed: false,
+      funded: false, // KEY: App created but not funded yet
+      senderAddress,
+      payRecipientFees: !!payRecipientFees,
+      cleanedUp: false,
+      cleanupTxId: null,
+      cleanedUpAt: null,
+      // Store transaction data for recovery
+      groupTransactions: postAppTxns.groupTransactions,
+      tempAccount: {
+        address: tempAccount.address,
+        // Don't store private key in DB for security
+      },
+      // Add status tracking
+      status: 'APP_CREATED_AWAITING_FUNDING'
+    };
+    
+    const result = await escrowCollection.insertOne(escrowRecord);
+
+    // Step 6: Return data including escrow ID
     res.status(200).json({
-      appId: Number(appId), 
+      appId: Number(appId),
+      escrowId: result.insertedId, // NEW: Return escrow ID
       appAddress: postAppTxns.appAddress,
       groupTransactions: postAppTxns.groupTransactions,
-      tempAccount: postAppTxns.tempAccount
+      tempAccount: postAppTxns.tempAccount,
+      claimUrl: claimUrl // NEW: Return claim URL early
     });
 
   } catch (error) {
@@ -206,7 +247,7 @@ router.post('/submit-app-creation', async (req, res) => {
 // Submit signed group transactions
 router.post('/submit-group-transactions', async (req, res) => {
   try {
-    const { signedTxns, appId, tempAccount, amount, recipientEmail, senderAddress, payRecipientFees, assetId } = req.body;
+    const { signedTxns, appId, tempAccount, amount, recipientEmail, senderAddress, payRecipientFees, assetId, escrowId } = req.body;
     
     if (!signedTxns || !appId || !tempAccount || !amount || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
@@ -252,45 +293,51 @@ router.post('/submit-group-transactions', async (req, res) => {
     // Get the app address
     const appAddress = algosdk.getApplicationAddress(parseInt(appId));
     
-    // Store the escrow in the database
+    // UPDATE existing record instead of creating new one
     const db = req.app.locals.db;
     const escrowCollection = db.collection('escrows');
     
-    // Hash the private key instead of storing it directly
-    const claimHash = hashPrivateKey(tempAccount.privateKey, appId);
+    // Find the existing escrow record
+    let escrow;
+    if (escrowId && ObjectId.isValid(escrowId)) {
+      escrow = await escrowCollection.findOne({ _id: new ObjectId(escrowId) });
+    } else {
+      // Fallback: find by appId and senderAddress
+      escrow = await escrowCollection.findOne({ 
+        appId: parseInt(appId), 
+        senderAddress,
+        funded: false // Only update unfunded escrows
+      });
+    }
     
-    // Generate claim URL with hashed reference (private key still in URL for signing)
-    const claimUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claim?app=${appId}#key=${tempAccount.privateKey}`;
+    if (!escrow) {
+      return res.status(404).json({ error: 'Escrow record not found or already funded' });
+    }
     
-    const escrowRecord = {
-      appId: Number(appId),
-      appAddress,
-      network: 'mainnet',
-      assetId: assetId || getDefaultAssetId(),
-      recipientEmail: recipientEmail || null,
-      isShareable: !recipientEmail,
-      authorizedClaimer: tempAccount.address,
-      // SECURITY: Store hashed private key instead of the actual key
-      claimHash: claimHash, // This is what we store for lookup
-      amount: parseFloat(amount),
-      createdAt: new Date(),
-      claimed: false,
-      funded: false,
-      senderAddress,
-      payRecipientFees: !!payRecipientFees,
-      cleanedUp: false,
-      cleanupTxId: null,
-      cleanedUpAt: null
+    // Update the existing record to mark as funded
+    const updateData = {
+      funded: true,
+      fundedAt: new Date(),
+      fundingTxId: txId,
+      status: 'FUNDED_READY_TO_CLAIM',
+      // Clear the group transactions as they're no longer needed
+      groupTransactions: null
     };
     
-    const result = await escrowCollection.insertOne(escrowRecord);
+    await escrowCollection.updateOne(
+      { _id: escrow._id },
+      { $set: updateData }
+    );
     
     // Send email if recipient email is provided
-    if (recipientEmail) {
+    if (recipientEmail || escrow.recipientEmail) {
+      const emailToSend = recipientEmail || escrow.recipientEmail;
       const assetInfo = getAssetInfo(assetId || getDefaultAssetId());
       const symbol = assetInfo?.symbol || 'tokens';
+      const claimUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claim?app=${appId}#key=${tempAccount.privateKey}`;
+      
       const msg = {
-        to: recipientEmail,
+        to: emailToSend,
         from: process.env.FROM_EMAIL,
         subject: `You've received ${amount} ${symbol} via AlgoSend!`,
         html: `
@@ -312,12 +359,14 @@ router.post('/submit-group-transactions', async (req, res) => {
       await sgMail.send(msg);
     }
     
-    res.status(201).json({
+    const claimUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claim?app=${appId}#key=${tempAccount.privateKey}`;
+    
+    res.status(200).json({
       success: true,
-      escrowId: result.insertedId,
+      escrowId: escrow._id,
       appId,
       claimUrl,
-      isShareable: !recipientEmail
+      isShareable: escrow.isShareable
     });
   } catch (error) {
     console.error('Error submitting group transactions:', error);
@@ -773,6 +822,64 @@ router.get('/supported-assets', async (req, res) => {
   } catch (error) {
     console.error('Error fetching supported assets:', error);
     res.status(500).json({ error: 'Failed to fetch supported assets' });
+  }
+});
+
+// Get incomplete escrows for recovery
+router.get('/incomplete-escrows/:address', async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    const incompleteEscrows = await escrowCollection.find({ 
+      senderAddress: req.params.address,
+      funded: false,
+      status: 'APP_CREATED_AWAITING_FUNDING'
+    }).sort({ createdAt: -1 }).toArray();
+    
+    // Remove sensitive data but keep what's needed for recovery
+    const sanitizedEscrows = incompleteEscrows.map(escrow => {
+      const sanitized = { ...escrow };
+      delete sanitized.claimHash; // Don't expose hash
+      // Keep groupTransactions for recovery
+      return sanitized;
+    });
+    
+    res.status(200).json(sanitizedEscrows);
+  } catch (error) {
+    console.error('Error fetching incomplete escrows:', error);
+    res.status(500).json({ error: 'Failed to fetch incomplete escrows', details: error.message });
+  }
+});
+
+// Get specific escrow by ID for recovery
+router.get('/escrow-recovery/:escrowId', async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    if (!ObjectId.isValid(req.params.escrowId)) {
+      return res.status(400).json({ error: 'Invalid escrow ID' });
+    }
+    
+    const escrow = await escrowCollection.findOne({ 
+      _id: new ObjectId(req.params.escrowId),
+      funded: false,
+      status: 'APP_CREATED_AWAITING_FUNDING'
+    });
+    
+    if (!escrow) {
+      return res.status(404).json({ error: 'Incomplete escrow not found' });
+    }
+    
+    // Remove sensitive data but keep recovery data
+    const sanitizedEscrow = { ...escrow };
+    delete sanitizedEscrow.claimHash;
+    
+    res.status(200).json(sanitizedEscrow);
+  } catch (error) {
+    console.error('Error fetching escrow for recovery:', error);
+    res.status(500).json({ error: 'Failed to fetch escrow for recovery', details: error.message });
   }
 });
 
