@@ -516,7 +516,7 @@ function TransactionsPage() {
                         disabled={isCleaningUp}
                         className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
                       >
-                        Clean Up (~0.31 ALGO)
+                        Clean Up (~0.46 ALGO)
                       </button>
                     )}
                     
