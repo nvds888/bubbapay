@@ -97,60 +97,43 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // Handle multiple transactions now
+    // Handle multiple transactions
     const txns = txnData.transactions.map(txnBase64 => {
       const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
-    console.log('DEBUG - About to sign transactions:', txns.length);
+    console.log('DEBUG - Transactions to sign:', txns.length);
+    console.log('DEBUG - First txn sender:', txns[0].from);
+    console.log('DEBUG - Second txn sender:', txns[1].from);
     
-    // Sign with use-wallet (supports multiple transactions)
+    // Try to sign both transactions with the wallet
+    // The wallet should handle the first normally and second as multisig (since creator is a signer)
     const signedTxns = await signTransactions(txns);
     
-    // DEBUG: Check what signTransactions returned
-    console.log('DEBUG - signedTxns:', signedTxns);
-    console.log('DEBUG - signedTxns type:', typeof signedTxns);
-    console.log('DEBUG - signedTxns is array?:', Array.isArray(signedTxns));
-    console.log('DEBUG - signedTxns length:', signedTxns?.length);
+    console.log('DEBUG - Signed transactions:', signedTxns);
     
-    if (signedTxns && signedTxns.length > 0) {
-      signedTxns.forEach((item, index) => {
-        console.log(`DEBUG - signedTxn[${index}]:`, typeof item, item?.constructor?.name);
-        if (item && typeof item === 'object') {
-          console.log(`DEBUG - signedTxn[${index}] keys:`, Object.keys(item));
-        }
-      });
+    // Handle the case where wallet might return null for multisig transaction
+    const signedTxnsBase64 = [];
+    
+    for (let i = 0; i < signedTxns.length; i++) {
+      if (signedTxns[i] && signedTxns[i] instanceof Uint8Array) {
+        signedTxnsBase64.push(Buffer.from(signedTxns[i]).toString('base64'));
+      } else {
+        throw new Error(`Transaction ${i} was not signed. Wallet may not support multisig transactions.`);
+      }
     }
     
-    // Convert the signed transactions to base64
-    const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
-      console.log(`DEBUG - Converting signedTxn[${index}] to base64:`, typeof signedTxn);
-      
-      // Handle different possible formats
-      if (signedTxn instanceof Uint8Array) {
-        return Buffer.from(signedTxn).toString('base64');
-      } else if (signedTxn && signedTxn.blob) {
-        // Some wallets return {blob: Uint8Array}
-        return Buffer.from(signedTxn.blob).toString('base64');
-      } else if (typeof signedTxn === 'string') {
-        // Already base64?
-        return signedTxn;
-      } else {
-        throw new Error(`Unexpected signedTxn format at index ${index}: ${typeof signedTxn}`);
-      }
-    });
+    setReclaimStatus({ appId, status: 'Submitting transactions...' });
     
-    setReclaimStatus({ appId, status: 'Submitting transaction...' });
-    
-    // Submit multiple transactions
+    // Submit both transactions
     const result = await api.submitReclaimTransaction({
       signedTxns: signedTxnsBase64,
       appId,
       senderAddress: activeAddress
     });
     
-    // Update the local transactions state to reflect the reclaim
+    // Update the local transactions state
     setTransactions(prev => prev.map(tx => {
       if (tx.appId === parseInt(appId)) {
         return { ...tx, reclaimed: true, reclaimedAt: new Date() };
@@ -168,7 +151,6 @@ const handleReclaim = async (appId) => {
     alert(`Failed to reclaim funds: ${error.message || error}`);
   } finally {
     setIsReclaiming(false);
-    // Reset status after a delay
     setTimeout(() => {
       setReclaimStatus({ appId: null, status: '' });
     }, 3000);

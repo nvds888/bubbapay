@@ -212,6 +212,11 @@ router.post('/submit-app-creation', async (req, res) => {
       cleanupTxId: null,
       cleanedUpAt: null,
       // Store transaction data for recovery
+      multisigMetadata: {
+        version: 1,
+        threshold: 1,
+        addrs: [tempAccount.tempAccountAddress, senderAddress].sort()
+      },
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: {
         address: tempAccount.address,
