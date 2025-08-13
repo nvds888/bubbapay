@@ -79,7 +79,7 @@ function TransactionsPage() {
     }).format(date);
   };
   
-  // Handle reclaiming funds
+ // Handle reclaiming funds
 const handleReclaim = async (appId) => {
   if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
     return;
@@ -95,10 +95,26 @@ const handleReclaim = async (appId) => {
       senderAddress: activeAddress
     });
     
+    // DEBUG: Log what we received
+    console.log('DEBUG - Received txnData:', txnData);
+    console.log('DEBUG - txnData.transactions:', txnData.transactions);
+    console.log('DEBUG - Is array?', Array.isArray(txnData.transactions));
+    
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // CHANGED: Handle multiple transactions now
-    const txns = txnData.transactions.map(txnBase64 => {
+    // Check if transactions is an array
+    if (!txnData.transactions || !Array.isArray(txnData.transactions)) {
+      throw new Error(`Invalid transactions data: expected array, got ${typeof txnData.transactions}`);
+    }
+    
+    // Handle multiple transactions now
+    const txns = txnData.transactions.map((txnBase64, index) => {
+      console.log(`DEBUG - Processing transaction ${index}:`, typeof txnBase64, txnBase64?.slice(0, 50));
+      
+      if (typeof txnBase64 !== 'string') {
+        throw new Error(`Transaction ${index} is not a string: ${typeof txnBase64}`);
+      }
+      
       const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
@@ -113,9 +129,9 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Submitting transaction...' });
     
-    // CHANGED: Submit multiple transactions
+    // Submit multiple transactions
     const result = await api.submitReclaimTransaction({
-      signedTxns: signedTxnsBase64, // Changed from signedTxn to signedTxns
+      signedTxns: signedTxnsBase64,
       appId,
       senderAddress: activeAddress
     });
@@ -137,7 +153,7 @@ const handleReclaim = async (appId) => {
     setReclaimStatus({ appId, status: 'Failed' });
     alert(`Failed to reclaim funds: ${error.message || error}`);
   } finally {
-    setIsReclaiming(false);
+    setIsReclaiming(true);
     // Reset status after a delay
     setTimeout(() => {
       setReclaimStatus({ appId: null, status: '' });
