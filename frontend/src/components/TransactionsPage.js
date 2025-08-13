@@ -79,7 +79,7 @@ function TransactionsPage() {
     }).format(date);
   };
   
- // Handle reclaiming funds
+// Handle reclaiming funds
 const handleReclaim = async (appId) => {
   if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
     return;
@@ -95,37 +95,51 @@ const handleReclaim = async (appId) => {
       senderAddress: activeAddress
     });
     
-    // DEBUG: Log what we received
-    console.log('DEBUG - Received txnData:', txnData);
-    console.log('DEBUG - txnData.transactions:', txnData.transactions);
-    console.log('DEBUG - Is array?', Array.isArray(txnData.transactions));
-    
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // Check if transactions is an array
-    if (!txnData.transactions || !Array.isArray(txnData.transactions)) {
-      throw new Error(`Invalid transactions data: expected array, got ${typeof txnData.transactions}`);
-    }
-    
     // Handle multiple transactions now
-    const txns = txnData.transactions.map((txnBase64, index) => {
-      console.log(`DEBUG - Processing transaction ${index}:`, typeof txnBase64, txnBase64?.slice(0, 50));
-      
-      if (typeof txnBase64 !== 'string') {
-        throw new Error(`Transaction ${index} is not a string: ${typeof txnBase64}`);
-      }
-      
+    const txns = txnData.transactions.map(txnBase64 => {
       const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
+    console.log('DEBUG - About to sign transactions:', txns.length);
+    
     // Sign with use-wallet (supports multiple transactions)
     const signedTxns = await signTransactions(txns);
     
+    // DEBUG: Check what signTransactions returned
+    console.log('DEBUG - signedTxns:', signedTxns);
+    console.log('DEBUG - signedTxns type:', typeof signedTxns);
+    console.log('DEBUG - signedTxns is array?:', Array.isArray(signedTxns));
+    console.log('DEBUG - signedTxns length:', signedTxns?.length);
+    
+    if (signedTxns && signedTxns.length > 0) {
+      signedTxns.forEach((item, index) => {
+        console.log(`DEBUG - signedTxn[${index}]:`, typeof item, item?.constructor?.name);
+        if (item && typeof item === 'object') {
+          console.log(`DEBUG - signedTxn[${index}] keys:`, Object.keys(item));
+        }
+      });
+    }
+    
     // Convert the signed transactions to base64
-    const signedTxnsBase64 = signedTxns.map(signedTxn => 
-      Buffer.from(signedTxn).toString('base64')
-    );
+    const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
+      console.log(`DEBUG - Converting signedTxn[${index}] to base64:`, typeof signedTxn);
+      
+      // Handle different possible formats
+      if (signedTxn instanceof Uint8Array) {
+        return Buffer.from(signedTxn).toString('base64');
+      } else if (signedTxn && signedTxn.blob) {
+        // Some wallets return {blob: Uint8Array}
+        return Buffer.from(signedTxn.blob).toString('base64');
+      } else if (typeof signedTxn === 'string') {
+        // Already base64?
+        return signedTxn;
+      } else {
+        throw new Error(`Unexpected signedTxn format at index ${index}: ${typeof signedTxn}`);
+      }
+    });
     
     setReclaimStatus({ appId, status: 'Submitting transaction...' });
     
@@ -153,7 +167,7 @@ const handleReclaim = async (appId) => {
     setReclaimStatus({ appId, status: 'Failed' });
     alert(`Failed to reclaim funds: ${error.message || error}`);
   } finally {
-    setIsReclaiming(true);
+    setIsReclaiming(false);
     // Reset status after a delay
     setTimeout(() => {
       setReclaimStatus({ appId: null, status: '' });
