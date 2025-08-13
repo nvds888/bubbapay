@@ -212,11 +212,6 @@ router.post('/submit-app-creation', async (req, res) => {
       cleanupTxId: null,
       cleanedUpAt: null,
       // Store transaction data for recovery
-      multisigMetadata: {
-        version: 1,
-        threshold: 1,
-        addrs: [tempAccount.tempAccountAddress, senderAddress].sort()
-      },
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: {
         address: tempAccount.address,
@@ -715,9 +710,9 @@ router.post('/generate-reclaim', async (req, res) => {
 // Submit reclaim transaction
 router.post('/submit-reclaim', async (req, res) => {
   try {
-    const { signedTxns, appId, senderAddress } = req.body;
+    const { signedTxn, appId, senderAddress } = req.body;
     
-    if (!signedTxns || !appId || !senderAddress) {
+    if (!signedTxn || !appId || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
@@ -748,11 +743,9 @@ router.post('/submit-reclaim', async (req, res) => {
       });
     }
     
-    // Submit the signed transactions
+    // Submit the signed transaction
     try {
-      const { txid } = await algodClient.sendRawTransaction(
-        signedTxns.map(txn => Buffer.from(txn, 'base64'))
-      ).do();
+      const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txid, 5);

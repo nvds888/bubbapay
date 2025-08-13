@@ -79,83 +79,69 @@ function TransactionsPage() {
     }).format(date);
   };
   
-// Handle reclaiming funds
-const handleReclaim = async (appId) => {
-  if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
-    return;
-  }
-  
-  setIsReclaiming(true);
-  setReclaimStatus({ appId, status: 'Generating transaction...' });
-  
-  try {
-    // Generate the reclaim transaction
-    const txnData = await api.generateReclaimTransaction({
-      appId,
-      senderAddress: activeAddress
-    });
-    
-    setReclaimStatus({ appId, status: 'Waiting for signature...' });
-    
-    // Handle multiple transactions
-    const txns = txnData.transactions.map(txnBase64 => {
-      const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
-      return algosdk.decodeUnsignedTransaction(txnUint8);
-    });
-    
-    console.log('DEBUG - Transactions to sign:', txns.length);
-    console.log('DEBUG - First txn sender:', txns[0].from);
-    console.log('DEBUG - Second txn sender:', txns[1].from);
-    
-    // Try to sign both transactions with the wallet
-    // The wallet should handle the first normally and second as multisig (since creator is a signer)
-    const signedTxns = await signTransactions(txns);
-    
-    console.log('DEBUG - Signed transactions:', signedTxns);
-    
-    // Handle the case where wallet might return null for multisig transaction
-    const signedTxnsBase64 = [];
-    
-    for (let i = 0; i < signedTxns.length; i++) {
-      if (signedTxns[i] && signedTxns[i] instanceof Uint8Array) {
-        signedTxnsBase64.push(Buffer.from(signedTxns[i]).toString('base64'));
-      } else {
-        throw new Error(`Transaction ${i} was not signed. Wallet may not support multisig transactions.`);
-      }
+  // Handle reclaiming funds
+  const handleReclaim = async (appId) => {
+    if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
+      return;
     }
     
-    setReclaimStatus({ appId, status: 'Submitting transactions...' });
+    setIsReclaiming(true);
+    setReclaimStatus({ appId, status: 'Generating transaction...' });
     
-    // Submit both transactions
-    const result = await api.submitReclaimTransaction({
-      signedTxns: signedTxnsBase64,
-      appId,
-      senderAddress: activeAddress
-    });
-    
-    // Update the local transactions state
-    setTransactions(prev => prev.map(tx => {
-      if (tx.appId === parseInt(appId)) {
-        return { ...tx, reclaimed: true, reclaimedAt: new Date() };
-      }
-      return tx;
-    }));
-    
-    setReclaimStatus({ appId, status: 'Success' });
-    const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-    alert(`Successfully reclaimed ${result.amount} ${assetSymbol} and recovered temp account ALGO!`);
-    
-  } catch (error) {
-    console.error('Error reclaiming funds:', error);
-    setReclaimStatus({ appId, status: 'Failed' });
-    alert(`Failed to reclaim funds: ${error.message || error}`);
-  } finally {
-    setIsReclaiming(false);
-    setTimeout(() => {
-      setReclaimStatus({ appId: null, status: '' });
-    }, 3000);
-  }
-};
+    try {
+      // Generate the reclaim transaction
+      const txnData = await api.generateReclaimTransaction({
+        appId,
+        senderAddress: activeAddress
+      });
+      
+      setReclaimStatus({ appId, status: 'Waiting for signature...' });
+      
+      // Convert base64 transaction to Uint8Array
+      const txnUint8 = new Uint8Array(Buffer.from(txnData.transaction, 'base64'));
+      
+      // Decode the transaction for proper signing
+      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+      
+      // Sign with use-wallet (supports multiple wallets)
+      const signedTxns = await signTransactions([txn]);
+      
+      // Convert the signed transaction to base64
+      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
+      
+      setReclaimStatus({ appId, status: 'Submitting transaction...' });
+      
+      // Submit the signed transaction
+      const result = await api.submitReclaimTransaction({
+        signedTxn: signedTxnBase64,
+        appId,
+        senderAddress: activeAddress
+      });
+      
+      // Update the local transactions state to reflect the reclaim
+      setTransactions(prev => prev.map(tx => {
+        if (tx.appId === parseInt(appId)) {
+          return { ...tx, reclaimed: true, reclaimedAt: new Date() };
+        }
+        return tx;
+      }));
+      
+      setReclaimStatus({ appId, status: 'Success' });
+      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
+      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}`);
+      
+    } catch (error) {
+      console.error('Error reclaiming funds:', error);
+      setReclaimStatus({ appId, status: 'Failed' });
+      alert(`Failed to reclaim funds: ${error.message || error}`);
+    } finally {
+      setIsReclaiming(false);
+      // Reset status after a delay
+      setTimeout(() => {
+        setReclaimStatus({ appId: null, status: '' });
+      }, 3000);
+    }
+  };
   
   // REPLACE the handleCleanup function in TransactionsPage.js with this:
 

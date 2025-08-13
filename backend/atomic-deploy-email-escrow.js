@@ -57,22 +57,12 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
       throw new Error("Invalid 'amount'. Must be a positive number.");
     }
     
-    // Generate temporary account and create multisig
-const tempAccount = algosdk.generateAccount();
-const tempPrivateKey = Buffer.from(tempAccount.sk).toString('hex');
-
-// Create 1-of-2 multisig metadata (either temp account OR creator can sign)
-const multisigMetadata = {
-  version: 1,
-  threshold: 1, // Only 1 signature required out of 2
-  addrs: [tempAccount.addr, senderAddress].sort() // Sort addresses for consistency
-};
-
-// Generate multisig address
-const multisigAddress = algosdk.multisigAddress(multisigMetadata);
-
-console.log(`Generated temporary account: ${tempAccount.addr}`);
-console.log(`Generated multisig address: ${multisigAddress}`);
+    // Generate temporary account for authorization
+    const tempAccount = algosdk.generateAccount();
+    const tempAddress = tempAccount.addr;
+    const tempPrivateKey = Buffer.from(tempAccount.sk).toString('hex');
+    
+    console.log(`Generated temporary account: ${tempAddress}`);
     
     // Convert to microUnits
     const microAmount = toMicroUnits(amount, targetAssetId);
@@ -85,7 +75,7 @@ console.log(`Generated multisig address: ${multisigAddress}`);
     console.log("Processing parameters complete. Generating TEAL programs...");
     
     // Compile the TEAL programs - now using imported functions
-    const approvalProgramSource = createApprovalProgram(senderAddress, multisigAddress, targetAssetId);
+    const approvalProgramSource = createApprovalProgram(senderAddress, tempAddress, targetAssetId);
     const approvalProgram = await compileProgram(approvalProgramSource);
     
     const clearProgramSource = createClearProgram();
@@ -118,9 +108,8 @@ console.log(`Generated multisig address: ${multisigAddress}`);
       return {
         transaction: encodedTxn,
         tempAccount: {
-          address: multisigAddress,
-          privateKey: tempPrivateKey,
-          tempAccountAddress: tempAccount.addr
+          address: tempAddress,
+          privateKey: tempPrivateKey
         },
         amount: amount,
         microAmount: microAmount
@@ -312,30 +301,9 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const appIdInt = Number(appId); 
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Get the app's global state to find the multisig temp account address
-    const appInfo = await algodClient.getApplicationByID(appIdInt).do();
-    let multisigTempAddress = null;
+    // Calculate exact fee (1 inner transaction for asset transfer)
+    const exactFee = calculateTransactionFee(true, 1); // 2000 microALGO
     
-    if (appInfo.params && appInfo.params.globalState) {
-      for (const kv of appInfo.params.globalState) {
-        const keyBytes = new Uint8Array(Object.values(kv.key));
-        const key = Buffer.from(keyBytes).toString();
-        
-        if (key === 'authorized_claimer') {
-          const addressBytes = new Uint8Array(Object.values(kv.value.bytes));
-          multisigTempAddress = algosdk.encodeAddress(addressBytes);
-          break;
-        }
-      }
-    }
-    
-    if (!multisigTempAddress) {
-      throw new Error("Could not find temp account address from app state");
-    }
-    
-    const transactions = [];
-    
-    // Transaction 1: App call to reclaim assets
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
@@ -344,42 +312,15 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       foreignAssets: [targetAssetId],
       suggestedParams: { 
         ...suggestedParams,
-        fee: calculateTransactionFee(true, 1), // 2000 microALGO
-        flatFee: true
+        fee: exactFee,
+        flatFee: true // CRITICAL: Prevents network fee estimation
       }
     });
-    transactions.push(reclaimTxn);
     
-    // Transaction 2: Close multisig temp account (send remaining ALGO to creator)
-    const closeTempAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: multisigTempAddress,
-      receiver: senderAddress,
-      amount: 0, // All remaining balance goes to closeRemainderTo
-      closeRemainderTo: senderAddress,
-      note: new Uint8Array(Buffer.from('Close temp multisig account')),
-      suggestedParams: { 
-        ...suggestedParams,
-        fee: 1000,
-        flatFee: true
-      }
-    });
-    transactions.push(closeTempAccountTxn);
+    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64');
     
-    // Group the transactions
-    algosdk.assignGroupID(transactions);
-    
-    const encodedTxns = transactions.map(txn => 
-      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
-    );
-    
-    const totalFee = transactions.reduce((sum, txn) => sum + Number(txn.fee), 0);
-    console.log(`Reclaim transaction group created with total fee: ${totalFee / 1e6} ALGO`);
-    
-    return { 
-      transactions: encodedTxns,
-      tempAccountToClose: multisigTempAddress,
-      requiresMultisigSigning: true
-    };
+    console.log(`Reclaim transaction created with exact fee: ${exactFee / 1e6} ALGO`);
+    return { transaction: encodedTxn };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
     throw new Error(`Failed to create reclaim transaction: ${error.message}`);
