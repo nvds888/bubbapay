@@ -9,6 +9,7 @@ import {
   WalletProvider,
 } from '@txnlab/use-wallet-react';
 import { WalletUIProvider } from '@txnlab/use-wallet-ui-react';
+import { Transak } from "@transak/transak-sdk"; // NEW: Import Transak SDK
 import axios from 'axios';
 import algosdk from 'algosdk';
 
@@ -22,14 +23,18 @@ const getAssetInfo = (assetId) => {
   return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
 };
 
-// CHANGE 19: Add fallback for when assetInfo is not yet loaded
 const getDisplaySymbol = (assetInfo) => {
-  return assetInfo?.symbol || 'USDC'; // Fallback to USDC for backwards compatibility
+  return assetInfo?.symbol || 'USDC';
+};
+
+// NEW: Transak configuration
+const TRANSAK_CONFIG = {
+  apiKey: process.env.REACT_APP_TRANSAK_API_KEY || "a2374be4-c59a-400e-809b-72c226c74b8f", // Use staging key as fallback
+  environment: process.env.NODE_ENV === 'production' ? 'PRODUCTION' : 'STAGING',
 };
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-// Create a fresh wallet manager for claim page only
 const createClaimWalletManager = () => new WalletManager({
   wallets: [
     WalletId.PERA,
@@ -39,7 +44,7 @@ const createClaimWalletManager = () => new WalletManager({
   defaultNetwork: NetworkId.MAINNET,
 });
 
-// Main ClaimPage component - no wallet functionality initially
+// Main ClaimPage component - updated with Transak option
 function ClaimPage() {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('app');
@@ -56,8 +61,10 @@ function ClaimPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [walletEnabled, setWalletEnabled] = useState(false);
-  // CHANGE 13: Add asset state management in main ClaimPage component
   const [assetInfo, setAssetInfo] = useState(null);
+  // NEW: Transak state management
+  const [showTransakOption, setShowTransakOption] = useState(false);
+  const [claimMethod, setClaimMethod] = useState(null); // 'wallet' or 'bank'
 
   // Ecosystem projects data
   const ecosystemProjects = [
@@ -96,9 +103,12 @@ function ClaimPage() {
         const response = await axios.get(`${API_URL}/escrow/${appId}`);
         setEscrowDetails(response.data);
         
-        // Set asset info based on escrow data
         const escrowAssetInfo = getAssetInfo(response.data.assetId);
         setAssetInfo(escrowAssetInfo);
+        
+        // NEW: Only show Transak option for USDC on Algorand (asset ID 31566704)
+        const isUSDCAlgorand = response.data.assetId === 31566704;
+        setShowTransakOption(isUSDCAlgorand);
         
         if (response.data.claimed) {
           setError('These funds have already been claimed');
@@ -114,11 +124,99 @@ function ClaimPage() {
     
     fetchEscrowDetails();
   }, [tempPrivateKey, appId]);
-  
-  // Enable wallet functionality
+
+  // NEW: Initialize Transak Stream for bank transfer
+  const handleSendToBank = async () => {
+    if (!escrowDetails || !assetInfo) return;
+
+    try {
+      setIsLoading(true);
+      setClaimMethod('bank');
+      
+      const transak = new Transak({
+        apiKey: TRANSAK_CONFIG.apiKey,
+        environment: TRANSAK_CONFIG.environment === 'PRODUCTION' ? 
+          Transak.ENVIRONMENTS.PRODUCTION : Transak.ENVIRONMENTS.STAGING,
+        isTransakStreamOffRamp: true,
+        cryptoCurrencyCode: "USDC",
+        network: "algorand",
+        defaultCryptoAmount: escrowDetails.amount,
+        themeColor: '10B981',
+      });
+
+      // Set up event listeners
+      Transak.on(Transak.EVENTS.TRANSAK_WIDGET_CLOSE, async (eventData) => {
+        console.log('Transak widget closed with data:', eventData);
+        
+        if (eventData?.offRampStreamWalletAddress) {
+          // User completed setup, now claim directly to their Transak address
+          await claimToTransakWallet(eventData.offRampStreamWalletAddress);
+        } else {
+          // User cancelled
+          setClaimMethod(null);
+          setIsLoading(false);
+        }
+        
+        transak.close();
+      });
+
+      transak.init();
+      
+    } catch (error) {
+      console.error('Error initializing Transak:', error);
+      setError('Failed to initialize bank transfer option');
+      setClaimMethod(null);
+      setIsLoading(false);
+    }
+  };
+
+  // NEW: Claim USDC directly to Transak wallet address
+  const claimToTransakWallet = async (transakAddress) => {
+    try {
+      console.log("Claiming USDC directly to Transak wallet:", transakAddress);
+      
+      // Generate optimized claim transaction to Transak address
+      const response = await axios.post(`${API_URL}/generate-optimized-claim`, {
+        tempPrivateKey,
+        appId,
+        recipientAddress: transakAddress,
+        assetId: escrowDetails.assetId
+      });
+      
+      // Submit the claim transaction (auto-signed by temp account)
+      const submitData = {
+        signedTransactions: response.data.signedTransactions,
+        appId,
+        recipientAddress: transakAddress,
+        tempPrivateKey,
+        type: 'transak-offramp'
+      };
+      
+      const claimResponse = await axios.post(`${API_URL}/submit-optimized-claim`, submitData);
+      
+      if (claimResponse.data.success) {
+        console.log('USDC claimed successfully to Transak wallet!');
+        // Show success - funds will be deposited to bank automatically
+        setError(null);
+        alert(`Success! Your ${escrowDetails.amount} USDC will be deposited to your bank account within minutes via Transak.`);
+        // Optionally redirect or show success state
+        window.location.reload(); // Refresh to show claimed state
+      } else {
+        setError(claimResponse.data.error || 'Failed to claim to bank');
+        setClaimMethod(null);
+      }
+      
+    } catch (error) {
+      console.error('Error claiming to Transak wallet:', error);
+      setError(error.response?.data?.error || 'Failed to process bank transfer');
+      setClaimMethod(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Enable wallet functionality for crypto wallet option
   const enableWallet = () => {
-    // Clear wallet-related storage before mounting WalletProvider
-    // This ensures we get a fresh wallet selection menu
     const clearWalletStorage = () => {
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -137,23 +235,20 @@ function ClaimPage() {
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
-      
-      // Clear sessionStorage as well
       sessionStorage.clear();
-      
       console.log('Cleared wallet storage for fresh connection choice');
     };
     
     clearWalletStorage();
     setWalletEnabled(true);
+    setClaimMethod('wallet');
   };
   
-  // Format USDC amount
   const formatAmount = (amount) => {
     return parseFloat(amount).toFixed(2);
   };
   
-  // Render content without wallet
+  // UPDATED: Render content without wallet - now with Transak option for USDC
   const renderContentWithoutWallet = (assetInfo) => {
     if (!tempPrivateKey || !appId) {
       return (
@@ -182,6 +277,19 @@ function ClaimPage() {
         </div>
       );
     }
+
+    // NEW: Show processing state for bank transfer
+    if (claimMethod === 'bank' && isLoading) {
+      return (
+        <div className="text-center py-6">
+          <div className="flex justify-center mb-4">
+            <div className="w-8 h-8 spinner"></div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Processing Bank Transfer</h3>
+          <p className="text-gray-600 text-sm">Setting up your direct bank deposit...</p>
+        </div>
+      );
+    }
     
     if (escrowDetails?.claimed || (error && error.includes('already been claimed'))) {
       return (
@@ -196,7 +304,6 @@ function ClaimPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Already Claimed</h3>
           <p className="text-red-600 mb-4 text-sm">These funds have already been claimed or reclaimed by the creator</p>
           {escrowDetails && (
-            // CHANGE 15a: Already claimed section
             <p className="text-gray-500 text-sm mb-4">
               Amount: {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}
             </p>
@@ -205,7 +312,6 @@ function ClaimPage() {
             onClick={() => window.open(window.location.origin, '_blank')}
             className="btn-primary px-4 py-2 font-medium"
           >
-            {/* CHANGE 15c: Success page button */}
             Send Your Own {assetInfo?.symbol || 'Assets'}
           </button>
         </div>
@@ -234,7 +340,7 @@ function ClaimPage() {
       );
     }
     
-    // Show claim details and connect wallet button
+    // UPDATED: Show claim options - wallet connect or direct to bank for USDC
     return (
       <div className="text-center">
         <div className="flex justify-center mb-6">
@@ -247,27 +353,69 @@ function ClaimPage() {
         
         {escrowDetails && (
           <div className="mb-6">
-            {/* CHANGE 15b: Main display section */}
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">
               You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
             </h2>
-            <p className="text-gray-600">
-              Connect your wallet to claim the funds
+            <p className="text-gray-600 mb-4">
+              Choose how you'd like to receive your funds
             </p>
             {escrowDetails.payRecipientFees && (
-              <div className="mt-2 text-xs text-gray-500">
+              <div className="text-xs text-gray-500">
                 Fees covered by sender
               </div>
             )}
           </div>
         )}
         
-        <button
-          onClick={enableWallet}
-          className="btn-primary px-6 py-3 font-medium"
-        >
-          Connect Wallet
-        </button>
+        {/* NEW: Choice between wallet and bank (only for USDC) */}
+        <div className="space-y-3">
+          {/* NEW: Send to Bank option - only for USDC */}
+          {showTransakOption && (
+            <button
+              onClick={handleSendToBank}
+              disabled={isLoading}
+              className="w-full btn-primary px-6 py-3 font-medium flex items-center justify-center space-x-3 bg-blue-600 hover:bg-blue-700"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span>Send to Bank Account</span>
+              <div className="text-xs bg-blue-500 px-2 py-0.5 rounded-full">
+                Instant
+              </div>
+            </button>
+          )}
+          
+          {/* Separator for USDC */}
+          {showTransakOption && (
+            <div className="flex items-center my-4">
+              <div className="flex-1 border-t border-gray-300"></div>
+              <div className="px-3 text-gray-500 text-sm">or</div>
+              <div className="flex-1 border-t border-gray-300"></div>
+            </div>
+          )}
+          
+          {/* Connect Wallet option */}
+          <button
+            onClick={enableWallet}
+            className={`w-full px-6 py-3 font-medium flex items-center justify-center space-x-3 ${
+              showTransakOption ? 'btn-secondary' : 'btn-primary'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>Connect Crypto Wallet</span>
+          </button>
+        </div>
+
+        {/* NEW: Show explanation for USDC */}
+        {showTransakOption && (
+          <div className="mt-4 text-xs text-gray-500 space-y-1">
+            <p>💳 <strong>Bank transfer:</strong> Get fiat directly in your bank account</p>
+            <p>🔐 <strong>Crypto wallet:</strong> Receive {assetInfo?.symbol} in your wallet</p>
+          </div>
+        )}
       </div>
     );
   };
@@ -282,7 +430,7 @@ function ClaimPage() {
         </div>
         
         <div className="w-full max-w-lg mx-auto relative z-10">
-        <div className="card card-normal min-w-[20rem] sm:min-w-[28rem] w-full">
+          <div className="card card-normal min-w-[20rem] sm:min-w-[28rem] w-full">
             <div className="text-center mb-6">
               <img
                 src="/bubbapay.jpg"
@@ -294,12 +442,12 @@ function ClaimPage() {
             </div>
             
             <div className="min-h-[200px] flex items-center justify-center">
-          {renderContentWithoutWallet(assetInfo)}
+              {renderContentWithoutWallet(assetInfo)}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-);
+    );
   }
   
   // If wallet is enabled, render with wallet functionality
@@ -318,7 +466,7 @@ function ClaimPage() {
   );
 }
 
-// CHANGE 12: Update ClaimPageWithWallet function signature
+// ClaimPageWithWallet component (unchanged from original)
 function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemProjects, assetInfo }) {
   const { activeAddress, signTransactions } = useWallet();
   const [accountAddress, setAccountAddress] = useState(null);
@@ -327,13 +475,12 @@ function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemPr
   const [claimStatus, setClaimStatus] = useState('initial');
   const [isFunding, setIsFunding] = useState(false);
   const [autoClickTriggered, setAutoClickTriggered] = useState(false);
-  const [fundingDetails, setFundingDetails] = useState(null); // NEW: Track funding details
-const [isOptedIn, setIsOptedIn] = useState(false); // Track opt-in status
+  const [fundingDetails, setFundingDetails] = useState(null);
+  const [isOptedIn, setIsOptedIn] = useState(false);
 
   // Auto-trigger wallet button click when component mounts
   useEffect(() => {
     if (!autoClickTriggered) {
-      // Small delay to ensure WalletButton has rendered
       const timer = setTimeout(() => {
         const walletButton = document.querySelector('[data-wallet-ui] button');
         if (walletButton) {
@@ -360,174 +507,164 @@ const [isOptedIn, setIsOptedIn] = useState(false); // Track opt-in status
   }, [activeAddress]);
   
   // Check wallet status when connected - HANDLES UNFUNDED ACCOUNTS
-useEffect(() => {
-  const checkWalletStatus = async () => {
-    if (!accountAddress || !escrowDetails) return;
+  useEffect(() => {
+    const checkWalletStatus = async () => {
+      if (!accountAddress || !escrowDetails) return;
+      
+      setClaimStatus('checking');
+      setIsLoading(true);
+      
+      try {
+        const targetAssetId = escrowDetails.assetId || 31566704;
+        const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
+        const hasOptedIn = optInResponse.data.hasOptedIn;
+        
+        setIsOptedIn(hasOptedIn);
+        
+        if (hasOptedIn) {
+          setClaimStatus('ready-to-claim-optimized');
+        } else {
+          setClaimStatus('ready-to-optin-and-claim');
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error checking wallet status:', error);
+        
+        if (error.response?.status === 404 || 
+            error.response?.data?.error?.includes('account does not exist') ||
+            error.response?.data?.error?.includes('account not found')) {
+          console.log('Unfunded account detected, assuming needs opt-in');
+          setIsOptedIn(false);
+          setClaimStatus('ready-to-optin-and-claim');
+          setIsLoading(false);
+        } else {
+          setError('Failed to check your wallet status');
+          setIsLoading(false);
+        }
+      }
+    };
     
-    setClaimStatus('checking');
+    if (accountAddress && escrowDetails) {
+      checkWalletStatus();
+    }
+  }, [accountAddress, escrowDetails]);
+  
+  // Handle optimized claim (for users already opted in)
+  const handleOptimizedClaim = async () => {
+    if (!accountAddress || !tempPrivateKey || !appId) return;
+    
     setIsLoading(true);
+    setError(null);
+    setClaimStatus('claiming');
     
     try {
-      // Check opt-in status - handle unfunded accounts
-      const targetAssetId = escrowDetails.assetId || 31566704;
-      const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
-      const hasOptedIn = optInResponse.data.hasOptedIn;
+      console.log("Generating optimized claim transaction...");
       
-      setIsOptedIn(hasOptedIn);
+      const response = await axios.post(`${API_URL}/generate-optimized-claim`, {
+        tempPrivateKey,
+        appId,
+        recipientAddress: accountAddress,
+        assetId: escrowDetails.assetId
+      });
       
-      // Set status based on opt-in status
-      if (hasOptedIn) {
-        setClaimStatus('ready-to-claim-optimized');
+      console.log("Submitting optimized claim transaction...");
+      
+      const submitData = {
+        signedTransactions: response.data.signedTransactions,
+        appId,
+        recipientAddress: accountAddress,
+        tempPrivateKey,
+        type: 'optimized-claim'
+      };
+      
+      const claimResponse = await axios.post(`${API_URL}/submit-optimized-claim`, submitData);
+      
+      if (claimResponse.data.success) {
+        console.log(`${assetInfo?.symbol || 'Asset'} claimed successfully with optimized flow!`);
+        setClaimStatus('success');
       } else {
+        setError(claimResponse.data.error || 'Failed to claim');
+        setClaimStatus('ready-to-claim-optimized');
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error(`Error with optimized claim:`, error);
+      setError(error.response?.data?.error || `Failed to claim ${assetInfo?.symbol || 'asset'}. Please try again.`);
+      setClaimStatus('ready-to-claim-optimized');
+      setIsLoading(false);
+    }
+  };
+
+  // Handle opt-in and claim (for users who need to opt-in)
+  const handleOptInAndClaim = async () => {
+    if (!accountAddress || !tempPrivateKey || !appId) return;
+    
+    setIsLoading(true);
+    setError(null);
+    setClaimStatus('claiming');
+    
+    try {
+      console.log("Generating opt-in and claim group transaction...");
+      
+      const response = await axios.post(`${API_URL}/generate-optin-and-claim`, {
+        tempPrivateKey,
+        appId,
+        recipientAddress: accountAddress,
+        assetId: escrowDetails.assetId
+      });
+      
+      console.log("Group transaction generated, user needs to sign opt-in transaction");
+      
+      const userTxnIndex = response.data.userTxnIndex;
+      const unsignedTxns = response.data.unsignedTransactions.map(txnB64 => {
+        const txnUint8 = new Uint8Array(Buffer.from(txnB64, 'base64'));
+        return algosdk.decodeUnsignedTransaction(txnUint8);
+      });
+
+      const signedUserTxns = await signTransactions(unsignedTxns);
+      const userSignedTxn = signedUserTxns[userTxnIndex];
+
+      const finalSignedTxns = [...response.data.partiallySignedTransactions];
+      finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
+      
+      console.log("Submitting complete group transaction...");
+      
+      const submitData = {
+        signedTransactions: finalSignedTxns,
+        appId,
+        recipientAddress: accountAddress,
+        tempPrivateKey,
+        type: 'optin-and-claim'
+      };
+      
+      const claimResponse = await axios.post(`${API_URL}/submit-optimized-claim`, submitData);
+      
+      if (claimResponse.data.success) {
+        console.log(`${assetInfo?.symbol || 'Asset'} opted in and claimed successfully!`);
+        setClaimStatus('success');
+      } else {
+        setError(claimResponse.data.error || 'Failed to opt-in and claim');
         setClaimStatus('ready-to-optin-and-claim');
       }
       
       setIsLoading(false);
     } catch (error) {
-      console.error('Error checking wallet status:', error);
-      
-      // Handle unfunded account case
-      if (error.response?.status === 404 || 
-          error.response?.data?.error?.includes('account does not exist') ||
-          error.response?.data?.error?.includes('account not found')) {
-        console.log('Unfunded account detected, assuming needs opt-in');
-        setIsOptedIn(false);
-        setClaimStatus('ready-to-optin-and-claim'); // Unfunded accounts need opt-in
-        setIsLoading(false);
-      } else {
-        setError('Failed to check your wallet status');
-        setIsLoading(false);
-      }
+      console.error(`Error with opt-in and claim:`, error);
+      setError(error.response?.data?.error || `Failed to opt-in and claim ${assetInfo?.symbol || 'asset'}. You have insufficient Algo.`);
+      setClaimStatus('ready-to-optin-and-claim');
+      setIsLoading(false);
     }
   };
   
-  if (accountAddress && escrowDetails) {
-    checkWalletStatus();
-  }
-}, [accountAddress, escrowDetails]);
-  
-  // Handle optimized claim (for users already opted in)
-const handleOptimizedClaim = async () => {
-  if (!accountAddress || !tempPrivateKey || !appId) return;
-  
-  setIsLoading(true);
-  setError(null);
-  setClaimStatus('claiming');
-  
-  try {
-    console.log("Generating optimized claim transaction...");
-    
-    const response = await axios.post(`${API_URL}/generate-optimized-claim`, {
-      tempPrivateKey,
-      appId,
-      recipientAddress: accountAddress,
-      assetId: escrowDetails.assetId
-    });
-    
-    console.log("Submitting optimized claim transaction...");
-    
-    const submitData = {
-      signedTransactions: response.data.signedTransactions,
-      appId,
-      recipientAddress: accountAddress,
-      tempPrivateKey,
-      type: 'optimized-claim'
-    };
-    
-    const claimResponse = await axios.post(`${API_URL}/submit-optimized-claim`, submitData);
-    
-    if (claimResponse.data.success) {
-      console.log(`${assetInfo?.symbol || 'Asset'} claimed successfully with optimized flow!`);
-      setClaimStatus('success');
-    } else {
-      setError(claimResponse.data.error || 'Failed to claim');
-      setClaimStatus('ready-to-claim-optimized');
-    }
-    
-    setIsLoading(false);
-  } catch (error) {
-    console.error(`Error with optimized claim:`, error);
-    setError(error.response?.data?.error || `Failed to claim ${assetInfo?.symbol || 'asset'}. Please try again.`);
-    setClaimStatus('ready-to-claim-optimized');
-    setIsLoading(false);
-  }
-};
-
-// Handle opt-in and claim (for users who need to opt-in)
-const handleOptInAndClaim = async () => {
-  if (!accountAddress || !tempPrivateKey || !appId) return;
-  
-  setIsLoading(true);
-  setError(null);
-  setClaimStatus('claiming');
-  
-  try {
-    console.log("Generating opt-in and claim group transaction...");
-    
-    const response = await axios.post(`${API_URL}/generate-optin-and-claim`, {
-      tempPrivateKey,
-      appId,
-      recipientAddress: accountAddress,
-      assetId: escrowDetails.assetId
-    });
-    
-    console.log("Group transaction generated, user needs to sign opt-in transaction");
-    
-    // Decode ALL transactions for signing (wallet needs to see the complete group)
-const userTxnIndex = response.data.userTxnIndex;
-const unsignedTxns = response.data.unsignedTransactions.map(txnB64 => {
-  const txnUint8 = new Uint8Array(Buffer.from(txnB64, 'base64'));
-  return algosdk.decodeUnsignedTransaction(txnUint8);
-});
-
-// Send ENTIRE group to wallet, but only user's transaction will be signable
-const signedUserTxns = await signTransactions(unsignedTxns);
-
-// Extract only the user's signed transaction (others will be null/undefined)
-const userSignedTxn = signedUserTxns[userTxnIndex];
-
-// Combine user's signed transaction with temp account's pre-signed transactions
-const finalSignedTxns = [...response.data.partiallySignedTransactions];
-finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
-    
-    console.log("Submitting complete group transaction...");
-    
-    const submitData = {
-      signedTransactions: finalSignedTxns,
-      appId,
-      recipientAddress: accountAddress,
-      tempPrivateKey,
-      type: 'optin-and-claim'
-    };
-    
-    const claimResponse = await axios.post(`${API_URL}/submit-optimized-claim`, submitData);
-    
-    if (claimResponse.data.success) {
-      console.log(`${assetInfo?.symbol || 'Asset'} opted in and claimed successfully!`);
-      setClaimStatus('success');
-    } else {
-      setError(claimResponse.data.error || 'Failed to opt-in and claim');
-      setClaimStatus('ready-to-optin-and-claim');
-    }
-    
-    setIsLoading(false);
-  } catch (error) {
-    console.error(`Error with opt-in and claim:`, error);
-    setError(error.response?.data?.error || `Failed to opt-in and claim ${assetInfo?.symbol || 'asset'}. You have insufficient Algo.`);
-    setClaimStatus('ready-to-optin-and-claim');
-    setIsLoading(false);
-  }
-};
-  
-  
-  // Format functions
   const formatAmount = (amount) => parseFloat(amount).toFixed(2);
   const formatAddress = (address) => {
     if (!address) return '';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
   
-  // Render wallet-connected content
+  // Render wallet-connected content (keeping original implementation)
   const renderWalletContent = () => {
     if (!accountAddress) {
       return (
@@ -542,7 +679,6 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           
           {escrowDetails && (
             <div className="mb-6">
-              {/* CHANGE 7e: Another "You've received" message in wallet content */}
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
                 You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
               </h2>
@@ -570,17 +706,16 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           <div className="flex justify-center mb-4">
             <div className="w-8 h-8 spinner"></div>
           </div>
-          {/* CHANGE 7f: Claiming status message */}
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-  {claimStatus === 'claiming' 
-    ? `Claiming Your ${assetInfo?.symbol || 'Asset'}...` 
-    : `Preparing claim for ${assetInfo?.symbol || 'Asset'}`}
-</h3>
-<p className="text-gray-600 text-sm">
-  {claimStatus === 'claiming' 
-    ? `Processing your transaction...` 
-    : `Checking your wallet setup...`}
-</p>
+            {claimStatus === 'claiming' 
+              ? `Claiming Your ${assetInfo?.symbol || 'Asset'}...` 
+              : `Preparing claim for ${assetInfo?.symbol || 'Asset'}`}
+          </h3>
+          <p className="text-gray-600 text-sm">
+            {claimStatus === 'claiming' 
+              ? `Processing your transaction...` 
+              : `Checking your wallet setup...`}
+          </p>
           
           <div className="mt-4 card card-compact inline-block">
             <div className="flex items-center space-x-3">
@@ -729,67 +864,67 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
             </div>
             
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">Successfully Claimed! 🎉</h2>
-<p className="text-gray-600 mb-2">
-  <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been transferred to your wallet
-</p>
-{isOptedIn ? (
-  <p className="text-gray-500 text-xs mb-2">
-    Fee coverage returned to creator - you were already opted in!
-  </p>
-) : (
-  <p className="text-gray-500 text-xs mb-2">
-    Opted in and claimed in one atomic transaction
-    {escrowDetails?.payRecipientFees && " - fees covered by sender"}
-  </p>
-)}
+            <p className="text-gray-600 mb-2">
+              <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been transferred to your wallet
+            </p>
+            {isOptedIn ? (
+              <p className="text-gray-500 text-xs mb-2">
+                Fee coverage returned to creator - you were already opted in!
+              </p>
+            ) : (
+              <p className="text-gray-500 text-xs mb-2">
+                Opted in and claimed in one atomic transaction
+                {escrowDetails?.payRecipientFees && " - fees covered by sender"}
+              </p>
+            )}
             <p className="text-gray-500 text-sm">
               Wallet: <span className="font-mono">{formatAddress(accountAddress)}</span>
             </p>
           </div>
           
           <div className="space-y-4">
-          <div className="text-center">
-  <h3 className="text-lg font-medium text-gray-900 mb-2">What's Next?</h3>
-  <p className="text-gray-600 text-sm hidden sm:block">Put your {assetInfo?.symbol || 'crypto'} to work in the Algorand ecosystem</p>
-</div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">What's Next?</h3>
+              <p className="text-gray-600 text-sm hidden sm:block">Put your {assetInfo?.symbol || 'crypto'} to work in the Algorand ecosystem</p>
+            </div>
             
-<div className="grid grid-cols-1 gap-2 sm:gap-3">
-  {ecosystemProjects.map((project, index) => (
-    <div
-      key={project.name}
-      className="card card-compact hover:shadow-md transition-all duration-200 group"
-    >
-      <div className="flex items-center space-x-3">
-        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br ${project.gradient} flex items-center justify-center text-base sm:text-lg group-hover:scale-110 transition-transform duration-200`}>
-          {project.icon}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <h4 className="text-gray-900 font-medium text-sm sm:text-base">{project.name}</h4>
-          <p className="text-gray-600 text-xs sm:hidden">
-            {project.name.includes('Alpha') ? 'Prediction market' : 
-             project.name.includes('Vestige') ? 'Token trading' : 
-             'Real estate investing'}
-          </p>
-          <p className="text-gray-600 text-sm hidden sm:block">{project.description}</p>
-        </div>
-        
-        <button
-          onClick={() => window.open(project.url, '_blank')}
-          className="btn-secondary px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm font-medium hover:scale-105 transition-transform duration-200 shrink-0"
-        >
-          <span className="flex items-center space-x-1">
-            <span className="hidden sm:inline">Visit</span>
-            <span className="sm:hidden">Go</span>
-            <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-          </span>
-        </button>
-      </div>
-    </div>
-  ))}
-</div>
+            <div className="grid grid-cols-1 gap-2 sm:gap-3">
+              {ecosystemProjects.map((project, index) => (
+                <div
+                  key={project.name}
+                  className="card card-compact hover:shadow-md transition-all duration-200 group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br ${project.gradient} flex items-center justify-center text-base sm:text-lg group-hover:scale-110 transition-transform duration-200`}>
+                      {project.icon}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-gray-900 font-medium text-sm sm:text-base">{project.name}</h4>
+                      <p className="text-gray-600 text-xs sm:hidden">
+                        {project.name.includes('Alpha') ? 'Prediction market' : 
+                         project.name.includes('Vestige') ? 'Token trading' : 
+                         'Real estate investing'}
+                      </p>
+                      <p className="text-gray-600 text-sm hidden sm:block">{project.description}</p>
+                    </div>
+                    
+                    <button
+                      onClick={() => window.open(project.url, '_blank')}
+                      className="btn-secondary px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm font-medium hover:scale-105 transition-transform duration-200 shrink-0"
+                    >
+                      <span className="flex items-center space-x-1">
+                        <span className="hidden sm:inline">Visit</span>
+                        <span className="sm:hidden">Go</span>
+                        <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
             
             <div className="text-center pt-3">
               <button
@@ -800,7 +935,6 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  {/* CHANGE 7n: Bottom button text */}
                   <span>Send Your Own $$</span>
                 </span>
               </button>
@@ -813,8 +947,6 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
     return null;
   };
   
-  // CHANGE 7c: Line ~130 - Page title
-  // CHANGE 7d: Line ~135 - Page description  
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -823,7 +955,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
       </div>
       
       <div className="w-full max-w-lg mx-auto relative z-10">
-      <div className="card card-normal min-w-[20rem] sm:min-w-[28rem] w-full">
+        <div className="card card-normal min-w-[20rem] sm:min-w-[28rem] w-full">
           <div className="text-center mb-6">
             <img
               src="/bubbapay.jpg"

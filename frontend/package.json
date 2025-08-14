@@ -11,6 +11,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
+    "@transak/transak-sdk": "^3.2.1",
     "@txnlab/use-wallet-react": "^4.1.0",
     "@txnlab/use-wallet-ui-react": "^0.2.3",
     "@walletconnect/modal": "^2.7.0",
