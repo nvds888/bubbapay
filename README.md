@@ -1,6 +1,6 @@
 # 💰 BubbaPay
 
-> **⚠️ Currently in Development** - This project is actively being developed and is not yet ready for production use.
+> **⚠️ Currently in Development** - This project is actively being developed
 
 Send Algorand Standard Assets (ASAs) instantly via shareable URLs. Fast, secure, and user-friendly payments that make crypto transfers as easy as sharing a link.
 
