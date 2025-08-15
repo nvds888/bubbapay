@@ -1,4 +1,4 @@
-// src/App.js - Updated with use-wallet integration
+// src/App.js 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import {
@@ -20,7 +20,7 @@ import DocumentationPage from './components/DocumentationPage';
 import '@txnlab/use-wallet-ui-react/dist/style.css';
 import './App.css';
 
-// Configure the wallets you want to support
+// Configure wallets
 const walletManager = new WalletManager({
   wallets: [
     WalletId.PERA,
@@ -28,7 +28,7 @@ const walletManager = new WalletManager({
     WalletId.LUTE,
     // Add more wallets as needed
   ],
-  defaultNetwork: NetworkId.MAINNET, // Change to MAINNET for production
+  defaultNetwork: NetworkId.MAINNET, 
 });
 
 // Component to handle location-based logic

@@ -39,7 +39,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Trust proxy for rate limiting (required for Render/Heroku/etc.)
+// Trust proxy for rate limiting 
 if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 } else {
@@ -200,7 +200,7 @@ const startServer = async () => {
     // Make db available to routes
     app.locals.db = db;
     
-    // ✅ FIXED: Apply specific rate limits BEFORE registering routes
+    // ✅ Apply specific rate limits BEFORE registering routes
     // Transaction endpoints
     app.use('/api/generate-transactions', transactionRateLimit);
     app.use('/api/submit-app-creation', transactionRateLimit);
@@ -222,7 +222,7 @@ const startServer = async () => {
     app.use('/api/submit-optin', optInRateLimit);
     app.use('/api/generate-optin-and-claim', optInRateLimit);
     
-    // ✅ FIXED: Register API routes AFTER rate limits and database connection
+    // ✅ Register API routes AFTER rate limits and database connection
     app.use('/api', apiRoutes);
     app.use('/api', claimAndCleanRoutes);
     app.use('/api/mcp', mcpRoutes);
