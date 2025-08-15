@@ -14,11 +14,11 @@ function ConfirmStep({
   handleSignGroupTransactions,
   mcpSessionData = null,
   onWalletConnect = null,
-  selectedAssetInfo, // Remove the hardcoded default
-  recoveryMode = false, // NEW: Recovery mode flag
-  currentEscrow = null   // NEW: Current escrow data
+  selectedAssetInfo, 
+  recoveryMode = false, 
+  currentEscrow = null   
 }) {
-  // NEW: Initialize stage based on recovery mode
+  // Initialize stage based on recovery mode
   const [stage, setStage] = useState(recoveryMode ? 'app-created' : 'initial'); 
   const [subStage, setSubStage] = useState('idle'); // idle, signing-1, submitting-1, signing-2, submitting-2, completed
   const [showTransactionDetails, setShowTransactionDetails] = useState(false);
@@ -152,7 +152,7 @@ function ConfirmStep({
             </div>
           )}
           
-          {/* NEW: Show app info in recovery mode */}
+          {/*Show app info in recovery mode */}
           {recoveryMode && currentEscrow && (
             <div className="flex justify-between items-center">
               <span className="text-gray-600">App ID:</span>
@@ -328,7 +328,7 @@ function ConfirmStep({
             </button>
           )}
           
-          {/* NEW: Skip first transaction in recovery mode */}
+          {/* Skip first transaction in recovery mode */}
           {!recoveryMode && stage === 'initial' && (
             <button
               type="button"

@@ -1,4 +1,4 @@
-// claimandclean.js - Claim and Cleanup Endpoints (Backend Root)
+// claimandclean.js 
 
 const express = require('express');
 const router = express.Router();
@@ -277,11 +277,10 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     // Group all transactions
     algosdk.assignGroupID(transactions);
     
-    // Sign transactions that the temp account is responsible for - FIXED ORDER-BASED APPROACH
+    // Sign transactions that the temp account is responsible for 
     const signedTransactions = [];
     let userTxnIndex = -1;
 
-    // We know exactly which transaction is the user's based on how we built the array
     let currentIndex = 0;
 
     // Transaction 1: Fee coverage (temp account) - if applicable
@@ -291,7 +290,7 @@ router.post('/generate-optin-and-claim', async (req, res) => {
       currentIndex++;
     }
 
-    // Transaction 2: User opt-in (user account) - ALWAYS at this position
+    // Transaction 2: User opt-in (user account) 
     signedTransactions.push(null); // User must sign this
     userTxnIndex = currentIndex;
     currentIndex++;
@@ -373,7 +372,7 @@ router.post('/submit-optimized-claim', async (req, res) => {
             claimed: true,
             claimedAt: new Date(),
             claimedBy: recipientAddress,
-            claimType: type // Track which flow was used
+            claimType: type 
           } 
         }
       );
@@ -420,7 +419,7 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
     const appIdInt = parseInt(appId);
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // ✅ Just pass the common assets - TEAL will figure out which ones to opt out of
+    // Shouldfix this to only pass relevant asset
     const commonAssets = [31566704, 760037151, 2494786278, 2726252423]; // USDC, xUSD, MONKO, ALPHA
     
     const deleteAppTxn = algosdk.makeApplicationCallTxnFromObject({
@@ -537,7 +536,6 @@ router.post('/cleanup-contract', async (req, res) => {
       });
     }
 
-    // No need to query database anymore!
     const cleanupTxns = await generateCleanupTransaction({
       appId: appIdInt,
       senderAddress
@@ -579,17 +577,17 @@ router.post('/submit-cleanup', async (req, res) => {
     let txId;
     
     try {
-      // Submit the signed transactions (same pattern as submit-group-transactions)
+      // Submit the signed transactions 
       const submitResponse = await algodClient.sendRawTransaction(
         signedTxns.map(txn => Buffer.from(txn, 'base64'))
       ).do();
       txId = submitResponse.txid;
       
-      // Wait for confirmation (same pattern as other endpoints)
+      // Wait for confirmation 
       await algosdk.waitForConfirmation(algodClient, txId, 5);
       
     } catch (submitError) {
-      // Handle duplicate submission (same pattern as submit-app-creation)
+      // Handle duplicate submission 
       if (submitError.message && submitError.message.includes('transaction already in ledger')) {
         console.log('Cleanup transaction already in ledger, extracting txId...');
         
@@ -624,7 +622,7 @@ router.post('/submit-cleanup', async (req, res) => {
         await escrowCollection.updateOne(
           { _id: escrow._id },
           { 
-            $set: {  // ADD $set operator for MongoDB
+            $set: {  
               cleanedUp: true, 
               cleanupTxId: txId,
               cleanedUpAt: new Date()
@@ -635,7 +633,6 @@ router.post('/submit-cleanup', async (req, res) => {
       }
     } catch (dbError) {
       console.warn('Failed to update database after cleanup:', dbError);
-      // Don't fail the request if database update fails
     }
     
     res.json({

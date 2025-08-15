@@ -8,7 +8,7 @@ function RecipientStep({ formData, handleInputChange, nextStep, prevStep }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Since we're always using shareable link by default, no validation needed for email
+    // lways using shareable link by default, no validation needed for email
     setError('');
     
     // Update the form data to reflect shareable link selection

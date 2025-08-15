@@ -1,4 +1,4 @@
-// assetConfig.js - Simple Asset Configuration
+// assetConfig.js 
 
 const SUPPORTED_ASSETS = {
     31566704: {
@@ -19,7 +19,6 @@ const SUPPORTED_ASSETS = {
       isDefault: false,
       description: 'xUSD is a stablecoin by CompX'
     },
-    // NEW: Add Monko
     2494786278: {
       id: 2494786278,
       name: 'Monko',
@@ -29,7 +28,6 @@ const SUPPORTED_ASSETS = {
       isDefault: false,
       description: 'Be Monko meme token'
     },
-    // NEW: Add Alpha
     2726252423: {
       id: 2726252423,
       name: 'Alpha',
@@ -39,10 +37,10 @@ const SUPPORTED_ASSETS = {
       isDefault: false,
       description: 'Alpha Arcade prediction market token'
     }
-    // Add more assets here as needed
+    // Add more assets here 
   };
   
-  // Get default asset ID (USDC)
+  // default asset ID (USDC)
   function getDefaultAssetId() {
     const defaultAsset = Object.values(SUPPORTED_ASSETS).find(asset => asset.isDefault);
     return defaultAsset ? defaultAsset.id : 31566704; // Mainnet USDC
@@ -85,6 +83,6 @@ const SUPPORTED_ASSETS = {
     getSupportedAssets,
     toMicroUnits,
     fromMicroUnits,
-    // For backwards compatibility
+    // For fallback
     USDC_ASSET_ID: getDefaultAssetId()
   };

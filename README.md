@@ -1,13 +1,15 @@
 ! This project is still in development
 
-# AlgoSend
+# MCP scripts outdated
 
-Send USDC instantly on Algorand. Fast, secure, and user-friendly payments for everyone.
+# BubbaPay
+
+Send ASAs instantly on Algorand via shareable URL. Fast, secure, and user-friendly payments for everyone.
 
 ## Features
 
-- **Secure Escrow System**: Smart contracts hold funds until recipients claim them
-- **Email & Link Sharing**: Send via email or shareable links
+- **Secure Escrow System**: App hold funds until recipients claim them
+- **Email & Link Sharing**: Send via shareable links
 - **Temporary Account Security**: Unique authorization per transfer
 - **Hash-Based Protection**: Database breaches cannot expose claim credentials
 - **Fee Coverage**: Optional recipient fee coverage for seamless UX
@@ -17,7 +19,7 @@ Send USDC instantly on Algorand. Fast, secure, and user-friendly payments for ev
 
 - **Frontend**: React.js with Tailwind CSS
 - **Backend**: Node.js with Express
-- **Blockchain**: Algorand with TEAL smart contracts
+- **Blockchain**: Algosdk 3.4.0 JS with TEAL smart contracts
 - **Database**: MongoDB for metadata storage
 
 ## Quick Start

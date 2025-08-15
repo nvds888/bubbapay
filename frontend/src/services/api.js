@@ -13,7 +13,6 @@ const apiClient = axios.create({
 // Transaction APIs
 export const generateTransactions = async (data) => {
   try {
-    // Add default assetId if not provided
     const payload = {
       ...data,
       assetId: data.assetId || DEFAULT_ASSET_ID
@@ -27,7 +26,7 @@ export const generateTransactions = async (data) => {
 
 export const submitAppCreation = async (data) => {
   try {
-    // Add default assetId if not provided
+    // default assetId if not provided
     const payload = {
       ...data,
       assetId: data.assetId || DEFAULT_ASSET_ID
@@ -41,7 +40,6 @@ export const submitAppCreation = async (data) => {
 
 export const submitGroupTransactions = async (data) => {
   try {
-    // Add default assetId if not provided
     const payload = {
       ...data,
       assetId: data.assetId || DEFAULT_ASSET_ID
@@ -150,7 +148,7 @@ export const checkAlgoAvailability = async (address, payRecipientFees = false) =
   }
 };
 
-// CHANGE 1: Add supported assets constant at the top (after imports)
+// Add supported assets constant at the top (after imports)
 const SUPPORTED_ASSETS = {
   31566704: { 
     id: 31566704, 
@@ -166,7 +164,6 @@ const SUPPORTED_ASSETS = {
     decimals: 6, 
     description: 'xUSD is a stablecoin by CompX' 
   },
-  // NEW: Add Monko
   2494786278: {
     id: 2494786278,
     name: 'Monko',
@@ -174,7 +171,6 @@ const SUPPORTED_ASSETS = {
     decimals: 6,
     description: 'Be Monko meme token'
   },
-  // NEW: Add Alpha
   2726252423: {
     id: 2726252423,
     name: 'Alpha',
@@ -186,7 +182,7 @@ const SUPPORTED_ASSETS = {
 
 const DEFAULT_ASSET_ID = 31566704; // USDC
 
-// CHANGE 2: Add helper functions after the constants
+//  helper functions after the constants
 export const getSupportedAssets = () => Object.values(SUPPORTED_ASSETS);
 export const getAssetInfo = (assetId) => SUPPORTED_ASSETS[parseInt(assetId)] || null;
 export const getDefaultAssetId = () => DEFAULT_ASSET_ID;

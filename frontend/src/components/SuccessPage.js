@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
-// Add asset info import
 import { getAssetInfo } from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -236,7 +235,7 @@ function SuccessPage() {
         </div>
       )}
       
-      {/* ENHANCED: Claim URL section with security */}
+      {/* Claim URL section with security */}
       {escrowDetails?.claimUrl && (escrowDetails.isShareable !== false) && (
         <div className="card card-normal">
           <h3 className="font-medium text-gray-900 mb-3">Share Claim Link</h3>

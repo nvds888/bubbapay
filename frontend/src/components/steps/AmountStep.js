@@ -15,7 +15,6 @@ function AmountStep({
   algoAvailability,
   algoLoading,
   algoError,
-  // NEW: Add these props
   selectedAssetId,
   onAssetSelect
 }) {
@@ -160,7 +159,7 @@ function AmountStep({
           <div className="flex justify-between items-center mb-3">
             <label className="text-sm font-medium text-gray-700">Amount</label>
             
-            {/* NEW: Asset selector button */}
+            {/* Asset selector button */}
             <button
               type="button"
               onClick={() => setShowAssetModal(true)}
@@ -410,7 +409,7 @@ function AmountStep({
         </div>
       </form>
 
-      {/* NEW: Asset Selection Modal */}
+      {/* Asset Selection Modal */}
       <AssetSelectionModal
         isOpen={showAssetModal}
         onClose={() => setShowAssetModal(false)}

@@ -1,4 +1,4 @@
-// atomic-deploy-email-escrow.js - Updated with algosdk v3.4.0 compatibility
+// atomic-deploy-email-escrow.js 
 
 const algosdk = require('algosdk');
 const crypto = require('crypto');
@@ -7,11 +7,9 @@ const { getDefaultAssetId, toMicroUnits, getAssetInfo } = require('./assetConfig
 
 // Configuration
 const ALGOD_TOKEN = '';
-// CHANGE: Update to mainnet
 const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://mainnet-api.algonode.cloud';
 const ALGOD_PORT = '';
 
-// ADD this constant at the top of the file (after existing constants)
 const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
 
 // Initialize Algorand client
@@ -83,7 +81,7 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     
     console.log("TEAL compilation successful");
     
-    // Create application transaction using v3 method
+    // Create application transaction 
     try {
       console.log("Creating application transaction...");
       
@@ -270,7 +268,7 @@ const appAddress = appAddressObj.toString();
 }
 
 
-// Safer TEAL compilation with error handling
+//TEAL compilation with error handling
 async function compileProgram(programSource) {
   try {
     const compileResponse = await algodClient.compile(programSource).do();
@@ -313,7 +311,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       suggestedParams: { 
         ...suggestedParams,
         fee: exactFee,
-        flatFee: true // CRITICAL: Prevents network fee estimation
+        flatFee: true 
       }
     });
     

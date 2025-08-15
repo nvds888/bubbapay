@@ -450,8 +450,7 @@ function SendFlow() {
       setAlgoError(null);
     }
     
-    // CRITICAL FIX: Reset amount to prevent accidental transactions (only when asset actually changes)
-    if (isAssetChanging && !recoveryMode) { // NEW: Don't reset in recovery mode
+    if (isAssetChanging && !recoveryMode) { 
       setFormData(prev => ({
         ...prev,
         amount: '' // Clear the amount field when switching assets
@@ -469,7 +468,7 @@ function SendFlow() {
             handleInputChange={handleInputChange}
             nextStep={nextStep}
             isConnected={!!effectiveAccountAddress}
-            onConnectWallet={() => {}} // This would be passed from parent
+            onConnectWallet={() => {}}
             assetBalance={usdcBalance}
             selectedAssetInfo={selectedAssetInfo}
             balanceLoading={balanceLoading}
@@ -505,8 +504,8 @@ function SendFlow() {
             mcpSessionData={mcpSessionData}
             onWalletConnect={handleMCPWalletConnect}
             selectedAssetInfo={selectedAssetInfo}
-            recoveryMode={recoveryMode} // NEW: Pass recovery mode
-            currentEscrow={currentEscrow} // NEW: Pass current escrow
+            recoveryMode={recoveryMode} 
+            currentEscrow={currentEscrow} 
           />
         );
       default:

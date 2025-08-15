@@ -1,4 +1,4 @@
-// components/SigningPage.js - Updated to use use-wallet
+// components/SigningPage.js 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWallet } from '@txnlab/use-wallet-react';

@@ -266,7 +266,7 @@ router.post('/submit-group-transactions', async (req, res) => {
       await algosdk.waitForConfirmation(algodClient, txId, 5);
       
     } catch (submitError) {
-      // Handle duplicate submission for group transactions too
+      // Handle duplicate submission for group transactions 
       if (submitError.message && submitError.message.includes('transaction already in ledger')) {
         console.log('Group transaction already in ledger, extracting txId...');
         

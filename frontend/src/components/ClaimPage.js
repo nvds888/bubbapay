@@ -22,7 +22,7 @@ const getAssetInfo = (assetId) => {
   return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
 };
 
-// CHANGE 19: Add fallback for when assetInfo is not yet loaded
+// Add fallback for when assetInfo is not yet loaded
 const getDisplaySymbol = (assetInfo) => {
   return assetInfo?.symbol || 'USDC'; // Fallback to USDC for backwards compatibility
 };
@@ -56,7 +56,6 @@ function ClaimPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [walletEnabled, setWalletEnabled] = useState(false);
-  // CHANGE 13: Add asset state management in main ClaimPage component
   const [assetInfo, setAssetInfo] = useState(null);
 
   // Ecosystem projects data
@@ -247,7 +246,7 @@ function ClaimPage() {
         
         {escrowDetails && (
           <div className="mb-6">
-            {/* CHANGE 15b: Main display section */}
+            {/* Main display section */}
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">
               You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
             </h2>
@@ -318,17 +317,14 @@ function ClaimPage() {
   );
 }
 
-// CHANGE 12: Update ClaimPageWithWallet function signature
 function ClaimPageWithWallet({ appId, tempPrivateKey, escrowDetails, ecosystemProjects, assetInfo }) {
   const { activeAddress, signTransactions } = useWallet();
   const [accountAddress, setAccountAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [claimStatus, setClaimStatus] = useState('initial');
-  const [isFunding, setIsFunding] = useState(false);
   const [autoClickTriggered, setAutoClickTriggered] = useState(false);
-  const [fundingDetails, setFundingDetails] = useState(null); // NEW: Track funding details
-const [isOptedIn, setIsOptedIn] = useState(false); // Track opt-in status
+const [isOptedIn, setIsOptedIn] = useState(false); 
 
   // Auto-trigger wallet button click when component mounts
   useEffect(() => {
@@ -359,7 +355,7 @@ const [isOptedIn, setIsOptedIn] = useState(false); // Track opt-in status
     }
   }, [activeAddress]);
   
-  // Check wallet status when connected - HANDLES UNFUNDED ACCOUNTS
+  // Check wallet status when connected 
 useEffect(() => {
   const checkWalletStatus = async () => {
     if (!accountAddress || !escrowDetails) return;
@@ -570,7 +566,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           <div className="flex justify-center mb-4">
             <div className="w-8 h-8 spinner"></div>
           </div>
-          {/* CHANGE 7f: Claiming status message */}
+          {/* Claiming status message */}
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
   {claimStatus === 'claiming' 
     ? `Claiming Your ${assetInfo?.symbol || 'Asset'}...` 
@@ -812,9 +808,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
     
     return null;
   };
-  
-  // CHANGE 7c: Line ~130 - Page title
-  // CHANGE 7d: Line ~135 - Page description  
+    
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">

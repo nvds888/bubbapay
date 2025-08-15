@@ -14,11 +14,10 @@ function TransactionsPage() {
   const [error, setError] = useState(null);
   const [isReclaiming, setIsReclaiming] = useState(false);
   const [reclaimStatus, setReclaimStatus] = useState({ appId: null, status: '' });
-  // ADD: Cleanup state
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [cleanupStatus, setCleanupStatus] = useState({ appId: null, status: '' });
   
-  // ADD: Helper function to get asset symbol from transaction
+  // Helper function to get asset symbol from transaction
   const getAssetSymbol = (transaction) => {
     if (transaction.assetId) {
       const assetInfo = getAssetInfo(transaction.assetId);
@@ -28,7 +27,7 @@ function TransactionsPage() {
     return 'USDC';
   };
 
-  // ADD: Helper function to get asset info
+  // Helper function to get asset info
   const getTransactionAssetInfo = (transaction) => {
     if (transaction.assetId) {
       return getAssetInfo(transaction.assetId);
@@ -143,7 +142,6 @@ function TransactionsPage() {
     }
   };
   
-  // REPLACE the handleCleanup function in TransactionsPage.js with this:
 
   const handleCleanup = async (appId) => {
     if (!window.confirm("Clean up this contract to recover locked ALGO? This will permanently delete the contract.")) {
@@ -154,7 +152,7 @@ function TransactionsPage() {
     setCleanupStatus({ appId, status: 'Generating cleanup transactions...' });
     
     try {
-      // Generate the cleanup transactions using the API service
+      // Generate the cleanup transactions 
       const txnData = await api.generateCleanupTransaction({
         appId,
         senderAddress: activeAddress
