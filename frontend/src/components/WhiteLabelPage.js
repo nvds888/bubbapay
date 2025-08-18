@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 function WhiteLabelPage() {
   const [activeTab, setActiveTab] = useState('demo');
   const [selectedAsset, setSelectedAsset] = useState('USDC');
+  const [coverFees, setCoverFees] = useState(true);
 
   const codeExample = `<!-- Add this to your website -->
 <div id="bubbapay-widget"></div>
@@ -58,6 +59,192 @@ function WhiteLabelPage() {
             </svg>
             Free Plan Available
           </div>
+        </div>
+
+        {/* Demo Section */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-purple-300/20 mb-16">
+          <div className="flex justify-center mb-8">
+            <div className="bg-white/10 p-1 rounded-xl border border-purple-300/20">
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => setActiveTab('demo')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
+                    activeTab === 'demo' 
+                      ? 'bg-white text-purple-900 shadow-lg' 
+                      : 'text-purple-200 hover:text-white'
+                  }`}
+                >
+                  Live Demo
+                </button>
+                <button
+                  onClick={() => setActiveTab('code')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
+                    activeTab === 'code' 
+                      ? 'bg-white text-purple-900 shadow-lg' 
+                      : 'text-purple-200 hover:text-white'
+                  }`}
+                >
+                  Integration Code
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {activeTab === 'demo' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Widget Demo */}
+              <div className="bg-white rounded-2xl p-6 shadow-xl">
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Send {selectedAsset}</h3>
+                  <p className="text-gray-600 text-sm">Share your token instantly with anyone</p>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg"
+                      />
+                      <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
+                        {selectedAsset}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm bg-gray-50 p-3 rounded-lg">
+                    <span className="text-gray-600">Network fees</span>
+                    <span className="text-gray-700 font-medium">~0.003 ALGO</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm bg-gray-50 p-3 rounded-lg">
+                    <span className="text-gray-600">Reserve costs (recoverable)</span>
+                    <span className="text-gray-700 font-medium">~0.50 ALGO</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                    <div>
+                      <span className="text-sm font-medium text-purple-800">Cover recipient fees</span>
+                      <p className="text-xs text-purple-600">Help onboard new users by covering their transaction costs</p>
+                    </div>
+                    <div 
+                      onClick={() => setCoverFees(!coverFees)}
+                      className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                        coverFees ? 'bg-purple-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <div className={`absolute top-0 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                        coverFees ? 'right-0' : 'left-0'
+                      }`}></div>
+                    </div>
+                  </div>
+                  
+                  <button className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold py-3 rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-[1.02]">
+                    Create Payment Link
+                  </button>
+                </div>
+              </div>
+
+              {/* Benefits Panel */}
+              <div className="space-y-6">
+                <div className="bg-white/20 rounded-xl p-4 border border-purple-300/30">
+                  <h4 className="text-white font-semibold mb-3">What Happens Next</h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">1</span>
+                      </div>
+                      <div>
+                        <div className="text-white font-medium">Shareable Link Created</div>
+                        <div className="text-purple-200">Secure claim link generated instantly</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">2</span>
+                      </div>
+                      <div>
+                        <div className="text-white font-medium">Easy Sharing</div>
+                        <div className="text-purple-200">Share via WhatsApp, Telegram, or any platform</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-white text-xs font-bold">3</span>
+                      </div>
+                      <div>
+                        <div className="text-white font-medium">New User Onboarded</div>
+                        <div className="text-purple-200">Recipient claims and joins your ecosystem</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/20 rounded-xl p-4 border border-purple-300/30">
+                  <h4 className="text-white font-semibold mb-3">Token Customization</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-purple-200 text-sm mb-1">Your ASA</label>
+                      <select 
+                        value={selectedAsset}
+                        onChange={(e) => setSelectedAsset(e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-purple-300/30 rounded-lg text-white"
+                      >
+                        <option value="USDC" className="text-gray-900 bg-white">USDC (Example)</option>
+                        <option value="xUSD" className="text-gray-900 bg-white">xUSD (Example)</option>
+                        <option value="Your Token" className="text-gray-900 bg-white">Your Token Here</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-purple-200 text-sm mb-1">Max Transfer Amount</label>
+                      <input 
+                        type="number" 
+                        placeholder="1000"
+                        className="w-full px-3 py-2 bg-white/10 border border-purple-300/30 rounded-lg text-white placeholder-purple-300"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'code' && (
+            <div className="space-y-6">
+              <div className="bg-gray-900 rounded-xl p-6 border border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-white font-semibold">Integration Code</h4>
+                  <button className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors">
+                    Copy Code
+                  </button>
+                </div>
+                <pre className="text-green-400 text-sm overflow-x-auto">
+                  <code>{codeExample}</code>
+                </pre>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white/20 rounded-xl p-4 border border-purple-300/30 text-center">
+                  <div className="text-2xl font-bold text-white mb-1">5 min</div>
+                  <div className="text-purple-200 text-sm">Setup time</div>
+                </div>
+                <div className="bg-white/20 rounded-xl p-4 border border-purple-300/30 text-center">
+                  <div className="text-2xl font-bold text-white mb-1">3 KB</div>
+                  <div className="text-purple-200 text-sm">Widget size</div>
+                </div>
+                <div className="bg-white/20 rounded-xl p-4 border border-purple-300/30 text-center">
+                  <div className="text-2xl font-bold text-white mb-1">$0</div>
+                  <div className="text-purple-200 text-sm">Monthly cost</div>
+                </div>
+                <div className="bg-white/20 rounded-xl p-4 border border-purple-300/30 text-center">
+                  <div className="text-2xl font-bold text-white mb-1">∞</div>
+                  <div className="text-purple-200 text-sm">Transfer limit</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Key Benefits */}
@@ -115,8 +302,8 @@ function WhiteLabelPage() {
           </div>
         </div>
 
-        {/* Demo Section */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-purple-300/20 mb-16">
+        {/* Key Benefits */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
           <div className="flex justify-center mb-8">
             <div className="bg-white/10 p-1 rounded-xl border border-purple-300/20">
               <div className="flex space-x-1">
@@ -412,9 +599,9 @@ function WhiteLabelPage() {
                   </svg>
                   Community support
                 </li>
-                <li className="flex items-center opacity-50">
-                  <svg className="w-4 h-4 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                   "Powered by BubbaPay" branding
                 </li>
@@ -433,7 +620,7 @@ function WhiteLabelPage() {
               </div>
               <div className="text-center mb-6">
                 <h3 className="text-xl font-bold text-white mb-2">Pro Plan</h3>
-                <div className="text-3xl font-bold text-white mb-1">$29</div>
+                <div className="text-3xl font-bold text-white mb-1">$15</div>
                 <div className="text-purple-200 text-sm">per month</div>
               </div>
               <ul className="space-y-3 text-purple-200 text-sm mb-6">
@@ -465,7 +652,7 @@ function WhiteLabelPage() {
                   <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Webhook notifications
+                  Custom reward mechanics
                 </li>
                 <li className="flex items-center">
                   <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -508,7 +695,7 @@ function WhiteLabelPage() {
           </div>
           
           <div className="text-purple-300 text-sm space-y-1">
-            <p>✓ Free forever • ✓ 5-minute setup • ✓ Works with any ASA</p>
+            <p>✓ Start with free plan • ✓ 5-minute setup • ✓ Works with any ASA</p>
             <p className="text-xs">Users pay their own network fees (~0.003 ALGO per transfer)</p>
           </div>
         </div>
