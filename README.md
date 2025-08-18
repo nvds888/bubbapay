@@ -1,33 +1,81 @@
-! This project is still in development
+# 💰 BubbaPay
 
-# MCP scripts outdated
+> **⚠️ Currently in Development** - This project is actively being developed
 
-# BubbaPay
+Send Algorand Standard Assets (ASAs) instantly via shareable URLs. Fast, secure, and user-friendly payments that make crypto transfers as easy as sharing a link.
 
-Send ASAs instantly on Algorand via shareable URL. Fast, secure, and user-friendly payments for everyone.
+## 🌟 What is BubbaPay?
 
-## Features
+BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs through shareable links. Recipients don't need to know complex wallet addresses or have deep crypto knowledge - they just click a link to claim their funds.
 
-- **Secure Escrow System**: App hold funds until recipients claim them
-- **Email & Link Sharing**: Send via shareable links
-- **Temporary Account Security**: Unique authorization per transfer
-- **Hash-Based Protection**: Database breaches cannot expose claim credentials
-- **Fee Coverage**: Optional recipient fee coverage for seamless UX
-- **Fund Recovery**: Creators can always reclaim unclaimed transfers
+## ✨ Key Features
 
-## Architecture
+- 🔒 **Secure Escrow System** - App hold funds safely until recipients claim them
+- 📧 **Email & Link Sharing** - Send payments via shareable links or email
+- 🛡️ **Temporary Account Security** - Unique authorization credentials for each transfer
+- 🔐 **Hash-Based Protection** - Database breaches cannot expose claim credentials
+- 💸 **Fee Coverage** - Optional transaction fee coverage for seamless recipient experience
+- 🔄 **Fund Recovery** - Senders can always reclaim unclaimed transfers after timeout
+- ⚡ **Instant Claims** - Recipients claim funds immediately upon verification
 
-- **Frontend**: React.js with Tailwind CSS
-- **Backend**: Node.js with Express
-- **Blockchain**: Algosdk 3.4.0 JS with TEAL smart contracts
-- **Database**: MongoDB for metadata storage
+## 🏗️ Architecture
 
-## Quick Start
+### Frontend
+- **Framework**: React.js
+- **Styling**: Tailwind CSS 
+- **Wallet Integration**: Use-Wallet & Use-Wallet-UI by TxnLab
 
-### Backend Setup
-```bash
-cd backend
-npm install
-cp .env.example .env
-# Configure your environment variables
-npm start
+### Backend
+- **Runtime**: Node.js with Express.js framework
+- **Database**: MongoDB for metadata and transfer tracking
+- **API**: RESTful endpoints
+
+### Blockchain
+- **Platform**: Algorand blockchain
+- **SDK**: Algosdk 3.4.0 JavaScript
+- **Smart Contracts**: Custom TEAL programs for escrow functionality
+- specific blockchain scripts: atomic-deploy-email-escrow.js, claimandclean.js, teal-programs.js 
+
+
+## 📖 Usage
+
+1. **Create Transfer**: Connect your Algorand wallet and specify the ASA and amount
+2. **Generate Link**: System creates a secure, shareable URL
+3. **Share**: Send the link via email, messaging, or social media
+4. **Claim**: Recipient clicks link and claims funds to their wallet
+5. **Complete**: Funds are transferred instantly from escrow
+
+## 🛠️ Development Status
+
+### ✅ Completed
+- escrow smart contract functionality
+- Frontend wallet integration
+- Link generation and sharing system
+- Database schema and API endpoints
+
+### 🚧 In Progress
+- protection against loss of statemanagement (edge cases on mobile) - without sacrificying security
+- possible fee coverage included in App, to enable reclaim
+
+### 📋 Upcoming
+- more ASAs
+- Batch payment functionality
+- Analytics dashboard
+
+## 🐛 Known Issues
+
+- MCP scripts require updating to latest version
+- Some edge cases in error handling need refinement
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+
+## 🙏 Acknowledgments
+
+- [TxnLab](https://txnlab.dev/) for Use-Wallet integration tools
+- Algorand Foundation for blockchain infrastructure
+- The open-source community for various dependencies
+

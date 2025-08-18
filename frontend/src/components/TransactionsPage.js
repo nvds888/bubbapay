@@ -406,25 +406,35 @@ function TransactionsPage() {
                       
                       {/* Action buttons */}
                       <div className="space-y-1">
-                        {!transaction.claimed && !transaction.reclaimed ? (
-                          <button
-                            onClick={() => handleReclaim(transaction.appId)}
-                            disabled={isReclaiming}
-                            className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-                          >
-                            Reclaim Funds
-                          </button>
-                        ) : transaction.cleanedUp ? (
-                          <span className="text-gray-500 text-sm">Cleaned Up</span>
-                        ) : (
-                          <button
-                            onClick={() => handleCleanup(transaction.appId)}
-                            disabled={isCleaningUp}
-                            className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-                          >
-                            Clean Up (0.46 ALGO)
-                          </button>
-                        )}
+                      {!transaction.funded ? (
+  <div className="text-sm">
+    <span className="text-amber-600 font-medium block mb-1">Incomplete Transfer</span>
+    <Link 
+      to="/"
+      className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200"
+    >
+      Navigate to main flow to pick up where you left off
+    </Link>
+  </div>
+) : !transaction.claimed && !transaction.reclaimed ? (
+  <button
+    onClick={() => handleReclaim(transaction.appId)}
+    disabled={isReclaiming}
+    className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+  >
+    Reclaim Funds
+  </button>
+) : transaction.cleanedUp ? (
+  <span className="text-gray-500 text-sm">Cleaned Up</span>
+) : (
+  <button
+    onClick={() => handleCleanup(transaction.appId)}
+    disabled={isCleaningUp}
+    className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+  >
+    Clean Up (0.46 ALGO)
+  </button>
+)}
                         
                         {/* Explorer link - always show */}
                         <a
@@ -498,25 +508,35 @@ function TransactionsPage() {
                   </div>
                   
                   <div className="space-y-2">
-                    {!transaction.claimed && !transaction.reclaimed ? (
-                      <button
-                        onClick={() => handleReclaim(transaction.appId)}
-                        disabled={isReclaiming}
-                        className="btn-secondary px-3 py-1.5 text-sm font-medium w-full"
-                      >
-                        Reclaim Funds
-                      </button>
-                    ) : transaction.cleanedUp ? (
-                      <span className="text-gray-500 text-sm">Cleaned Up</span>
-                    ) : (
-                      <button
-                        onClick={() => handleCleanup(transaction.appId)}
-                        disabled={isCleaningUp}
-                        className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
-                      >
-                        Clean Up (~0.46 ALGO)
-                      </button>
-                    )}
+                  {!transaction.funded ? (
+  <div className="text-sm">
+    <span className="text-amber-600 font-medium block mb-1">Incomplete Transfer</span>
+    <Link 
+      to="/"
+      className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200"
+    >
+      Navigate to main flow to pick up where you left off
+    </Link>
+  </div>
+) : !transaction.claimed && !transaction.reclaimed ? (
+  <button
+    onClick={() => handleReclaim(transaction.appId)}
+    disabled={isReclaiming}
+    className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+  >
+    Reclaim Funds
+  </button>
+) : transaction.cleanedUp ? (
+  <span className="text-gray-500 text-sm">Cleaned Up</span>
+) : (
+  <button
+    onClick={() => handleCleanup(transaction.appId)}
+    disabled={isCleaningUp}
+    className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+  >
+    Clean Up (0.46 ALGO)
+  </button>
+)}
                     
                     {/* Explorer link - always show */}
                     <a
