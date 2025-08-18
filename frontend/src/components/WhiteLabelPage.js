@@ -56,7 +56,7 @@ function WhiteLabelPage() {
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            100% Free Forever
+            Free Plan Available
           </div>
         </div>
 
@@ -88,12 +88,12 @@ function WhiteLabelPage() {
             </div>
             <h3 className="text-2xl font-bold text-white mb-4">Viral Growth Engine</h3>
             <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              Every transfer creates a shareable link. Recipients get introduced to your token and community.
+              Every transfer creates a shareable link. Enable fee coverage to eliminate barriers for new users joining your ecosystem.
             </p>
             <div className="text-purple-100 text-sm">
               ✓ Organic user acquisition<br/>
-              ✓ Token distribution made easy<br/>
-              ✓ Built-in onboarding flow
+              ✓ Optional fee coverage for onboarding<br/>
+              ✓ Built-in user education flow
             </div>
           </div>
 
@@ -103,13 +103,13 @@ function WhiteLabelPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-white mb-4">Zero Cost Integration</h3>
+            <h3 className="text-2xl font-bold text-white mb-4">Simple Integration</h3>
             <p className="text-purple-200 mb-4 leading-relaxed text-lg">
-              No monthly fees, no setup costs. Just add the widget and start growing your token ecosystem.
+              Free plan gets you started instantly. Advanced features like custom branding and analytics available with paid plans.
             </p>
             <div className="text-purple-100 text-sm">
               ✓ 5-minute setup<br/>
-              ✓ No monthly payments<br/>
+              ✓ Free plan available<br/>
               ✓ Users pay their own network fees
             </div>
           </div>
@@ -182,6 +182,16 @@ function WhiteLabelPage() {
                     <span className="text-gray-700 font-medium">~0.003 ALGO</span>
                   </div>
                   
+                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                    <div>
+                      <span className="text-sm font-medium text-purple-800">Cover recipient fees</span>
+                      <p className="text-xs text-purple-600">Help onboard new users by covering their transaction costs</p>
+                    </div>
+                    <div className="w-10 h-5 bg-purple-500 rounded-full relative cursor-pointer">
+                      <div className="absolute right-0 top-0 w-5 h-5 bg-white rounded-full shadow"></div>
+                    </div>
+                  </div>
+                  
                   <button className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold py-3 rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-[1.02]">
                     Create Payment Link
                   </button>
@@ -233,9 +243,9 @@ function WhiteLabelPage() {
                         onChange={(e) => setSelectedAsset(e.target.value)}
                         className="w-full px-3 py-2 bg-white/10 border border-purple-300/30 rounded-lg text-white"
                       >
-                        <option value="USDC">USDC (Example)</option>
-                        <option value="xUSD">xUSD (Example)</option>
-                        <option value="Your Token">Your Token Here</option>
+                        <option value="USDC" className="text-gray-900 bg-white">USDC (Example)</option>
+                        <option value="xUSD" className="text-gray-900 bg-white">xUSD (Example)</option>
+                        <option value="Your Token" className="text-gray-900 bg-white">Your Token Here</option>
                       </select>
                     </div>
                     <div>
@@ -365,30 +375,115 @@ function WhiteLabelPage() {
           </div>
         </div>
 
-        {/* Why Free */}
+        {/* Pricing Plans */}
         <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-lg rounded-3xl p-8 border border-purple-300/30 mb-16">
-          <h2 className="text-3xl font-bold text-white text-center mb-6">Why Is This Free?</h2>
+          <h2 className="text-3xl font-bold text-white text-center mb-6">Simple, Transparent Pricing</h2>
           
-          <div className="max-w-3xl mx-auto text-center">
-            <p className="text-xl text-purple-200 mb-6">
-              We make money from small transaction fees (like Stripe for crypto). 
-              The more your token grows, the more everyone benefits.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white/10 rounded-xl p-4 border border-purple-300/20">
-                <h4 className="text-white font-semibold mb-2">You Win</h4>
-                <p className="text-purple-200 text-sm">More token utility and user growth at zero cost</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Free Plan */}
+            <div className="bg-white/10 rounded-2xl p-6 border border-purple-300/20">
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-bold text-white mb-2">Free Plan</h3>
+                <div className="text-3xl font-bold text-white mb-1">$0</div>
+                <div className="text-purple-200 text-sm">forever</div>
               </div>
-              <div className="bg-white/10 rounded-xl p-4 border border-purple-300/20">
-                <h4 className="text-white font-semibold mb-2">Users Win</h4>
-                <p className="text-purple-200 text-sm">Easy way to send and receive any ASA</p>
-              </div>
-              <div className="bg-white/10 rounded-xl p-4 border border-purple-300/20">
-                <h4 className="text-white font-semibold mb-2">We Win</h4>
-                <p className="text-purple-200 text-sm">Small fees from successful token ecosystems</p>
-              </div>
+              <ul className="space-y-3 text-purple-200 text-sm mb-6">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Unlimited transfers
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Basic widget customization
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Standard claim pages
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Community support
+                </li>
+                <li className="flex items-center opacity-50">
+                  <svg className="w-4 h-4 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                  "Powered by BubbaPay" branding
+                </li>
+              </ul>
+              <button className="w-full bg-white/20 hover:bg-white/30 text-white font-semibold py-3 rounded-xl transition-all duration-200 border border-purple-300/30">
+                Get Started Free
+              </button>
             </div>
+
+            {/* Pro Plan */}
+            <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl p-6 border border-purple-400/30 relative">
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                  Coming Soon
+                </span>
+              </div>
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-bold text-white mb-2">Pro Plan</h3>
+                <div className="text-3xl font-bold text-white mb-1">$29</div>
+                <div className="text-purple-200 text-sm">per month</div>
+              </div>
+              <ul className="space-y-3 text-purple-200 text-sm mb-6">
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Everything in Free Plan
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Remove BubbaPay branding
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Custom claim page design
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Analytics dashboard
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Webhook notifications
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Priority support
+                </li>
+              </ul>
+              <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-3 rounded-xl transition-all duration-200">
+                Join Waitlist
+              </button>
+            </div>
+          </div>
+          
+          <div className="text-center mt-8">
+            <p className="text-purple-300 text-sm">
+              🔗 Revenue sharing: We earn small transaction fees, you get the growth
+            </p>
           </div>
         </div>
 
