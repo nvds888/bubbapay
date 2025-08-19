@@ -5,7 +5,6 @@ import axios from 'axios';
 import algosdk from 'algosdk';
 import StepIndicator from './StepIndicator';
 import AmountStep from './steps/AmountStep';
-import RecipientStep from './steps/RecipientStep';
 import ConfirmStep from './steps/ConfirmStep';
 import { fetchAssetBalance, checkAlgoAvailability, getDefaultAssetId, getAssetInfo } from '../services/api';
 
@@ -35,7 +34,7 @@ function SendFlow() {
   const [formData, setFormData] = useState({
     amount: '',
     recipientEmail: '',
-    isShareableLink: false,
+    isShareableLink: true,
     payRecipientFees: true,
   });
   
@@ -482,15 +481,6 @@ function SendFlow() {
         );
       case 2:
         return (
-          <RecipientStep 
-            formData={formData}
-            handleInputChange={handleInputChange}
-            nextStep={nextStep}
-            prevStep={prevStep}
-          />
-        );
-      case 3:
-        return (
           <ConfirmStep 
             formData={formData}
             accountAddress={effectiveAccountAddress}
@@ -527,7 +517,7 @@ function SendFlow() {
       {/* Compact step indicator - hide for MCP users */}
       {!mcpSessionData && (
         <div className="mb-6">
-          <StepIndicator currentStep={currentStep} totalSteps={3} />
+          <StepIndicator currentStep={currentStep} totalSteps={2} />
         </div>
       )}
       
