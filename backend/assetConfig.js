@@ -36,6 +36,15 @@ const SUPPORTED_ASSETS = {
       symbol: 'ALPHA',
       isDefault: false,
       description: 'Alpha Arcade prediction market token'
+    },
+    523683256: {
+      id: 523683256,
+      name: 'Akita Inu',
+      unitName: 'AKITA',
+      symbol: 'Akita',
+      decimals: 6,
+      isDefault: false,
+      description: 'Akita Inu is an og Algorand meme token'
     }
     // Add more assets here 
   };
