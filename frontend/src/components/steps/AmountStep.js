@@ -3,7 +3,7 @@ import AssetSelectionModal from '../AssetSelectionModal';
 import { getSupportedAssets, getAssetInfo } from '../../services/api';
 
 function AmountStep({ 
-  formData, 
+  formData = {}, 
   handleInputChange, 
   nextStep, 
   isConnected, 
@@ -25,19 +25,25 @@ function AmountStep({
   
   // Quick amount options
   const quickAmounts = [10, 25, 50, 100];
+
+  const safeFormData = {
+    amount: '',
+    payRecipientFees: false,
+    ...formData  
+  };
   
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     
     // Validate amount
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    if (!safeFormData.amount || parseFloat(safeFormData.amount) <= 0) {
       setError('Please enter a valid amount greater than 0');
       return;
     }
     
     // Check if amount exceeds balance
-    if (assetBalance !== null && parseFloat(formData.amount) > parseFloat(assetBalance)) {
+    if (assetBalance !== null && parseFloat(safeFormData.amount) > parseFloat(assetBalance)) {
       const symbol = selectedAssetInfo?.symbol || 'tokens';
       const maxBalance = parseFloat(assetBalance).toFixed(2);
       setError(`Amount exceeds your available balance of ${maxBalance} ${symbol}`);
@@ -185,7 +191,7 @@ function AmountStep({
             <input
               type="number"
               name="amount"
-              value={formData.amount}
+              value={safeFormData.amount || ''}
               onChange={handleInputChange}
               className="w-full pl-7 pr-16 py-3 text-lg font-medium border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-colors"
               placeholder="0.00"
@@ -362,7 +368,7 @@ function AmountStep({
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
-                checked={formData.payRecipientFees}
+                checked={safeFormData.payRecipientFees || false}
                 onChange={handleInputChange}
                 name="payRecipientFees"
                 className="w-4 h-4 text-purple-600 rounded"
