@@ -181,7 +181,7 @@ const SUPPORTED_ASSETS = {
   523683256: {
     id: 523683256,
     name: 'Akita Inu',
-    symbol: 'Akita',
+    symbol: 'AKITA',
     decimals: 6,
     description: 'Akita Inu is an og Algorand meme token'
   }
