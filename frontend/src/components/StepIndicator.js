@@ -2,8 +2,8 @@ import React from 'react';
 
 function StepIndicator({ currentStep, totalSteps }) {
   const steps = [
-    { number: 1, label: "Amount", shortLabel: "Amount" },
-    { number: 2, label: "Confirm", shortLabel: "Sign" }
+    { number: 1, label: "Configure", shortLabel: "Amount" },
+    { number: 2, label: "Deploy", shortLabel: "Sign" }
   ];
 
   return (

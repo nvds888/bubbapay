@@ -98,7 +98,7 @@ function ConfirmStep({
     </svg>
   </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
-    {recoveryMode ? 'Complete Link Creation' : 'Confirm Your Transfer'}
+    {recoveryMode ? 'Complete Link Creation' : 'Create Your Magic Link'}
   </h2>
   <div className="flex items-center justify-center space-x-2 mb-2">
     <div className="px-3 py-1 bg-green-50 border border-green-200 rounded-full hover:bg-green-100 transition-colors">
@@ -107,7 +107,7 @@ function ConfirmStep({
   </div>
   <p className="text-gray-600 text-sm">
     {!isWalletConnected ? 'Connect your wallet to continue' : 
-     recoveryMode ? 'Fund your existing link contract' : 'Sign to generate your shareable claim link'}
+     recoveryMode ? 'Fund your existing link App' : 'Complete the two steps below'}
   </p>
 </div>
       
@@ -121,7 +121,7 @@ function ConfirmStep({
         </svg>
       </div>
       <div>
-        <h3 className="font-medium text-gray-900">Shareable Claim Link</h3>
+        <h3 className="font-medium text-gray-900">Configuration</h3>
         <p className="text-xs text-gray-500">Recipient can claim instantly</p>
       </div>
     </div>
@@ -218,7 +218,7 @@ function ConfirmStep({
       {/* Transaction steps - horizontal flow */}
       {isWalletConnected && (
         <div className="card card-normal mb-4">
-          <h3 className="font-medium text-gray-900 mb-4">Transaction Progress</h3>
+          <h3 className="font-medium text-gray-900 mb-4">Complete following steps</h3>
           
           {/* Horizontal Step Flow */}
           <div className="flex items-center justify-between mb-4">
@@ -245,7 +245,7 @@ function ConfirmStep({
                 )}
               </div>
               <div className="text-xs font-medium text-gray-900 mt-2 text-center">
-                Create App
+                Setup App
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 {recoveryMode ? 'Complete' :
@@ -289,7 +289,7 @@ function ConfirmStep({
                 )}
               </div>
               <div className="text-xs font-medium text-gray-900 mt-2 text-center">
-                Fund Transfer
+                Fund App
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 {stage === 'app-created' && subStage === 'signing-2' ? 'Sign transaction' :
@@ -368,7 +368,7 @@ function ConfirmStep({
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
-                    <span>Sign</span>
+                    <span>Sign (1/2)</span>
                   </>
                 )}
               </span>
@@ -405,7 +405,7 @@ function ConfirmStep({
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
-                    <span>{recoveryMode ? 'Fund Escrow' : 'Sign Final Transaction'}</span>
+                    <span>{recoveryMode ? 'Fund Escrow' : 'Sign (2/2)'}</span>
                   </>
                 )}
               </span>
