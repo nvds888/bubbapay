@@ -728,16 +728,16 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
 <p className="text-gray-600 mb-2">
   <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been transferred to your wallet
 </p>
-{isOptedIn ? (
+{isOptedIn && escrowDetails?.payRecipientFees ? (
   <p className="text-gray-500 text-xs mb-2">
-    Fee coverage returned to creator - you were already opted in!
+    Fee coverage returned to sender - you were already opted in!
   </p>
-) : (
+) : !isOptedIn ? (
   <p className="text-gray-500 text-xs mb-2">
-    Opted in and claimed in one atomic transaction
+    Opted in and claimed 
     {escrowDetails?.payRecipientFees && " - fees covered by sender"}
   </p>
-)}
+) : null}
             <p className="text-gray-500 text-sm">
               Wallet: <span className="font-mono">{formatAddress(accountAddress)}</span>
             </p>
