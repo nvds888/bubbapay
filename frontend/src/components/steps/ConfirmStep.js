@@ -167,7 +167,7 @@ function ConfirmStep({
 {showTransactionDetails && (
   <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm text-gray-600">
     <div className="flex justify-between">
-      <span>Your Address:</span>
+      <span>Sender Address:</span>
       <span className="font-mono text-xs text-purple-600">
         {isWalletConnected ? formatAddress(effectiveAccountAddress) : 'Connect wallet'}
       </span>
@@ -177,12 +177,12 @@ function ConfirmStep({
       <span>Algorand Mainnet</span>
     </div>
     <div className="flex justify-between">
-      <span>Settlement:</span>
-      <span>Instant</span>
+      <span>Asset ID:</span>
+      <span className="font-mono text-xs">{selectedAssetInfo?.id || 'Loading...'}</span>
     </div>
     <div className="flex justify-between">
-      <span>Security:</span>
-      <span>Smart Contract</span>
+      <span>Validity Link:</span>
+      <span>Indefinite</span>
     </div>
     {recoveryMode && (
       <div className="flex justify-between">
