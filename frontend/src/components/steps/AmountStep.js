@@ -64,7 +64,7 @@ function AmountStep({
       
       let errorMessage = `Transaction requires ${totalCost} ALGO total. You need ${deficit} more ALGO.`;
       
-      if (formData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.300000") {
+      if (safeFormData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.300000") {
         const costWithoutRecipientFees = (parseFloat(totalCost) - 0.301).toFixed(6);
         const availableBalance = parseFloat(algoAvailability.availableBalance);
         
@@ -82,7 +82,7 @@ function AmountStep({
       
       let errorMessage = `You have enough ALGO to create the app, but not enough to complete the funding step. You need ${groupDeficit} more ALGO after app creation.`;
       
-      if (formData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.300000") {
+      if (safeFormData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.300000") {
         errorMessage += ` Try unchecking "Cover recipient's transaction fees" to reduce the cost.`;
       }
       
@@ -334,7 +334,7 @@ function AmountStep({
                           <span>• Network transaction fees:</span>
                           <span>{algoAvailability.breakdown.realCosts?.transactionFees || '0.007000'} ALGO</span>
                         </div>
-                        {formData.payRecipientFees && (
+                        {safeFormData.payRecipientFees && (
                           <div className="flex justify-between">
                             <span>• Recipient fee coverage:</span>
                             <span>0.210000 ALGO</span>
