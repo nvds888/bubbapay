@@ -182,16 +182,16 @@ function SuccessPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Payment created Successfully!</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Magic Link Created Successfully!</h1>
         <p className="text-gray-600 text-sm">
-          Your {getAssetSymbol()} transfer has been completed and is ready to be claimed.
+          Your {getAssetSymbol()} shareable link is generated and ready to be claimed.
         </p>
       </div>
       
       {/* Transaction summary */}
       {escrowDetails && (
         <div className="card card-normal">
-          <h3 className="font-medium text-gray-900 mb-3">Transaction Summary</h3>
+          <h3 className="font-medium text-gray-900 mb-3">Summary</h3>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Amount:</span>
@@ -240,7 +240,7 @@ function SuccessPage() {
         <div className="card card-normal">
           <h3 className="font-medium text-gray-900 mb-3">Share Claim Link</h3>
           <p className="text-gray-600 text-sm mb-4">
-            Send this secure link to your recipient so they can claim the {getAssetSymbol()}.
+            Send this link to your recipient so they can claim the {getAssetSymbol()}.
           </p>
           
           <div className="space-y-3">
@@ -356,7 +356,7 @@ function SuccessPage() {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span>Send Another Payment</span>
+          <span>Create Another Link</span>
         </Link>
       </div>
     </div>

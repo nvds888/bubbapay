@@ -368,7 +368,7 @@ function AmountStep({
                 className="w-4 h-4 text-purple-600 rounded"
                 onClick={(e) => e.stopPropagation()}
               />
-              <span>Onboarding Wizard Mode (Cover Recipient Fees)</span>
+              <span>Onboarding Wizard (Cover Recipient Fees)</span>
             </div>
             <svg className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} 
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
