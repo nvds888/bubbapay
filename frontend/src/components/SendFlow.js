@@ -6,6 +6,7 @@ import algosdk from 'algosdk';
 import StepIndicator from './StepIndicator';
 import AmountStep from './steps/AmountStep';
 import ConfirmStep from './steps/ConfirmStep';
+import ProcessVisualization from './ProcessVisualization';
 import { fetchAssetBalance, checkAlgoAvailability, getDefaultAssetId, getAssetInfo } from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -525,8 +526,13 @@ function SendFlow() {
       <div className="mb-6">
         {renderStep()}
       </div>
-    </div>
-  );
+      
+    {/* Add ProcessVisualization only on step 1 (amount step) */}
+    {currentStep === 1 && !mcpSessionData && !recoveryMode && (
+      <ProcessVisualization />
+    )}
+  </div>
+);
 }
 
 export default SendFlow;
