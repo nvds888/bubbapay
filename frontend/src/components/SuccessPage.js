@@ -182,9 +182,9 @@ function SuccessPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Magic Link Created Successfully!</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Magic Link Created!</h1>
         <p className="text-gray-600 text-sm">
-          Your {getAssetSymbol()} shareable link is generated and ready to be claimed.
+          You can now share the link with the recipient so that they can claim the {getAssetSymbol()}.
         </p>
       </div>
       

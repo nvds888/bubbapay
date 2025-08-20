@@ -98,7 +98,7 @@ function ConfirmStep({
     </svg>
   </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
-    {recoveryMode ? 'Complete Link Creation' : 'Deploy Your Magic Link'}
+    {recoveryMode ? 'Complete Link Creation' : 'Finalise Your Magic Link'}
   </h2>
   <div className="flex items-center justify-center space-x-2 mb-2">
     <div className="px-3 py-1 bg-green-50 border border-green-200 rounded-full hover:bg-green-100 transition-colors">
@@ -143,7 +143,7 @@ function ConfirmStep({
     <div className="flex justify-between items-center">
       <span className="text-gray-600">Recipient:</span>
       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors">
-        Universal Claim Link
+        Shareable Claim Link
       </span>
     </div>
     
