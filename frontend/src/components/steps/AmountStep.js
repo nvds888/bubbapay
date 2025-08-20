@@ -152,7 +152,7 @@ function AmountStep({
   </h2>
   <div className="flex items-center justify-center space-x-2 mb-2">
     <div className="px-3 py-1 bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 transition-colors">
-      <span className="text-purple-700 text-sm font-medium">{selectedAssetInfo?.symbol || 'Asset'} Transfer</span>
+      <span className="text-purple-700 text-sm font-medium">{selectedAssetInfo?.symbol || 'Asset'}</span>
     </div>
   </div>
   <p className="text-gray-600 text-sm">Send to anyone with a link - no wallet required to receive</p>
