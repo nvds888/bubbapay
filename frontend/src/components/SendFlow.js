@@ -112,7 +112,7 @@ function SendFlow() {
       });
       
       // Jump to confirm step since app is already created
-      setCurrentStep(3);
+      setCurrentStep(2);
       
       console.log('Recovered incomplete escrow:', escrow._id);
     } catch (error) {
