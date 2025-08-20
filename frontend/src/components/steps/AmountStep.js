@@ -140,18 +140,23 @@ function AmountStep({
   return (
     <div className="max-w-md mx-auto">
       {/* Compact header */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3" 
-             style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">
-          Send {selectedAssetInfo?.symbol || 'Asset'}
-        </h2>
-        <p className="text-gray-600 text-sm">To anyone, anywhere, anytime</p>
-      </div>
+<div className="text-center mb-6">
+  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3" 
+       style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
+    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+    </svg>
+  </div>
+  <h2 className="text-xl font-semibold text-gray-900 mb-1">
+    Create Shareable Link
+  </h2>
+  <div className="flex items-center justify-center space-x-2 mb-2">
+    <div className="px-3 py-1 bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 transition-colors">
+      <span className="text-purple-700 text-sm font-medium">{selectedAssetInfo?.symbol || 'Asset'} Transfer</span>
+    </div>
+  </div>
+  <p className="text-gray-600 text-sm">Send to anyone with a link - no wallet required to receive</p>
+</div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Amount input section */}

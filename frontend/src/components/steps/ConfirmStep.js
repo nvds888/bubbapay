@@ -90,67 +90,69 @@ function ConfirmStep({
       )}
       
       {/* Compact header */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3" 
-             style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)'}}>
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">
-          {recoveryMode ? 'Complete Transfer' : 'Confirm & Send'}
-        </h2>
-        <p className="text-gray-600 text-sm">
-          {!isWalletConnected ? 'Connect your wallet to continue' : 
-           recoveryMode ? 'Fund your existing escrow application' : 'Review and sign transaction'}
-        </p>
-      </div>
+<div className="text-center mb-6">
+  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3" 
+       style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)'}}>
+    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+    </svg>
+  </div>
+  <h2 className="text-xl font-semibold text-gray-900 mb-1">
+    {recoveryMode ? 'Complete Link Creation' : 'Create Your Shareable Link'}
+  </h2>
+  <div className="flex items-center justify-center space-x-2 mb-2">
+    <div className="px-3 py-1 bg-green-50 border border-green-200 rounded-full hover:bg-green-100 transition-colors">
+      <span className="text-green-700 text-sm font-medium">Instant Claim Link</span>
+    </div>
+  </div>
+  <p className="text-gray-600 text-sm">
+    {!isWalletConnected ? 'Connect your wallet to continue' : 
+     recoveryMode ? 'Fund your existing link contract' : 'Sign to generate your shareable transfer link'}
+  </p>
+</div>
       
       {/* Transaction summary */}
-      <div className="card card-normal mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-gray-900">Transaction Summary</h3>
-          <button
-            type="button"
-            onClick={() => setShowTransactionDetails(!showTransactionDetails)}
-            className="btn-ghost text-xs px-2 py-1"
-          >
-            {showTransactionDetails ? 'Hide' : 'Details'}
-          </button>
-        </div>
-        
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Amount:</span>
-            <span className="font-semibold text-lg">{formatAmount(formData.amount)} {selectedAssetInfo?.symbol || 'tokens'}</span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">From:</span>
-            <span className="font-mono text-sm text-purple-600">
-              {isWalletConnected ? formatAddress(effectiveAccountAddress) : 'Connect wallet'}
-            </span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">To:</span>
-            <span className="text-gray-900">
-              {formData.isShareableLink ? (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  Shareable Link
-                </span>
-              ) : (
-                formData.recipientEmail
-              )}
-            </span>
-          </div>
-          
-          {formData.payRecipientFees && (
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Fee Coverage:</span>
-              <span className="text-green-600 font-medium">0.21 ALGO</span>
-            </div>
-          )}
+<div className="card card-normal mb-4 group hover:shadow-sm transition-shadow">
+  <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center space-x-2">
+      <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center">
+        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+      </div>
+      <div>
+        <h3 className="font-medium text-gray-900">Shareable Transfer Link</h3>
+        <p className="text-xs text-gray-500">Recipient can claim instantly</p>
+      </div>
+    </div>
+    <button
+      type="button"
+      onClick={() => setShowTransactionDetails(!showTransactionDetails)}
+      className="btn-ghost text-xs px-2 py-1 opacity-60 group-hover:opacity-100 transition-opacity"
+    >
+      {showTransactionDetails ? 'Hide' : 'Details'}
+    </button>
+  </div>
+  
+  <div className="space-y-3">
+    <div className="flex justify-between items-center">
+      <span className="text-gray-600">Amount:</span>
+      <span className="font-semibold text-lg">{formatAmount(formData.amount)} {selectedAssetInfo?.symbol || 'tokens'}</span>
+    </div>
+    
+    <div className="flex justify-between items-center">
+      <span className="text-gray-600">Link Type:</span>
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors">
+        Universal Claim Link
+      </span>
+    </div>
+    
+    {formData.payRecipientFees && (
+      <div className="flex justify-between items-center">
+        <span className="text-gray-600">Fee Coverage:</span>
+        <span className="text-green-600 font-medium">0.21 ALGO</span>
+      </div>
+    )}
           
           {/*Show app info in recovery mode */}
           {recoveryMode && currentEscrow && (
@@ -162,28 +164,34 @@ function ConfirmStep({
         </div>
         
         {/* Expanded transaction details */}
-        {showTransactionDetails && (
-          <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm text-gray-600">
-            <div className="flex justify-between">
-              <span>Network:</span>
-              <span>Algorand Mainnet</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Settlement:</span>
-              <span>Instant</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Security:</span>
-              <span>Smart Contract</span>
-            </div>
-            {recoveryMode && (
-              <div className="flex justify-between">
-                <span>Status:</span>
-                <span className="text-blue-600">App Created - Ready to Fund</span>
-              </div>
-            )}
-          </div>
-        )}
+{showTransactionDetails && (
+  <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm text-gray-600">
+    <div className="flex justify-between">
+      <span>Your Address:</span>
+      <span className="font-mono text-xs text-purple-600">
+        {isWalletConnected ? formatAddress(effectiveAccountAddress) : 'Connect wallet'}
+      </span>
+    </div>
+    <div className="flex justify-between">
+      <span>Network:</span>
+      <span>Algorand Mainnet</span>
+    </div>
+    <div className="flex justify-between">
+      <span>Settlement:</span>
+      <span>Instant</span>
+    </div>
+    <div className="flex justify-between">
+      <span>Security:</span>
+      <span>Smart Contract</span>
+    </div>
+    {recoveryMode && (
+      <div className="flex justify-between">
+        <span>Status:</span>
+        <span className="text-blue-600">App Created - Ready to Fund</span>
+      </div>
+    )}
+  </div>
+)}
       </div>
       
       {/* Wallet Connection Section for MCP users */}
