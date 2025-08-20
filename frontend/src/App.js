@@ -26,7 +26,7 @@ const walletManager = new WalletManager({
     WalletId.PERA,
     WalletId.DEFLY,
     WalletId.LUTE,
-    WalletId.W3_WALLET,
+    WalletId.WALLETCONNECT,
     // Add more wallets as needed
   ],
   defaultNetwork: NetworkId.MAINNET, 
