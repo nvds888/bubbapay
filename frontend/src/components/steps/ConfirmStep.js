@@ -98,16 +98,16 @@ function ConfirmStep({
     </svg>
   </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
-    {recoveryMode ? 'Complete Link Creation' : 'Create Your Shareable Link'}
+    {recoveryMode ? 'Complete Link Creation' : 'Confirm Your Transfer'}
   </h2>
   <div className="flex items-center justify-center space-x-2 mb-2">
     <div className="px-3 py-1 bg-green-50 border border-green-200 rounded-full hover:bg-green-100 transition-colors">
-      <span className="text-green-700 text-sm font-medium">Instant Claim Link</span>
+      <span className="text-green-700 text-sm font-medium">Shareable Claim Link</span>
     </div>
   </div>
   <p className="text-gray-600 text-sm">
     {!isWalletConnected ? 'Connect your wallet to continue' : 
-     recoveryMode ? 'Fund your existing link contract' : 'Sign to generate your shareable transfer link'}
+     recoveryMode ? 'Fund your existing link contract' : 'Sign to generate your shareable claim link'}
   </p>
 </div>
       
@@ -121,7 +121,7 @@ function ConfirmStep({
         </svg>
       </div>
       <div>
-        <h3 className="font-medium text-gray-900">Shareable Transfer Link</h3>
+        <h3 className="font-medium text-gray-900">Shareable Claim Link</h3>
         <p className="text-xs text-gray-500">Recipient can claim instantly</p>
       </div>
     </div>
@@ -141,7 +141,7 @@ function ConfirmStep({
     </div>
     
     <div className="flex justify-between items-center">
-      <span className="text-gray-600">Link Type:</span>
+      <span className="text-gray-600">Recipient:</span>
       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors">
         Universal Claim Link
       </span>
@@ -368,7 +368,7 @@ function ConfirmStep({
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
-                    <span>Create App</span>
+                    <span>Sign</span>
                   </>
                 )}
               </span>
