@@ -56,10 +56,18 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     }
     
     // Generate temporary account for authorization
-    const tempAccount = algosdk.generateAccount();
-    const tempAddress = tempAccount.addr;
-    const tempPrivateKey = Buffer.from(tempAccount.sk).toString('hex');
-    
+    // In generateUnsignedDeployTransactions - replace temp account generation
+const tempKeypair = algosdk.generateAccount();
+const tempPrivateKey = Buffer.from(tempKeypair.sk).toString('hex');
+
+const multisigParams = {
+  version: 1,
+  threshold: 1,
+  addrs: [tempKeypair.addr, senderAddress].sort()
+};
+
+const tempAddress = algosdk.multisigAddress(multisigParams);
+
     console.log(`Generated temporary account: ${tempAddress}`);
     
     // Convert to microUnits
@@ -107,7 +115,8 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
         transaction: encodedTxn,
         tempAccount: {
           address: tempAddress,
-          privateKey: tempPrivateKey
+          privateKey: tempPrivateKey,
+          multisigParams: multisigParams
         },
         amount: amount,
         microAmount: microAmount
@@ -282,11 +291,11 @@ async function compileProgram(programSource) {
   }
 }
 
-async function generateReclaimTransaction({ appId, senderAddress, assetId = null }) {
+async function generateReclaimTransaction({ appId, senderAddress, assetId = null, multisigParams = null }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
   try {
-    console.log("Generating reclaim transaction for app:", appId);
+    console.log("Generating reclaim transaction group for app:", appId);
     
     if (!appId || isNaN(parseInt(appId))) {
       throw new Error("Invalid app ID");
@@ -299,9 +308,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const appIdInt = Number(appId); 
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Calculate exact fee (1 inner transaction for asset transfer)
-    const exactFee = calculateTransactionFee(true, 1); // 2000 microALGO
-    
+    // Transaction 1: App call to reclaim assets
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
@@ -310,15 +317,41 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       foreignAssets: [targetAssetId],
       suggestedParams: { 
         ...suggestedParams,
-        fee: exactFee,
+        fee: 2000,
         flatFee: true 
       }
     });
     
-    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64');
+    const transactions = [reclaimTxn];
     
-    console.log(`Reclaim transaction created with exact fee: ${exactFee / 1e6} ALGO`);
-    return { transaction: encodedTxn };
+    // Transaction 2: Close temp account (multisig) if params provided
+    if (multisigParams) {
+      const tempMultisigAddress = algosdk.multisigAddress(multisigParams);
+      
+      const closeTempTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        sender: tempMultisigAddress,
+        receiver: senderAddress,
+        amount: 0,
+        closeRemainderTo: senderAddress,
+        note: new Uint8Array(Buffer.from('AlgoSend temp account close')),
+        suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+      });
+      
+      transactions.push(closeTempTxn);
+    }
+    
+    // Group transactions
+    algosdk.assignGroupID(transactions);
+    
+    const encodedTxns = transactions.map(txn => 
+      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
+    );
+    
+    console.log(`Reclaim transaction group created with ${transactions.length} transactions`);
+    return { 
+      transactions: encodedTxns,
+      multisigTxnIndex: multisigParams ? 1 : null // Index of multisig transaction
+    };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
     throw new Error(`Failed to create reclaim transaction: ${error.message}`);

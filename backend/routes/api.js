@@ -655,6 +655,7 @@ router.get('/algo-availability/:address', async (req, res) => {
 });
 
 // Generate reclaim transaction
+// Generate reclaim transaction
 router.post('/generate-reclaim', async (req, res) => {
   try {
     const { appId, senderAddress } = req.body;
@@ -663,7 +664,7 @@ router.post('/generate-reclaim', async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
-    // Verify the requester is the original sender
+    // Verify the requester is the original sender and get escrow data
     const db = req.app.locals.db;
     const escrowCollection = db.collection('escrows');
     
@@ -690,11 +691,12 @@ router.post('/generate-reclaim', async (req, res) => {
       });
     }
     
-    // Generate the reclaim transaction
+    // Generate the reclaim transaction with multisig params
     const txnData = await generateReclaimTransaction({
       appId: parseInt(appId),
       senderAddress,
-      assetId: escrow.assetId
+      assetId: escrow.assetId,
+      multisigParams: escrow.multisigParams // Pass stored multisig params
     });
     
     res.status(200).json(txnData);
@@ -710,9 +712,9 @@ router.post('/generate-reclaim', async (req, res) => {
 // Submit reclaim transaction
 router.post('/submit-reclaim', async (req, res) => {
   try {
-    const { signedTxn, appId, senderAddress } = req.body;
+    const { signedTxn, signedTxns, appId, senderAddress } = req.body;
     
-    if (!signedTxn || !appId || !senderAddress) {
+    if ((!signedTxn && !signedTxns) || !appId || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
@@ -743,9 +745,21 @@ router.post('/submit-reclaim', async (req, res) => {
       });
     }
     
-    // Submit the signed transaction
+    // Submit the signed transaction(s)
     try {
-      const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      let txid;
+      
+      if (signedTxns && Array.isArray(signedTxns)) {
+        // Group transaction submission
+        const submitResponse = await algodClient.sendRawTransaction(
+          signedTxns.map(txn => Buffer.from(txn, 'base64'))
+        ).do();
+        txid = submitResponse.txid;
+      } else {
+        // Single transaction submission (legacy)
+        const submitResponse = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+        txid = submitResponse.txid;
+      }
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txid, 5);
@@ -756,7 +770,8 @@ router.post('/submit-reclaim', async (req, res) => {
         { 
           $set: { 
             reclaimed: true,
-            reclaimedAt: new Date()
+            reclaimedAt: new Date(),
+            reclaimTxId: txid
           } 
         }
       );
@@ -789,7 +804,7 @@ router.post('/submit-reclaim', async (req, res) => {
       res.status(200).json({
         success: true,
         amount: escrow.amount,
-        message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}`
+        message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}${signedTxns ? ' and recovered temp account ALGO' : ''}`
       });
     } catch (error) {
       console.error('Error submitting reclaim transaction:', error);
@@ -805,9 +820,9 @@ router.post('/submit-reclaim', async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error reclaiming USDC:', error);
+    console.error('Error reclaiming funds:', error);
     res.status(500).json({ 
-      error: 'Failed to reclaim USDC', 
+      error: 'Failed to reclaim funds', 
       details: error.message 
     });
   }
