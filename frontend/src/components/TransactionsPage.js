@@ -102,20 +102,27 @@ const handleReclaim = async (appId) => {
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
-    console.log('Transaction 0 sender:', algosdk.encodeAddress(txns[0].sender.publicKey));
-    console.log('Transaction 1 sender:', algosdk.encodeAddress(txns[1].sender.publicKey));
-    console.log('Active address:', activeAddress);
-    console.log('Multisig params:', txnData.multisigParams);
+    // For the multisig transaction, we need to create a version the wallet can sign
+    // Then reformat it as multisig afterward
+    const signingTxns = txns.map((txn, index) => {
+      if (index === 0) {
+        // First transaction: app call - sign normally
+        return txn;
+      } else {
+        // Second transaction: multisig payment
+        // Create a copy with YOUR address as sender so wallet will sign it
+        const signableTxn = { ...txn };
+        signableTxn.sender = algosdk.decodeAddress(activeAddress);
+        return signableTxn;
+      }
+    });
     
-    // Sign all transactions normally - wallet signs with your private key
-    const signedTxns = await signTransactions(txns);
-    
-    console.log('Signed transaction 0:', signedTxns[0] ? 'SUCCESS' : 'NULL');
-    console.log('Signed transaction 1:', signedTxns[1] ? 'SUCCESS' : 'NULL');
+    // Sign the modified transactions
+    const signedTxns = await signTransactions(signingTxns);
     
     setReclaimStatus({ appId, status: 'Processing signatures...' });
     
-    // Process signatures - convert multisig transaction signature
+    // Process signatures
     const finalTxns = signedTxns.map((signedTxn, index) => {
       if (index === 0) {
         // Normal app call transaction - use as-is
@@ -123,21 +130,18 @@ const handleReclaim = async (appId) => {
       } else {
         // Multisig transaction - reformat the signature
         if (!signedTxn) {
-          console.log('DEBUG: No signature returned for multisig transaction');
-          console.log('DEBUG: Transaction sender was:', algosdk.encodeAddress(txns[index].sender.publicKey));
-          console.log('DEBUG: User address is:', activeAddress);
-          throw new Error('Wallet refused to sign multisig transaction - this is expected wallet behavior');
+          throw new Error('Failed to get signature for multisig transaction');
         }
         
-        // Decode the signed transaction to extract the signature
+        // Extract the signature from the signed transaction
         const signedTxnDecoded = algosdk.decodeSignedTransaction(new Uint8Array(signedTxn));
         const userSignature = signedTxnDecoded.sig;
         
-        // Create a proper multisig transaction
+        // Use the ORIGINAL multisig transaction (not the modified one)
         const originalTxn = txns[index];
         const msigParams = txnData.multisigParams;
         
-        // Create the multisig transaction shell
+        // Create the multisig transaction shell with original sender
         const msigTxn = algosdk.createMultisigTransaction(originalTxn, msigParams);
         
         // Find which position in the multisig this signature belongs to
