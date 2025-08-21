@@ -104,59 +104,29 @@ function TransactionsPage() {
       let finalTxns = [];
       
       if (txnData.hasMultisigClosure && transactions.length > 1) {
-        // Step 1: Sign the reclaim transaction normally
-        const reclaimTxn = transactions[0];
-        const signedReclaimTxns = await signTransactions([reclaimTxn]);
+        // Send ENTIRE group to wallet - wallet will only sign what it can
+        const signedTxns = await signTransactions(transactions);
         
-        // Step 2: Create temp transaction for getting signature with same group ID
-        const originalMultisigTxn = transactions[1];
-        const tempTxnForSigning = { ...originalMultisigTxn };
-        tempTxnForSigning.from = algosdk.decodeAddress(activeAddress);
+        // Transaction 1: Reclaim (signed by wallet)
+        finalTxns.push(Buffer.from(signedTxns[0]).toString('base64'));
         
-        const signedTempTxns = await signTransactions([tempTxnForSigning]);
-        const decodedTempTxn = algosdk.decodeSignedTransaction(signedTempTxns[0]);
-        const userSignature = decodedTempTxn.sig;
+        // Transaction 2: Multisig temp account closure
+        // Wallet couldn't sign this, so we handle it manually
+        const multisigTxn = transactions[1];
+        const userSignature = signedTxns[1]; // This will be the user's signature attempt
         
-        // Step 3: Clean multisig parameters
-        const cleanMultisigParams = {
-          version: Number(txnData.multisigParams.version),
-          threshold: Number(txnData.multisigParams.threshold),
-          addrs: txnData.multisigParams.addrs.map(addr => {
-            if (typeof addr === 'string') return addr;
-            if (addr.toString) return addr.toString();
-            return String(addr);
-          })
-        };
+        // Create multisig transaction and append signature
+        const msigTxn = algosdk.createMultisigTransaction(multisigTxn, txnData.multisigParams);
+        const finalMultisigTxn = algosdk.appendSignRawMultisigSignature(
+          msigTxn, 
+          userSignature
+        );
         
-        // Step 4: Create multisig transaction and apply signature
-        const msigTxn = algosdk.createMultisigTransaction(originalMultisigTxn, cleanMultisigParams);
-        const finalMultisigTxn = algosdk.appendSignRawMultisigSignature(msigTxn, userSignature);
-        
-        // Step 5: Ensure both transactions maintain the same group ID
-        const signedReclaimTxn = algosdk.decodeSignedTransaction(signedReclaimTxns[0]);
-        const originalGroupId = signedReclaimTxn.txn.group;
-        
-        // Re-encode the multisig transaction with proper group ID
-        const finalMultisigTxnWithGroup = {
-          ...finalMultisigTxn,
-          txn: {
-            ...finalMultisigTxn.txn,
-            group: originalGroupId
-          }
-        };
-        
-        // Step 6: Build final transaction array
-        finalTxns = [
-          Buffer.from(signedReclaimTxns[0]).toString('base64'),
-          Buffer.from(algosdk.encodeSignedTransaction(finalMultisigTxnWithGroup)).toString('base64')
-        ];
-        
-        console.log('Successfully created grouped transactions with multisig');
-        
+        finalTxns.push(Buffer.from(finalMultisigTxn.blob).toString('base64'));
       } else {
         // Single transaction (just reclaim)
-        const signedTxns = await signTransactions([transactions[0]]);
-        finalTxns = [Buffer.from(signedTxns[0]).toString('base64')];
+        const signedTxns = await signTransactions(transactions);
+        finalTxns.push(Buffer.from(signedTxns[0]).toString('base64'));
       }
       
       setReclaimStatus({ appId, status: 'Submitting transaction...' });
