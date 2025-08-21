@@ -290,7 +290,7 @@ async function compileProgram(programSource) {
   }
 }
 
-async function generateReclaimTransaction({ appId, senderAddress, assetId = null }) {
+async function generateReclaimTransaction({ appId, senderAddress, assetId = null, multisigParams }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
   try {

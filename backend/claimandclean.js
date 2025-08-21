@@ -31,7 +31,8 @@ function hashPrivateKey(privateKey, appId) {
   return hash.digest('hex');
 }
 
-// Generate optimized claim transaction group for users already opted in
+// claimandclean.js
+
 router.post('/generate-optimized-claim', async (req, res) => {
   try {
     const { tempPrivateKey, appId, recipientAddress, assetId } = req.body;
@@ -136,16 +137,33 @@ router.post('/generate-optimized-claim', async (req, res) => {
     // Group the transactions
     algosdk.assignGroupID(transactions);
 
+    // Normalize multisigParams.addrs to ensure all addresses are strings
+    const multisigParams = escrow.multisigParams || {
+      version: 1,
+      threshold: 1,
+      addrs: [tempAddress, escrow.senderAddress].sort()
+    };
+
+    const fixedAddrs = multisigParams.addrs.map(addr => {
+      if (typeof addr === 'string') {
+        return addr;
+      }
+      if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
+        const pkBytes = new Uint8Array(Object.values(addr.publicKey));
+        return algosdk.encodeAddress(pkBytes);
+      }
+      throw new Error('Invalid multisig address format in database');
+    });
+
+    const fixedMultisigParams = {
+      ...multisigParams,
+      addrs: fixedAddrs.sort() // Re-sort after fixing, as required by multisig
+    };
+
     // Sign all transactions with temp account
     const signedTransactions = transactions.map(txn => {
-      const multisigParams = escrow.multisigParams || {
-        version: 1,
-        threshold: 1,
-        addrs: [tempAddress, escrow.senderAddress].sort()
-      };
-      
       // Sign as multisig
-      const signedTxn = algosdk.signMultisigTransaction(txn, multisigParams, tempAccountObj.sk);
+      const signedTxn = algosdk.signMultisigTransaction(txn, fixedMultisigParams, tempAccountObj.sk);
       return Buffer.from(signedTxn.blob).toString('base64');
     });
 
