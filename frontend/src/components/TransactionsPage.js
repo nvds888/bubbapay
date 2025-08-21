@@ -96,28 +96,40 @@ function TransactionsPage() {
       
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      // Convert base64 transaction to Uint8Array
-      const txnUint8 = new Uint8Array(Buffer.from(txnData.transaction, 'base64'));
+      const transactions = txnData.transactions.map(txnBase64 => {
+        const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
+        return algosdk.decodeUnsignedTransaction(txnUint8);
+      });
       
-      // Decode the transaction for proper signing
-      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+      // Sign first transaction (reclaim) normally
+      const signedTxns = await signTransactions([transactions[0]]);
+      let finalTxns = [Buffer.from(signedTxns[0]).toString('base64')];
       
-      // Sign with use-wallet (supports multiple wallets)
-      const signedTxns = await signTransactions([txn]);
-      
-      // Convert the signed transaction to base64
-      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
+      // Handle multisig temp account closure
+      if (txnData.hasMultisigClosure && transactions.length > 1) {
+        // Sign the multisig transaction (temp account closure)
+        const multisigTxn = transactions[1];
+        const signedMultisigTxns = await signTransactions([multisigTxn]);
+        
+        // Create multisig transaction with sender's signature
+        const msigTxn = algosdk.createMultisigTransaction(multisigTxn, txnData.multisigParams);
+        const finalMultisigTxn = algosdk.appendSignRawMultisigSignature(
+          msigTxn, 
+          signedMultisigTxns[0]
+        );
+        
+        finalTxns.push(Buffer.from(finalMultisigTxn.blob).toString('base64'));
+      }
       
       setReclaimStatus({ appId, status: 'Submitting transaction...' });
       
-      // Submit the signed transaction
       const result = await api.submitReclaimTransaction({
-        signedTxn: signedTxnBase64,
+        signedTxns: finalTxns.length === 1 ? finalTxns[0] : finalTxns,
         appId,
         senderAddress: activeAddress
       });
       
-      // Update the local transactions state to reflect the reclaim
+      // Update local state
       setTransactions(prev => prev.map(tx => {
         if (tx.appId === parseInt(appId)) {
           return { ...tx, reclaimed: true, reclaimedAt: new Date() };
@@ -135,7 +147,6 @@ function TransactionsPage() {
       alert(`Failed to reclaim funds: ${error.message || error}`);
     } finally {
       setIsReclaiming(false);
-      // Reset status after a delay
       setTimeout(() => {
         setReclaimStatus({ appId: null, status: '' });
       }, 3000);

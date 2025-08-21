@@ -205,19 +205,18 @@ router.post('/submit-app-creation', async (req, res) => {
       amount: parseFloat(amount),
       createdAt: new Date(),
       claimed: false,
-      funded: false, // KEY: App created but not funded yet
+      funded: false,
       senderAddress,
       payRecipientFees: !!payRecipientFees,
       cleanedUp: false,
       cleanupTxId: null,
       cleanedUpAt: null,
-      // Store transaction data for recovery
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: {
         address: tempAccount.address,
-        // Don't store private key in DB for security
+        multisigParams: tempAccount.multisigParams,  // ADD THIS
+        keypairAddr: tempAccount.keypairAddr         // ADD THIS
       },
-      // Add status tracking
       status: 'APP_CREATED_AWAITING_FUNDING'
     };
     
@@ -690,14 +689,59 @@ router.post('/generate-reclaim', async (req, res) => {
       });
     }
     
-    // Generate the reclaim transaction
-    const txnData = await generateReclaimTransaction({
-      appId: parseInt(appId),
-      senderAddress,
-      assetId: escrow.assetId
-    });
+    // Get suggested parameters
+    const suggestedParams = await algodClient.getTransactionParams().do();
     
-    res.status(200).json(txnData);
+    // Create the main reclaim transaction
+    const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
+      sender: senderAddress,
+      appIndex: parseInt(appId),
+      onComplete: algosdk.OnApplicationComplete.NoOpOC,
+      appArgs: [new Uint8Array(Buffer.from("reclaim"))],
+      foreignAssets: [escrow.assetId],
+      suggestedParams: { 
+        ...suggestedParams,
+        fee: 2000,
+        flatFee: true 
+      }
+    });
+
+    const transactions = [reclaimTxn];
+
+    // Add temp account closure if multisig exists
+    if (escrow.tempAccount?.multisigParams) {
+      try {
+        const tempAccountInfo = await algodClient.accountInformation(escrow.tempAccount.address).do();
+        const tempBalance = safeToNumber(tempAccountInfo.amount);
+        
+        if (tempBalance > 1000) {
+          const tempCloseTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+            sender: escrow.tempAccount.address, // Multisig address
+            receiver: senderAddress,
+            amount: 0,
+            closeRemainderTo: senderAddress,
+            suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+          });
+          transactions.push(tempCloseTxn);
+        }
+      } catch (error) {
+        console.log('Could not check temp account balance:', error);
+      }
+    }
+
+    if (transactions.length > 1) {
+      algosdk.assignGroupID(transactions);
+    }
+
+    const encodedTxns = transactions.map(txn => 
+      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
+    );
+
+    res.status(200).json({ 
+      transactions: encodedTxns,
+      multisigParams: escrow.tempAccount?.multisigParams,
+      hasMultisigClosure: transactions.length > 1
+    });
   } catch (error) {
     console.error('Error generating reclaim transaction:', error);
     res.status(500).json({ 
@@ -707,12 +751,12 @@ router.post('/generate-reclaim', async (req, res) => {
   }
 });
 
-// Submit reclaim transaction
+/// Submit reclaim transaction
 router.post('/submit-reclaim', async (req, res) => {
   try {
-    const { signedTxn, appId, senderAddress } = req.body;
+    const { signedTxns, appId, senderAddress } = req.body;
     
-    if (!signedTxn || !appId || !senderAddress) {
+    if (!signedTxns || !appId || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
@@ -743,9 +787,19 @@ router.post('/submit-reclaim', async (req, res) => {
       });
     }
     
-    // Submit the signed transaction
+    // Submit the signed transactions
     try {
-      const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      let submitBuffers;
+      
+      if (Array.isArray(signedTxns)) {
+        // Multiple transactions - convert each
+        submitBuffers = signedTxns.map(txn => Buffer.from(txn, 'base64'));
+      } else {
+        // Single transaction
+        submitBuffers = Buffer.from(signedTxns, 'base64');
+      }
+      
+      const { txid } = await algodClient.sendRawTransaction(submitBuffers).do();
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txid, 5);
@@ -761,7 +815,7 @@ router.post('/submit-reclaim', async (req, res) => {
         }
       );
       
-      // If the escrow had a recipient email, send notification about reclaim
+      // Send email notification if applicable
       if (escrow.recipientEmail) {
         try {
           const assetInfo = getAssetInfo(escrow.assetId);
@@ -781,7 +835,6 @@ router.post('/submit-reclaim', async (req, res) => {
           await sgMail.send(msg);
         } catch (emailError) {
           console.error('Error sending reclaim notification email:', emailError);
-          // Continue processing even if email fails
         }
       }
       
@@ -794,7 +847,6 @@ router.post('/submit-reclaim', async (req, res) => {
     } catch (error) {
       console.error('Error submitting reclaim transaction:', error);
       
-      // Check if this is an app rejection
       if (error.message.includes('rejected')) {
         return res.status(400).json({
           success: false,
@@ -805,9 +857,9 @@ router.post('/submit-reclaim', async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error reclaiming USDC:', error);
+    console.error('Error reclaiming funds:', error);
     res.status(500).json({ 
-      error: 'Failed to reclaim USDC', 
+      error: 'Failed to reclaim funds', 
       details: error.message 
     });
   }

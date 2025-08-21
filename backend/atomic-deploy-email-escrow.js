@@ -56,9 +56,16 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     }
     
     // Generate temporary account for authorization
-    const tempAccount = algosdk.generateAccount();
-    const tempAddress = tempAccount.addr;
-    const tempPrivateKey = Buffer.from(tempAccount.sk).toString('hex');
+    const tempKeypair = algosdk.generateAccount();
+const tempPrivateKey = Buffer.from(tempKeypair.sk).toString('hex');
+
+// Create multisig params - temp account IS the multisig
+const multisigParams = {
+  version: 1,
+  threshold: 1,
+  addrs: [tempKeypair.addr, senderAddress]
+};
+const tempAddress = algosdk.multisigAddress(multisigParams);
     
     console.log(`Generated temporary account: ${tempAddress}`);
     
@@ -106,8 +113,10 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
       return {
         transaction: encodedTxn,
         tempAccount: {
-          address: tempAddress,
-          privateKey: tempPrivateKey
+          address: tempAddress, // This is the multisig address
+          privateKey: tempPrivateKey,
+          multisigParams: multisigParams,
+          keypairAddr: tempKeypair.addr // Original keypair address for reference
         },
         amount: amount,
         microAmount: microAmount
@@ -144,13 +153,8 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     }
 
     let tempAccountAddress;
-if (tempAccount.address && tempAccount.address.publicKey && typeof tempAccount.address.publicKey === 'object') {
-  // The publicKey was JSON-serialized, convert it back to Uint8Array and encode address
-  const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
-  tempAccountAddress = algosdk.encodeAddress(publicKeyArray);
-} else if (typeof tempAccount.address === 'string') {
-  // Already a string address
-  tempAccountAddress = tempAccount.address;
+if (typeof tempAccount.address === 'string') {
+  tempAccountAddress = tempAccount.address; // This is now the multisig address
 } else {
   throw new Error("Invalid temporary account address format");
 }
