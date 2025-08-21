@@ -56,16 +56,9 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     }
     
     // Generate temporary account for authorization
-    const tempKeypair = algosdk.generateAccount();
-const tempPrivateKey = Buffer.from(tempKeypair.sk).toString('hex');
-
-// Create multisig params - temp account IS the multisig
-const multisigParams = {
-  version: 1,
-  threshold: 1,
-  addrs: [tempKeypair.addr, senderAddress]
-};
-const tempAddress = algosdk.multisigAddress(multisigParams);
+    const tempAccount = algosdk.generateAccount();
+    const tempAddress = tempAccount.addr;
+    const tempPrivateKey = Buffer.from(tempAccount.sk).toString('hex');
     
     console.log(`Generated temporary account: ${tempAddress}`);
     
@@ -113,10 +106,8 @@ const tempAddress = algosdk.multisigAddress(multisigParams);
       return {
         transaction: encodedTxn,
         tempAccount: {
-          address: tempAddress, // This is the multisig address
-          privateKey: tempPrivateKey,
-          multisigParams: multisigParams,
-          keypairAddr: tempKeypair.addr // Original keypair address for reference
+          address: tempAddress,
+          privateKey: tempPrivateKey
         },
         amount: amount,
         microAmount: microAmount
@@ -158,7 +149,7 @@ if (tempAccount.address && tempAccount.address.publicKey && typeof tempAccount.a
   const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
   tempAccountAddress = algosdk.encodeAddress(publicKeyArray);
 } else if (typeof tempAccount.address === 'string') {
-  // Already a string address (should be multisig address now)
+  // Already a string address
   tempAccountAddress = tempAccount.address;
 } else {
   throw new Error("Invalid temporary account address format");

@@ -88,142 +88,36 @@ function TransactionsPage() {
     setReclaimStatus({ appId, status: 'Generating transaction...' });
     
     try {
-      console.log('=== STARTING RECLAIM PROCESS ===');
-      console.log('AppID:', appId);
-      console.log('Sender Address:', activeAddress);
-      
       // Generate the reclaim transaction
       const txnData = await api.generateReclaimTransaction({
         appId,
         senderAddress: activeAddress
       });
       
-      console.log('=== TRANSACTION DATA RECEIVED ===');
-      console.log('Has multisig closure:', txnData.hasMultisigClosure);
-      console.log('Number of transactions:', txnData.transactions?.length);
-      console.log('Raw multisigParams:', txnData.multisigParams);
-      
-      if (txnData.multisigParams) {
-        console.log('MultisigParams version:', txnData.multisigParams.version, typeof txnData.multisigParams.version);
-        console.log('MultisigParams threshold:', txnData.multisigParams.threshold, typeof txnData.multisigParams.threshold);
-        console.log('MultisigParams addrs:', txnData.multisigParams.addrs);
-        if (txnData.multisigParams.addrs) {
-          txnData.multisigParams.addrs.forEach((addr, i) => {
-            console.log(`Address ${i}:`, typeof addr, addr, 'Length:', addr?.length);
-          });
-        }
-      }
-      
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      const transactions = txnData.transactions.map((txnBase64, i) => {
-        console.log(`Decoding transaction ${i}`);
-        const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
-        const decoded = algosdk.decodeUnsignedTransaction(txnUint8);
-        console.log(`Transaction ${i} sender:`, decoded.from);
-        console.log(`Transaction ${i} type:`, decoded.type);
-        return decoded;
-      });
+      // Convert base64 transaction to Uint8Array
+      const txnUint8 = new Uint8Array(Buffer.from(txnData.transaction, 'base64'));
       
-      console.log('=== SENDING TO WALLET FOR SIGNING ===');
-      console.log('Transaction group length:', transactions.length);
+      // Decode the transaction for proper signing
+      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
       
-      let finalTxns = [];
+      // Sign with use-wallet (supports multiple wallets)
+      const signedTxns = await signTransactions([txn]);
       
-      if (txnData.hasMultisigClosure && transactions.length > 1) {
-        console.log('Processing multisig group transaction...');
-        
-        // Send ENTIRE group to wallet
-        const signedTxns = await signTransactions(transactions);
-        console.log('Received signed transactions from wallet:', signedTxns.length);
-        
-        // Transaction 1: Reclaim (signed by wallet normally)
-        console.log('Processing transaction 1 (reclaim)...');
-        finalTxns.push(Buffer.from(signedTxns[0]).toString('base64'));
-        console.log('Transaction 1 processed successfully');
-        
-        // Transaction 2: Multisig temp account closure
-        console.log('Processing transaction 2 (multisig closure)...');
-        const multisigTxn = transactions[1];
-        const userSignature = signedTxns[1];
-        
-        console.log('Multisig transaction sender:', multisigTxn.from);
-        console.log('User signature length:', userSignature?.length);
-        console.log('User signature type:', typeof userSignature);
-        
-        // Clean and validate multisig params
-        const cleanMultisigParams = {
-          version: Number(txnData.multisigParams.version) || 1,
-          threshold: Number(txnData.multisigParams.threshold) || 1,
-          addrs: txnData.multisigParams.addrs.map(addr => {
-            const cleanAddr = typeof addr === 'string' ? addr : addr.toString();
-            console.log('Cleaning address:', addr, '->', cleanAddr, 'Length:', cleanAddr.length);
-            
-            // Validate address format
-            try {
-              algosdk.decodeAddress(cleanAddr);
-              console.log('Address validation passed:', cleanAddr);
-            } catch (e) {
-              console.error('Address validation failed:', cleanAddr, e.message);
-              throw new Error(`Invalid address in multisig params: ${cleanAddr}`);
-            }
-            
-            return cleanAddr;
-          })
-        };
-        
-        console.log('=== CLEAN MULTISIG PARAMS ===');
-        console.log('Clean multisig params:', cleanMultisigParams);
-        console.log('Addresses count:', cleanMultisigParams.addrs.length);
-        cleanMultisigParams.addrs.forEach((addr, i) => {
-          console.log(`Clean address ${i}:`, addr, 'Length:', addr.length);
-        });
-        
-        try {
-          console.log('Creating multisig transaction...');
-          const msigTxn = algosdk.createMultisigTransaction(multisigTxn, cleanMultisigParams);
-          console.log('Multisig transaction created successfully');
-          console.log('Msig transaction structure:', Object.keys(msigTxn));
-          
-          console.log('Appending signature to multisig transaction...');
-          const finalMultisigTxn = algosdk.appendSignRawMultisigSignature(
-            msigTxn, 
-            userSignature
-          );
-          console.log('Signature appended successfully');
-          
-          finalTxns.push(Buffer.from(finalMultisigTxn.blob).toString('base64'));
-          console.log('Transaction 2 processed successfully');
-          
-        } catch (multisigError) {
-          console.error('=== MULTISIG ERROR ===');
-          console.error('Error creating/signing multisig transaction:', multisigError);
-          console.error('Error stack:', multisigError.stack);
-          throw new Error(`Multisig transaction failed: ${multisigError.message}`);
-        }
-        
-      } else {
-        console.log('Processing single transaction (reclaim only)...');
-        const signedTxns = await signTransactions(transactions);
-        finalTxns.push(Buffer.from(signedTxns[0]).toString('base64'));
-        console.log('Single transaction processed successfully');
-      }
-      
-      console.log('=== SUBMITTING TRANSACTIONS ===');
-      console.log('Final transactions count:', finalTxns.length);
+      // Convert the signed transaction to base64
+      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
       
       setReclaimStatus({ appId, status: 'Submitting transaction...' });
       
+      // Submit the signed transaction
       const result = await api.submitReclaimTransaction({
-        signedTxns: finalTxns.length === 1 ? finalTxns[0] : finalTxns,
+        signedTxn: signedTxnBase64,
         appId,
         senderAddress: activeAddress
       });
       
-      console.log('=== SUBMISSION SUCCESSFUL ===');
-      console.log('Result:', result);
-      
-      // Update local state
+      // Update the local transactions state to reflect the reclaim
       setTransactions(prev => prev.map(tx => {
         if (tx.appId === parseInt(appId)) {
           return { ...tx, reclaimed: true, reclaimedAt: new Date() };
@@ -236,14 +130,12 @@ function TransactionsPage() {
       alert(`Successfully reclaimed ${result.amount} ${assetSymbol}`);
       
     } catch (error) {
-      console.error('=== RECLAIM ERROR ===');
       console.error('Error reclaiming funds:', error);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
       setReclaimStatus({ appId, status: 'Failed' });
       alert(`Failed to reclaim funds: ${error.message || error}`);
     } finally {
       setIsReclaiming(false);
+      // Reset status after a delay
       setTimeout(() => {
         setReclaimStatus({ appId: null, status: '' });
       }, 3000);

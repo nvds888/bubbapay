@@ -193,76 +193,33 @@ router.post('/submit-app-creation', async (req, res) => {
     // Generate claim URL
     const claimUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claim?app=${appId}#key=${tempAccount.privateKey}`;
     
-    // Extract the actual address string from tempAccount
-let tempAccountAddressString;
-let keypairAddressString;
-
-if (typeof tempAccount.address === 'string') {
-  tempAccountAddressString = tempAccount.address;
-} else if (tempAccount.address && typeof tempAccount.address === 'object') {
-  if (tempAccount.address.toString && typeof tempAccount.address.toString === 'function' && tempAccount.address.toString() !== '[object Object]') {
-    tempAccountAddressString = tempAccount.address.toString();
-  } else if (tempAccount.address.publicKey) {
-    const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
-    tempAccountAddressString = algosdk.encodeAddress(publicKeyArray);
-  } else {
-    console.error('Cannot extract address from tempAccount.address:', tempAccount.address);
-    throw new Error('Invalid tempAccount address format');
-  }
-} else {
-  throw new Error('Missing tempAccount address');
-}
-
-// Extract keypair address string
-if (typeof tempAccount.keypairAddr === 'string') {
-  keypairAddressString = tempAccount.keypairAddr;
-} else if (tempAccount.keypairAddr && typeof tempAccount.keypairAddr === 'object') {
-  if (tempAccount.keypairAddr.publicKey) {
-    const publicKeyArray = new Uint8Array(Object.values(tempAccount.keypairAddr.publicKey));
-    keypairAddressString = algosdk.encodeAddress(publicKeyArray);
-  } else {
-    keypairAddressString = tempAccount.keypairAddr.toString();
-  }
-} else {
-  throw new Error('Missing keypair address');
-}
-
-console.log('Storing tempAccount address as string:', tempAccountAddressString);
-console.log('Storing keypair address as string:', keypairAddressString);
-
-const escrowRecord = {
-  appId: Number(appId),
-  appAddress: postAppTxns.appAddress,
-  network: 'mainnet',
-  assetId: assetId || getDefaultAssetId(),
-  recipientEmail: recipientEmail || null,
-  isShareable: !recipientEmail,
-  authorizedClaimer: tempAccount.address,
-  claimHash: claimHash,
-  amount: parseFloat(amount),
-  createdAt: new Date(),
-  claimed: false,
-  funded: false,
-  senderAddress,
-  payRecipientFees: !!payRecipientFees,
-  cleanedUp: false,
-  cleanupTxId: null,
-  cleanedUpAt: null,
-  groupTransactions: postAppTxns.groupTransactions,
-  tempAccount: {
-    address: tempAccountAddressString,
-    multisigParams: tempAccount.multisigParams ? {
-      version: Number(tempAccount.multisigParams.version) || 1,
-      threshold: Number(tempAccount.multisigParams.threshold) || 1,
-      addrs: [
-        keypairAddressString,  // First address as string
-        senderAddress         // Second address as string
-      ]
-    } : null,
-    keypairAddr: keypairAddressString
-  },
-  status: 'APP_CREATED_AWAITING_FUNDING'
-};
+    const escrowRecord = {
+      appId: Number(appId),
+      appAddress: postAppTxns.appAddress,
+      network: 'mainnet',
+      assetId: assetId || getDefaultAssetId(),
+      recipientEmail: recipientEmail || null,
+      isShareable: !recipientEmail,
+      authorizedClaimer: tempAccount.address,
+      claimHash: claimHash,
+      amount: parseFloat(amount),
+      createdAt: new Date(),
+      claimed: false,
+      funded: false, // KEY: App created but not funded yet
+      senderAddress,
+      payRecipientFees: !!payRecipientFees,
+      cleanedUp: false,
+      cleanupTxId: null,
+      cleanedUpAt: null,
+      // Store transaction data for recovery
+      groupTransactions: postAppTxns.groupTransactions,
+      tempAccount: {
+        address: tempAccount.address,
+        // Don't store private key in DB for security
+      },
+      // Add status tracking
+      status: 'APP_CREATED_AWAITING_FUNDING'
+    };
     
     const result = await escrowCollection.insertOne(escrowRecord);
 
@@ -698,7 +655,6 @@ router.get('/algo-availability/:address', async (req, res) => {
 });
 
 // Generate reclaim transaction
-// Generate reclaim transaction
 router.post('/generate-reclaim', async (req, res) => {
   try {
     const { appId, senderAddress } = req.body;
@@ -734,70 +690,14 @@ router.post('/generate-reclaim', async (req, res) => {
       });
     }
     
-    // Get suggested parameters
-    const suggestedParams = await algodClient.getTransactionParams().do();
+    // Generate the reclaim transaction
+    const txnData = await generateReclaimTransaction({
+      appId: parseInt(appId),
+      senderAddress,
+      assetId: escrow.assetId
+    });
     
-    // Create the main reclaim transaction
-    const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
-      sender: senderAddress,
-      appIndex: parseInt(appId),
-      onComplete: algosdk.OnApplicationComplete.NoOpOC,
-      appArgs: [new Uint8Array(Buffer.from("reclaim"))],
-      foreignAssets: [escrow.assetId],
-      suggestedParams: { 
-        ...suggestedParams,
-        fee: 2000,
-        flatFee: true 
-      }
-    });
-
-    const transactions = [reclaimTxn];
-
-    // Add temp account closure if multisig exists
-    if (escrow.tempAccount?.multisigParams && escrow.tempAccount?.address) {
-      try {
-        // Ensure address is a string
-        const tempAccountAddress = typeof escrow.tempAccount.address === 'string' 
-          ? escrow.tempAccount.address 
-          : escrow.tempAccount.address.toString();
-          
-        console.log('Checking temp account balance for:', tempAccountAddress);
-        const tempAccountInfo = await algodClient.accountInformation(tempAccountAddress).do();
-        const tempBalance = safeToNumber(tempAccountInfo.amount);
-        
-        console.log('Temp account balance:', tempBalance / 1e6, 'ALGO');
-        
-        if (tempBalance > 1000) {
-          const tempCloseTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-            sender: tempAccountAddress, // Multisig address
-            receiver: senderAddress,
-            amount: 0,
-            closeRemainderTo: senderAddress,
-            note: new Uint8Array(Buffer.from('Temp account closure via multisig')),
-            suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-          });
-          transactions.push(tempCloseTxn);
-          console.log('Added temp account closure transaction');
-        }
-      } catch (error) {
-        console.log('Could not check temp account balance:', error.message);
-      }
-    }
-
-    if (transactions.length > 1) {
-      algosdk.assignGroupID(transactions);
-      console.log('Created transaction group with', transactions.length, 'transactions');
-    }
-
-    const encodedTxns = transactions.map(txn => 
-      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
-    );
-
-    res.status(200).json({ 
-      transactions: encodedTxns,
-      multisigParams: escrow.tempAccount?.multisigParams,
-      hasMultisigClosure: transactions.length > 1
-    });
+    res.status(200).json(txnData);
   } catch (error) {
     console.error('Error generating reclaim transaction:', error);
     res.status(500).json({ 
@@ -807,12 +707,12 @@ router.post('/generate-reclaim', async (req, res) => {
   }
 });
 
-/// Submit reclaim transaction
+// Submit reclaim transaction
 router.post('/submit-reclaim', async (req, res) => {
   try {
-    const { signedTxns, appId, senderAddress } = req.body;
+    const { signedTxn, appId, senderAddress } = req.body;
     
-    if (!signedTxns || !appId || !senderAddress) {
+    if (!signedTxn || !appId || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
@@ -843,19 +743,9 @@ router.post('/submit-reclaim', async (req, res) => {
       });
     }
     
-    // Submit the signed transactions
+    // Submit the signed transaction
     try {
-      let submitBuffers;
-      
-      if (Array.isArray(signedTxns)) {
-        // Multiple transactions - convert each
-        submitBuffers = signedTxns.map(txn => Buffer.from(txn, 'base64'));
-      } else {
-        // Single transaction
-        submitBuffers = Buffer.from(signedTxns, 'base64');
-      }
-      
-      const { txid } = await algodClient.sendRawTransaction(submitBuffers).do();
+      const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txid, 5);
@@ -871,7 +761,7 @@ router.post('/submit-reclaim', async (req, res) => {
         }
       );
       
-      // Send email notification if applicable
+      // If the escrow had a recipient email, send notification about reclaim
       if (escrow.recipientEmail) {
         try {
           const assetInfo = getAssetInfo(escrow.assetId);
@@ -891,6 +781,7 @@ router.post('/submit-reclaim', async (req, res) => {
           await sgMail.send(msg);
         } catch (emailError) {
           console.error('Error sending reclaim notification email:', emailError);
+          // Continue processing even if email fails
         }
       }
       
@@ -903,6 +794,7 @@ router.post('/submit-reclaim', async (req, res) => {
     } catch (error) {
       console.error('Error submitting reclaim transaction:', error);
       
+      // Check if this is an app rejection
       if (error.message.includes('rejected')) {
         return res.status(400).json({
           success: false,
@@ -913,9 +805,9 @@ router.post('/submit-reclaim', async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error reclaiming funds:', error);
+    console.error('Error reclaiming USDC:', error);
     res.status(500).json({ 
-      error: 'Failed to reclaim funds', 
+      error: 'Failed to reclaim USDC', 
       details: error.message 
     });
   }
