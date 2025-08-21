@@ -760,19 +760,29 @@ router.post('/submit-reclaim', async (req, res) => {
       // Extract signature from second transaction (dummy multisig)
       const multisigSignature = decodedSignedTxns[1].sig;
       
-      // Regenerate the real transaction group
-      const realTxnData = await generateReclaimTransaction({
-        appId: parseInt(appId),
-        senderAddress,
-        assetId: escrow.assetId,
-        tempAccount: escrow.tempAccount
+      // Reconstruct multisig address from stored escrow data
+      const cleanAddrs = escrow.tempAccount.msigParams.addrs.map(addr => {
+        if (typeof addr === 'string') {
+          return addr;
+        } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
+          const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
+          return algosdk.encodeAddress(publicKeyArray);
+        } else {
+          throw new Error('Invalid address format in multisig params');
+        }
       });
+
+      const cleanMsigParams = {
+        ...escrow.tempAccount.msigParams,
+        addrs: cleanAddrs
+      };
+
+      const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
       
-      // Use the first transaction as-is (app call)
-      const finalTxns = [];
-      finalTxns.push(Buffer.from(signedTxns[0], 'base64')); // App call signed transaction
+      // Get fresh suggested params
+      const suggestedParams = await algodClient.getTransactionParams().do();
       
-      // Create properly signed multisig transaction with the same group ID
+      // Create the real multisig transaction with the same group ID
       const realMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: multisigAddress,
         receiver: senderAddress,
@@ -789,7 +799,6 @@ router.post('/submit-reclaim', async (req, res) => {
       // Set the same group ID as the signed transactions
       const groupId = decodedSignedTxns[0].txn.group;
       realMultisigTxn.group = groupId;
-      const msigParams = realTxnData.multisigParams;
       
       // Create multisig transaction
       const msigTxn = algosdk.createMultisigTransaction(realMultisigTxn, cleanMsigParams);
@@ -808,7 +817,10 @@ router.post('/submit-reclaim', async (req, res) => {
         multisigSignature
       );
       
-      finalTxns.push(finalMsigTxn);
+      // Use the first transaction as-is (app call), second is the multisig
+      const finalTxns = [];
+      finalTxns.push(Buffer.from(signedTxns[0], 'base64')); // App call signed transaction
+      finalTxns.push(finalMsigTxn); // Multisig transaction
       
       // Submit the final transaction group
       const { txid } = await algodClient.sendRawTransaction(finalTxns).do();
