@@ -102,8 +102,16 @@ const handleReclaim = async (appId) => {
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
+    console.log('Transaction 0 sender:', algosdk.encodeAddress(txns[0].from.publicKey));
+    console.log('Transaction 1 sender:', algosdk.encodeAddress(txns[1].from.publicKey));
+    console.log('Active address:', activeAddress);
+    console.log('Multisig params:', txnData.multisigParams);
+    
     // Sign all transactions normally - wallet signs with your private key
     const signedTxns = await signTransactions(txns);
+    
+    console.log('Signed transaction 0:', signedTxns[0] ? 'SUCCESS' : 'NULL');
+    console.log('Signed transaction 1:', signedTxns[1] ? 'SUCCESS' : 'NULL');
     
     setReclaimStatus({ appId, status: 'Processing signatures...' });
     
@@ -115,7 +123,10 @@ const handleReclaim = async (appId) => {
       } else {
         // Multisig transaction - reformat the signature
         if (!signedTxn) {
-          throw new Error('Failed to get signature for multisig transaction');
+          console.log('DEBUG: No signature returned for multisig transaction');
+          console.log('DEBUG: Transaction sender was:', algosdk.encodeAddress(txns[index].from.publicKey));
+          console.log('DEBUG: User address is:', activeAddress);
+          throw new Error('Wallet refused to sign multisig transaction - this is expected wallet behavior');
         }
         
         // Decode the signed transaction to extract the signature
