@@ -346,9 +346,9 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Transaction 2: Close multisig account (from multisig to creator)
-    const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: multisigAddress,
+    // Transaction 2: Dummy signable version (from creator address)
+    const dummyMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: senderAddress, // Creator address so wallet can sign
       receiver: senderAddress,
       amount: 0,
       closeRemainderTo: senderAddress,
@@ -360,19 +360,38 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Group the transactions
-    const txnGroup = [reclaimTxn, closeMultisigTxn];
-    algosdk.assignGroupID(txnGroup);
+    // Group the signable transactions
+    const signableTxnGroup = [reclaimTxn, dummyMultisigTxn];
+    algosdk.assignGroupID(signableTxnGroup);
     
-    // Encode both transactions
-    const encodedTxns = txnGroup.map(txn => 
+    // Also create the real multisig transaction for later use
+    const realMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: multisigAddress, // Real multisig address
+      receiver: senderAddress,
+      amount: 0,
+      closeRemainderTo: senderAddress,
+      note: new Uint8Array(Buffer.from('Reclaim: close multisig account')),
+      suggestedParams: { 
+        ...suggestedParams,
+        fee: 1000,
+        flatFee: true 
+      }
+    });
+
+    // The real transaction group for submission
+    const realTxnGroup = [reclaimTxn, realMultisigTxn];
+    algosdk.assignGroupID(realTxnGroup);
+    
+    // Encode signable transactions for frontend
+    const signableEncodedTxns = signableTxnGroup.map(txn => 
       Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
     );
     
     console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
     return { 
-      transactions: encodedTxns,
-      multisigParams: cleanMsigParams
+      signableTransactions: signableEncodedTxns, // Frontend signs these
+      multisigParams: cleanMsigParams,
+      realTxnGroup: realTxnGroup // Backend uses these for submission
     };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);

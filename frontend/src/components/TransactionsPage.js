@@ -78,7 +78,7 @@ function TransactionsPage() {
     }).format(date);
   };
   
-// Handle reclaiming funds with proper multisig handling
+// Handle reclaiming funds - backend handles multisig complexity
 const handleReclaim = async (appId) => {
   if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
     return;
@@ -88,7 +88,7 @@ const handleReclaim = async (appId) => {
   setReclaimStatus({ appId, status: 'Generating transactions...' });
   
   try {
-    // Generate the reclaim transaction group
+    // Generate the reclaim transactions (backend creates dummy signable versions)
     const txnData = await api.generateReclaimTransaction({
       appId,
       senderAddress: activeAddress
@@ -96,86 +96,25 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // Convert base64 transactions to decoded transactions
+    // Convert base64 transactions to decoded transactions for signing
     const txns = txnData.transactions.map(txnBase64 => {
       const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
-    // Get suggested params for creating the signable version
-    const suggestedParams = {
-      fee: txns[1].fee,
-      firstRound: txns[1].firstRound,
-      lastRound: txns[1].lastRound,
-      genesisHash: txns[1].genesisHash,
-      genesisID: txns[1].genesisID,
-      flatFee: true
-    };
-    
-    // Create a signable version of the multisig payment transaction
-    // Based on the backend code, this is a close account transaction:
-    // receiver: senderAddress, amount: 0, closeRemainderTo: senderAddress
-    
-    const signableMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: activeAddress, // Your address instead of multisig
-      receiver: activeAddress, // Should be your address (senderAddress in backend)
-      amount: 0, // Close account transaction has amount 0
-      closeRemainderTo: activeAddress, // Should be your address (senderAddress in backend)
-      note: txns[1].note,
-      suggestedParams: suggestedParams
-    });
-    
-    const signableTxns = [
-      txns[0], // App call - already from your address
-      signableMultisigTxn // Modified payment from your address
-    ];
-    
-    // Assign the same group ID to maintain transaction group
-    algosdk.assignGroupID(signableTxns);
-    
-    // Sign the modified transactions
-    const signedTxns = await signTransactions(signableTxns);
-    
-    setReclaimStatus({ appId, status: 'Processing signatures...' });
-    
-    // Process signatures
-    const finalTxns = signedTxns.map((signedTxn, index) => {
-      if (index === 0) {
-        // Normal app call transaction - use as-is
-        return Buffer.from(signedTxn).toString('base64');
-      } else {
-        // Extract signature from the modified transaction and apply to original multisig
-        const signedTxnDecoded = algosdk.decodeSignedTransaction(new Uint8Array(signedTxn));
-        const userSignature = signedTxnDecoded.sig;
-        
-        // Create multisig transaction from the ORIGINAL transaction (with multisig sender)
-        const originalMultisigTxn = txns[1];
-        const msigParams = txnData.multisigParams;
-        const msigTxn = algosdk.createMultisigTransaction(originalMultisigTxn, msigParams);
-        
-        // Find signer index
-        const signerIndex = msigParams.addrs.indexOf(activeAddress);
-        if (signerIndex === -1) {
-          throw new Error('Signer not found in multisig addresses');
-        }
-        
-        // Append signature to multisig transaction
-        const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
-          msigTxn,
-          msigParams,
-          signerIndex,
-          userSignature
-        );
-        
-        return Buffer.from(finalMsigTxn).toString('base64');
-      }
-    });
+    // Sign the dummy transactions (wallet can sign these since they're from your address)
+    const signedTxns = await signTransactions(txns);
     
     setReclaimStatus({ appId, status: 'Submitting transactions...' });
     
-    // Submit the transaction group
+    // Convert signed transactions to base64 for backend
+    const signedTxnsBase64 = signedTxns.map(signedTxn => 
+      Buffer.from(signedTxn).toString('base64')
+    );
+    
+    // Backend will handle extracting signatures and creating proper multisig
     const result = await api.submitReclaimTransaction({
-      signedTxn: finalTxns,
+      signedTxns: signedTxnsBase64,
       appId,
       senderAddress: activeAddress
     });

@@ -691,7 +691,7 @@ router.post('/generate-reclaim', async (req, res) => {
       });
     }
     
-    // Generate the reclaim transaction group (now includes multisig close)
+    // Generate the reclaim transaction group (includes signable dummy transactions)
     const txnData = await generateReclaimTransaction({
       appId: parseInt(appId),
       senderAddress,
@@ -699,7 +699,12 @@ router.post('/generate-reclaim', async (req, res) => {
       tempAccount: escrow.tempAccount // Pass the stored tempAccount data
     });
     
-    res.status(200).json(txnData);
+    // Store the real transaction group in the response for later submission
+    res.status(200).json({
+      transactions: txnData.signableTransactions, // Frontend signs these
+      multisigParams: txnData.multisigParams
+      // We'll use txnData.realTxnGroup in submit endpoint
+    });
   } catch (error) {
     console.error('Error generating reclaim transaction:', error);
     res.status(500).json({ 
@@ -712,9 +717,9 @@ router.post('/generate-reclaim', async (req, res) => {
 // Submit reclaim transaction group
 router.post('/submit-reclaim', async (req, res) => {
   try {
-    const { signedTxn, appId, senderAddress } = req.body;
+    const { signedTxns, appId, senderAddress } = req.body;
     
-    if (!signedTxn || !appId || !senderAddress) {
+    if (!signedTxns || !Array.isArray(signedTxns) || !appId || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
@@ -745,14 +750,53 @@ router.post('/submit-reclaim', async (req, res) => {
       });
     }
     
-    // Submit the signed transaction group
+    // Process the signed transactions
     try {
-      // Handle both single transaction (legacy) and group transaction (new multisig)
-      const rawTransactions = Array.isArray(signedTxn) 
-        ? signedTxn.map(txn => Buffer.from(txn, 'base64'))
-        : [Buffer.from(signedTxn, 'base64')];
+      // Decode the signed transactions
+      const decodedSignedTxns = signedTxns.map(txn => 
+        algosdk.decodeSignedTransaction(new Uint8Array(Buffer.from(txn, 'base64')))
+      );
       
-      const { txid } = await algodClient.sendRawTransaction(rawTransactions).do();
+      // Extract signature from second transaction (dummy multisig)
+      const multisigSignature = decodedSignedTxns[1].sig;
+      
+      // Regenerate the real transaction group
+      const realTxnData = await generateReclaimTransaction({
+        appId: parseInt(appId),
+        senderAddress,
+        assetId: escrow.assetId,
+        tempAccount: escrow.tempAccount
+      });
+      
+      // Use the first transaction as-is (app call)
+      const finalTxns = [];
+      finalTxns.push(Buffer.from(signedTxns[0], 'base64')); // App call signed transaction
+      
+      // Create properly signed multisig transaction
+      const realMultisigTxn = realTxnData.realTxnGroup[1];
+      const msigParams = realTxnData.multisigParams;
+      
+      // Create multisig transaction
+      const msigTxn = algosdk.createMultisigTransaction(realMultisigTxn, msigParams);
+      
+      // Find signer index
+      const signerIndex = msigParams.addrs.indexOf(senderAddress);
+      if (signerIndex === -1) {
+        throw new Error('Signer not found in multisig addresses');
+      }
+      
+      // Append signature to multisig transaction
+      const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
+        msigTxn,
+        msigParams,
+        signerIndex,
+        multisigSignature
+      );
+      
+      finalTxns.push(finalMsigTxn);
+      
+      // Submit the final transaction group
+      const { txid } = await algodClient.sendRawTransaction(finalTxns).do();
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txid, 5);
@@ -768,7 +812,7 @@ router.post('/submit-reclaim', async (req, res) => {
         }
       );
       
-      // If the escrow had a recipient email, send notification about reclaim
+      // Send notification email if needed
       if (escrow.recipientEmail) {
         try {
           const assetInfo = getAssetInfo(escrow.assetId);
@@ -788,7 +832,6 @@ router.post('/submit-reclaim', async (req, res) => {
           await sgMail.send(msg);
         } catch (emailError) {
           console.error('Error sending reclaim notification email:', emailError);
-          // Continue processing even if email fails
         }
       }
       
@@ -801,7 +844,6 @@ router.post('/submit-reclaim', async (req, res) => {
     } catch (error) {
       console.error('Error submitting reclaim transaction:', error);
       
-      // Check if this is an app rejection
       if (error.message.includes('rejected')) {
         return res.status(400).json({
           success: false,
