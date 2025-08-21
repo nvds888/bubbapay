@@ -88,13 +88,7 @@ function TransactionsPage() {
     setReclaimStatus({ appId, status: 'Generating transaction...' });
     
     try {
-      // Get the escrow details
-      const escrow = transactions.find(tx => tx.appId === parseInt(appId));
-      if (!escrow) {
-        throw new Error('Escrow not found');
-      }
-      
-      // Generate the reclaim transaction group (backend constructs everything)
+      // Generate the reclaim transaction
       const txnData = await api.generateReclaimTransaction({
         appId,
         senderAddress: activeAddress
@@ -102,44 +96,28 @@ function TransactionsPage() {
       
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      // Decode all transactions
-      const allTransactions = txnData.transactions.map(txnBase64 => {
-        const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
-        return algosdk.decodeUnsignedTransaction(txnUint8);
-      });
+      // Convert base64 transaction to Uint8Array
+      const txnUint8 = new Uint8Array(Buffer.from(txnData.transaction, 'base64'));
       
-      // Sign with use-wallet
-      const signedTxns = await signTransactions(allTransactions);
+      // Decode the transaction for proper signing
+      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
       
-      // Handle multisig formatting if needed
-      let finalSignedTxns = [];
+      // Sign with use-wallet (supports multiple wallets)
+      const signedTxns = await signTransactions([txn]);
       
-      for (let i = 0; i < signedTxns.length; i++) {
-        if (i === txnData.multisigTxnIndex) {
-          // This is the multisig transaction (temp account close)
-          const multisigParams = escrow.multisigParams;
-          
-          // Convert wallet signature to multisig format (per Discord conversation)
-          const multisigTxn = algosdk.createMultisigTransaction(allTransactions[i], multisigParams);
-          const finalSignedTxn = algosdk.appendSignRawMultisigSignature(multisigTxn, signedTxns[i]);
-          finalSignedTxns.push(Buffer.from(finalSignedTxn.blob).toString('base64'));
-        } else {
-          // Regular transaction
-          finalSignedTxns.push(Buffer.from(signedTxns[i]).toString('base64'));
-        }
-      }
+      // Convert the signed transaction to base64
+      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
       
       setReclaimStatus({ appId, status: 'Submitting transaction...' });
       
-      // Submit the signed transactions
+      // Submit the signed transaction
       const result = await api.submitReclaimTransaction({
-        signedTxn: finalSignedTxns[0], // Main reclaim transaction
-        signedTxns: finalSignedTxns, // All transactions
+        signedTxn: signedTxnBase64,
         appId,
         senderAddress: activeAddress
       });
       
-      // Update local state
+      // Update the local transactions state to reflect the reclaim
       setTransactions(prev => prev.map(tx => {
         if (tx.appId === parseInt(appId)) {
           return { ...tx, reclaimed: true, reclaimedAt: new Date() };
@@ -148,8 +126,8 @@ function TransactionsPage() {
       }));
       
       setReclaimStatus({ appId, status: 'Success' });
-      const assetSymbol = getAssetSymbol(escrow);
-      alert(`Successfully reclaimed ${result.amount} ${assetSymbol} and recovered temp account ALGO`);
+      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
+      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}`);
       
     } catch (error) {
       console.error('Error reclaiming funds:', error);
@@ -157,6 +135,7 @@ function TransactionsPage() {
       alert(`Failed to reclaim funds: ${error.message || error}`);
     } finally {
       setIsReclaiming(false);
+      // Reset status after a delay
       setTimeout(() => {
         setReclaimStatus({ appId: null, status: '' });
       }, 3000);

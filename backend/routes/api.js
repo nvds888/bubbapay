@@ -207,7 +207,6 @@ router.post('/submit-app-creation', async (req, res) => {
       claimed: false,
       funded: false, // KEY: App created but not funded yet
       senderAddress,
-      multisigParams: tempAccount.multisigParams,
       payRecipientFees: !!payRecipientFees,
       cleanedUp: false,
       cleanupTxId: null,
@@ -656,66 +655,11 @@ router.get('/algo-availability/:address', async (req, res) => {
 });
 
 // Generate reclaim transaction
-// Generate reclaim transaction
 router.post('/generate-reclaim', async (req, res) => {
   try {
     const { appId, senderAddress } = req.body;
     
     if (!appId || !senderAddress) {
-      return res.status(400).json({ error: 'Missing required parameters' });
-    }
-    
-    // Verify the requester is the original sender and get escrow data
-    const db = req.app.locals.db;
-    const escrowCollection = db.collection('escrows');
-    
-    const escrow = await escrowCollection.findOne({ 
-      appId: parseInt(appId),
-      senderAddress
-    });
-    
-    if (!escrow) {
-      return res.status(403).json({ 
-        error: 'You are not authorized to reclaim these funds' 
-      });
-    }
-    
-    if (escrow.claimed) {
-      return res.status(400).json({ 
-        error: 'Funds have already been claimed and cannot be reclaimed' 
-      });
-    }
-    
-    if (escrow.reclaimed) {
-      return res.status(400).json({ 
-        error: 'Funds have already been reclaimed' 
-      });
-    }
-    
-    // Generate the reclaim transaction with multisig params
-    const txnData = await generateReclaimTransaction({
-      appId: parseInt(appId),
-      senderAddress,
-      assetId: escrow.assetId,
-      multisigParams: escrow.multisigParams // Pass stored multisig params
-    });
-    
-    res.status(200).json(txnData);
-  } catch (error) {
-    console.error('Error generating reclaim transaction:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate reclaim transaction', 
-      details: error.message 
-    });
-  }
-});
-
-// Submit reclaim transaction
-router.post('/submit-reclaim', async (req, res) => {
-  try {
-    const { signedTxn, signedTxns, appId, senderAddress } = req.body;
-    
-    if ((!signedTxn && !signedTxns) || !appId || !senderAddress) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
@@ -746,21 +690,62 @@ router.post('/submit-reclaim', async (req, res) => {
       });
     }
     
-    // Submit the signed transaction(s)
+    // Generate the reclaim transaction
+    const txnData = await generateReclaimTransaction({
+      appId: parseInt(appId),
+      senderAddress,
+      assetId: escrow.assetId
+    });
+    
+    res.status(200).json(txnData);
+  } catch (error) {
+    console.error('Error generating reclaim transaction:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate reclaim transaction', 
+      details: error.message 
+    });
+  }
+});
+
+// Submit reclaim transaction
+router.post('/submit-reclaim', async (req, res) => {
+  try {
+    const { signedTxn, appId, senderAddress } = req.body;
+    
+    if (!signedTxn || !appId || !senderAddress) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    // Verify the requester is the original sender
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    const escrow = await escrowCollection.findOne({ 
+      appId: parseInt(appId),
+      senderAddress
+    });
+    
+    if (!escrow) {
+      return res.status(403).json({ 
+        error: 'You are not authorized to reclaim these funds' 
+      });
+    }
+    
+    if (escrow.claimed) {
+      return res.status(400).json({ 
+        error: 'Funds have already been claimed and cannot be reclaimed' 
+      });
+    }
+    
+    if (escrow.reclaimed) {
+      return res.status(400).json({ 
+        error: 'Funds have already been reclaimed' 
+      });
+    }
+    
+    // Submit the signed transaction
     try {
-      let txid;
-      
-      if (signedTxns && Array.isArray(signedTxns)) {
-        // Group transaction submission
-        const submitResponse = await algodClient.sendRawTransaction(
-          signedTxns.map(txn => Buffer.from(txn, 'base64'))
-        ).do();
-        txid = submitResponse.txid;
-      } else {
-        // Single transaction submission (legacy)
-        const submitResponse = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
-        txid = submitResponse.txid;
-      }
+      const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txid, 5);
@@ -771,8 +756,7 @@ router.post('/submit-reclaim', async (req, res) => {
         { 
           $set: { 
             reclaimed: true,
-            reclaimedAt: new Date(),
-            reclaimTxId: txid
+            reclaimedAt: new Date()
           } 
         }
       );
@@ -805,7 +789,7 @@ router.post('/submit-reclaim', async (req, res) => {
       res.status(200).json({
         success: true,
         amount: escrow.amount,
-        message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}${signedTxns ? ' and recovered temp account ALGO' : ''}`
+        message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}`
       });
     } catch (error) {
       console.error('Error submitting reclaim transaction:', error);
@@ -821,9 +805,9 @@ router.post('/submit-reclaim', async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error reclaiming funds:', error);
+    console.error('Error reclaiming USDC:', error);
     res.status(500).json({ 
-      error: 'Failed to reclaim funds', 
+      error: 'Failed to reclaim USDC', 
       details: error.message 
     });
   }
