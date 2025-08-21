@@ -207,6 +207,7 @@ router.post('/submit-app-creation', async (req, res) => {
       claimed: false,
       funded: false, // KEY: App created but not funded yet
       senderAddress,
+      multisigParams: tempAccount.multisigParams,
       payRecipientFees: !!payRecipientFees,
       cleanedUp: false,
       cleanupTxId: null,
