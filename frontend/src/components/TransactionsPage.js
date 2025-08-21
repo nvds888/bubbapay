@@ -79,6 +79,7 @@ function TransactionsPage() {
   };
   
   // Handle reclaiming funds with multisig
+// Handle reclaiming funds with multisig
 const handleReclaim = async (appId) => {
   if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
     return;
@@ -120,8 +121,8 @@ const handleReclaim = async (appId) => {
         // Create multisig transaction using algosdk
         const msigTxn = algosdk.createMultisigTransaction(originalTxn, multisigParams);
         
-        // Extract the signature from the wallet response
-        const walletSigData = algosdk.decodeSignedTransaction(signedTxn);
+        // Extract the signature from the wallet response (it's already a Uint8Array)
+        const walletSigData = algosdk.decodeSignedTransaction(new Uint8Array(signedTxn));
         const signature = walletSigData.sig;
         
         // Find which address in the multisig this signature corresponds to
