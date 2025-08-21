@@ -195,14 +195,14 @@ router.post('/submit-app-creation', async (req, res) => {
     
     // Extract the actual address string from tempAccount
 let tempAccountAddressString;
+let keypairAddressString;
+
 if (typeof tempAccount.address === 'string') {
   tempAccountAddressString = tempAccount.address;
 } else if (tempAccount.address && typeof tempAccount.address === 'object') {
-  // Handle various object formats
   if (tempAccount.address.toString && typeof tempAccount.address.toString === 'function' && tempAccount.address.toString() !== '[object Object]') {
     tempAccountAddressString = tempAccount.address.toString();
   } else if (tempAccount.address.publicKey) {
-    // Reconstruct from publicKey if available
     const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
     tempAccountAddressString = algosdk.encodeAddress(publicKeyArray);
   } else {
@@ -213,34 +213,56 @@ if (typeof tempAccount.address === 'string') {
   throw new Error('Missing tempAccount address');
 }
 
-console.log('Storing tempAccount address as string:', tempAccountAddressString);
+// Extract keypair address string
+if (typeof tempAccount.keypairAddr === 'string') {
+  keypairAddressString = tempAccount.keypairAddr;
+} else if (tempAccount.keypairAddr && typeof tempAccount.keypairAddr === 'object') {
+  if (tempAccount.keypairAddr.publicKey) {
+    const publicKeyArray = new Uint8Array(Object.values(tempAccount.keypairAddr.publicKey));
+    keypairAddressString = algosdk.encodeAddress(publicKeyArray);
+  } else {
+    keypairAddressString = tempAccount.keypairAddr.toString();
+  }
+} else {
+  throw new Error('Missing keypair address');
+}
 
-    const escrowRecord = {
-      appId: Number(appId),
-      appAddress: postAppTxns.appAddress,
-      network: 'mainnet',
-      assetId: assetId || getDefaultAssetId(),
-      recipientEmail: recipientEmail || null,
-      isShareable: !recipientEmail,
-      authorizedClaimer: tempAccount.address,
-      claimHash: claimHash,
-      amount: parseFloat(amount),
-      createdAt: new Date(),
-      claimed: false,
-      funded: false,
-      senderAddress,
-      payRecipientFees: !!payRecipientFees,
-      cleanedUp: false,
-      cleanupTxId: null,
-      cleanedUpAt: null,
-      groupTransactions: postAppTxns.groupTransactions,
-      tempAccount: {
-        address: tempAccountAddressString,
-        multisigParams: tempAccount.multisigParams,  // ADD THIS
-        keypairAddr: tempAccount.keypairAddr         // ADD THIS
-      },
-      status: 'APP_CREATED_AWAITING_FUNDING'
-    };
+console.log('Storing tempAccount address as string:', tempAccountAddressString);
+console.log('Storing keypair address as string:', keypairAddressString);
+
+const escrowRecord = {
+  appId: Number(appId),
+  appAddress: postAppTxns.appAddress,
+  network: 'mainnet',
+  assetId: assetId || getDefaultAssetId(),
+  recipientEmail: recipientEmail || null,
+  isShareable: !recipientEmail,
+  authorizedClaimer: tempAccount.address,
+  claimHash: claimHash,
+  amount: parseFloat(amount),
+  createdAt: new Date(),
+  claimed: false,
+  funded: false,
+  senderAddress,
+  payRecipientFees: !!payRecipientFees,
+  cleanedUp: false,
+  cleanupTxId: null,
+  cleanedUpAt: null,
+  groupTransactions: postAppTxns.groupTransactions,
+  tempAccount: {
+    address: tempAccountAddressString,
+    multisigParams: tempAccount.multisigParams ? {
+      version: Number(tempAccount.multisigParams.version) || 1,
+      threshold: Number(tempAccount.multisigParams.threshold) || 1,
+      addrs: [
+        keypairAddressString,  // First address as string
+        senderAddress         // Second address as string
+      ]
+    } : null,
+    keypairAddr: keypairAddressString
+  },
+  status: 'APP_CREATED_AWAITING_FUNDING'
+};
     
     const result = await escrowCollection.insertOne(escrowRecord);
 
