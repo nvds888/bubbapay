@@ -153,8 +153,13 @@ async function generatePostAppTransactions({ appId, senderAddress, microAmount, 
     }
 
     let tempAccountAddress;
-if (typeof tempAccount.address === 'string') {
-  tempAccountAddress = tempAccount.address; // This is now the multisig address
+if (tempAccount.address && tempAccount.address.publicKey && typeof tempAccount.address.publicKey === 'object') {
+  // The publicKey was JSON-serialized, convert it back to Uint8Array and encode address
+  const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
+  tempAccountAddress = algosdk.encodeAddress(publicKeyArray);
+} else if (typeof tempAccount.address === 'string') {
+  // Already a string address (should be multisig address now)
+  tempAccountAddress = tempAccount.address;
 } else {
   throw new Error("Invalid temporary account address format");
 }
