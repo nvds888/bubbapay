@@ -66,13 +66,34 @@ const publicKey = secretKeyUint8.slice(32, 64);
 const tempAddress = algosdk.encodeAddress(publicKey);
 const tempAccountObj = { addr: tempAddress, sk: secretKeyUint8 };
 
-// Pull multisig params + msig address from DB record
+// Pull multisig params from DB record
 const msigParams = escrow?.tempAccount?.msigParams;
-const multisigAddress = escrow?.tempAccount?.address;
 
-if (!msigParams || !multisigAddress) {
+if (!msigParams) {
   return res.status(500).json({ error: 'Missing multisig parameters in escrow record' });
 }
+
+// Convert any object addresses back to string addresses
+const reconstructedAddrs = msigParams.addrs.map(addr => {
+  if (typeof addr === 'string') {
+    return addr;
+  } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
+    // Convert object with publicKey back to string address
+    const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
+    return algosdk.encodeAddress(publicKeyArray);
+  } else {
+    throw new Error('Invalid address format in multisig params');
+  }
+});
+
+// Reconstruct multisig params with proper string addresses
+const cleanMsigParams = {
+  ...msigParams,
+  addrs: reconstructedAddrs
+};
+
+// Derive the multisig address using clean params
+const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
 
     
     console.log("Generating optimized claim for user already opted in");
@@ -142,7 +163,7 @@ algosdk.assignGroupID(transactions);
 
 
 const signedTransactions = transactions.map(txn => {
-  const { blob } = algosdk.signMultisigTransaction(txn, msigParams, tempAccountObj.sk);
+  const { blob } = algosdk.signMultisigTransaction(txn, cleanMsigParams, tempAccountObj.sk);
   return Buffer.from(blob).toString('base64');
 });
 
