@@ -792,10 +792,10 @@ router.post('/submit-reclaim', async (req, res) => {
       const msigParams = realTxnData.multisigParams;
       
       // Create multisig transaction
-      const msigTxn = algosdk.createMultisigTransaction(realMultisigTxn, msigParams);
+      const msigTxn = algosdk.createMultisigTransaction(realMultisigTxn, cleanMsigParams);
       
       // Find signer index
-      const signerIndex = msigParams.addrs.indexOf(senderAddress);
+      const signerIndex = cleanMsigParams.addrs.indexOf(senderAddress);
       if (signerIndex === -1) {
         throw new Error('Signer not found in multisig addresses');
       }
@@ -803,7 +803,7 @@ router.post('/submit-reclaim', async (req, res) => {
       // Append signature to multisig transaction
       const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
         msigTxn,
-        msigParams,
+        cleanMsigParams,
         signerIndex,
         multisigSignature
       );
