@@ -217,6 +217,7 @@ router.post('/submit-app-creation', async (req, res) => {
         address: tempAccount.address,
         // Don't store private key in DB for security
       },
+      multisigParams: tempAccount.multisigParams,
       // Add status tracking
       status: 'APP_CREATED_AWAITING_FUNDING'
     };
@@ -694,7 +695,8 @@ router.post('/generate-reclaim', async (req, res) => {
     const txnData = await generateReclaimTransaction({
       appId: parseInt(appId),
       senderAddress,
-      assetId: escrow.assetId
+      assetId: escrow.assetId,
+      multisigParams: escrow.multisigParams 
     });
     
     res.status(200).json(txnData);
@@ -710,11 +712,26 @@ router.post('/generate-reclaim', async (req, res) => {
 // Submit reclaim transaction
 router.post('/submit-reclaim', async (req, res) => {
   try {
-    const { signedTxn, appId, senderAddress } = req.body;
-    
-    if (!signedTxn || !appId || !senderAddress) {
-      return res.status(400).json({ error: 'Missing required parameters' });
-    }
+    const { signedTxn, signedTxns, appId, senderAddress } = req.body;
+
+if ((!signedTxn && !signedTxns) || !appId || !senderAddress) {
+  return res.status(400).json({ error: 'Missing required parameters' });
+}
+
+// Submit the signed transaction(s)
+let txid;
+
+if (signedTxns && Array.isArray(signedTxns)) {
+  // Group transaction submission
+  const submitResponse = await algodClient.sendRawTransaction(
+    signedTxns.map(txn => Buffer.from(txn, 'base64'))
+  ).do();
+  txid = submitResponse.txid;
+} else {
+  // Single transaction submission (legacy)
+  const submitResponse = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+  txid = submitResponse.txid;
+}
     
     // Verify the requester is the original sender
     const db = req.app.locals.db;

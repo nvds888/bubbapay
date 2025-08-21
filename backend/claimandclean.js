@@ -138,7 +138,14 @@ router.post('/generate-optimized-claim', async (req, res) => {
 
     // Sign all transactions with temp account
     const signedTransactions = transactions.map(txn => {
-      const signedTxn = algosdk.signTransaction(txn, tempAccountObj.sk);
+      const multisigParams = escrow.multisigParams || {
+        version: 1,
+        threshold: 1,
+        addrs: [tempAddress, escrow.senderAddress].sort()
+      };
+      
+      // Sign as multisig
+      const signedTxn = algosdk.signMultisigTransaction(txn, multisigParams, tempAccountObj.sk);
       return Buffer.from(signedTxn.blob).toString('base64');
     });
 
@@ -285,7 +292,14 @@ router.post('/generate-optin-and-claim', async (req, res) => {
 
     // Transaction 1: Fee coverage (temp account) - if applicable
     if (feeCoverageAmount > 0) {
-      const signedTxn = algosdk.signTransaction(transactions[currentIndex], tempAccountObj.sk);
+      const multisigParams = escrow.multisigParams || {
+        version: 1,
+        threshold: 1,
+        addrs: [tempAddress, escrow.senderAddress].sort()
+      };
+      
+      // Sign as multisig
+      const signedTxn = algosdk.signMultisigTransaction(txn, multisigParams, tempAccountObj.sk);
       signedTransactions.push(Buffer.from(signedTxn.blob).toString('base64'));
       currentIndex++;
     }
