@@ -104,29 +104,68 @@ function TransactionsPage() {
       let finalTxns = [];
       
       if (txnData.hasMultisigClosure && transactions.length > 1) {
-        // Send ENTIRE group to wallet - wallet will only sign what it can
-        const signedTxns = await signTransactions(transactions);
+        // Step 1: Sign the reclaim transaction normally
+        const reclaimTxn = transactions[0];
+        const signedReclaimTxns = await signTransactions([reclaimTxn]);
         
-        // Transaction 1: Reclaim (signed by wallet)
-        finalTxns.push(Buffer.from(signedTxns[0]).toString('base64'));
+        // Step 2: Create temp version of multisig transaction for signing
+        const originalMultisigTxn = transactions[1];
         
-        // Transaction 2: Multisig temp account closure
-        // Wallet couldn't sign this, so we handle it manually
-        const multisigTxn = transactions[1];
-        const userSignature = signedTxns[1]; // This will be the user's signature attempt
+        // Create identical transaction but with user as sender to get signature
+        const tempTxnForSigning = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+          sender: activeAddress,
+          receiver: algosdk.encodeAddress(originalMultisigTxn.to.publicKey),
+          amount: originalMultisigTxn.amount,
+          closeRemainderTo: originalMultisigTxn.closeRemainderTo ? 
+            algosdk.encodeAddress(originalMultisigTxn.closeRemainderTo.publicKey) : undefined,
+          note: originalMultisigTxn.note,
+          suggestedParams: {
+            fee: originalMultisigTxn.fee,
+            firstRound: originalMultisigTxn.firstRound,
+            lastRound: originalMultisigTxn.lastRound,
+            genesisHash: originalMultisigTxn.genesisHash,
+            genesisID: originalMultisigTxn.genesisID,
+            flatFee: true
+          }
+        });
         
-        // Create multisig transaction and append signature
-        const msigTxn = algosdk.createMultisigTransaction(multisigTxn, txnData.multisigParams);
-        const finalMultisigTxn = algosdk.appendSignRawMultisigSignature(
-          msigTxn, 
-          userSignature
-        );
+        // Step 3: Get user's signature on the temp transaction
+        const signedTempTxns = await signTransactions([tempTxnForSigning]);
+        const decodedTempTxn = algosdk.decodeSignedTransaction(signedTempTxns[0]);
+        const userSignature = decodedTempTxn.sig;
         
-        finalTxns.push(Buffer.from(finalMultisigTxn.blob).toString('base64'));
+        // Step 4: Clean multisig parameters
+        const cleanMultisigParams = {
+          version: Number(txnData.multisigParams.version),
+          threshold: Number(txnData.multisigParams.threshold),
+          addrs: txnData.multisigParams.addrs.map(addr => {
+            if (typeof addr === 'string') return addr;
+            if (addr.toString) return addr.toString();
+            return String(addr);
+          })
+        };
+        
+        console.log('Clean multisig params:', cleanMultisigParams);
+        console.log('User signature length:', userSignature.length);
+        
+        // Step 5: Create multisig transaction from original unsigned transaction
+        const msigTxn = algosdk.createMultisigTransaction(originalMultisigTxn, cleanMultisigParams);
+        
+        // Step 6: Append the user's signature to the multisig transaction
+        const finalMultisigTxn = algosdk.appendSignRawMultisigSignature(msigTxn, userSignature);
+        
+        // Step 7: Build final transaction group maintaining original group ID
+        finalTxns = [
+          Buffer.from(signedReclaimTxns[0]).toString('base64'),
+          Buffer.from(finalMultisigTxn.blob).toString('base64')
+        ];
+        
+        console.log('Successfully created grouped transactions with multisig');
+        
       } else {
         // Single transaction (just reclaim)
-        const signedTxns = await signTransactions(transactions);
-        finalTxns.push(Buffer.from(signedTxns[0]).toString('base64'));
+        const signedTxns = await signTransactions([transactions[0]]);
+        finalTxns = [Buffer.from(signedTxns[0]).toString('base64')];
       }
       
       setReclaimStatus({ appId, status: 'Submitting transaction...' });
