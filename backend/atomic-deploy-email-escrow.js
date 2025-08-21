@@ -55,9 +55,19 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
       throw new Error("Invalid 'amount'. Must be a positive number.");
     }
     
-    // Generate temporary account for authorization
-    const tempAccount = algosdk.generateAccount();
-    const tempAddress = tempAccount.addr;
+    // Generate temporary account
+const tempAccount = algosdk.generateAccount();
+
+// Build multisig params (2-of-2 in this example)
+const msigParams = {
+  version: 1,
+  threshold: 1,
+  addrs: [ senderAddress, tempAccount.addr ],
+};
+
+// Derive the multisig address
+const multisigAddress = algosdk.multisigAddress(msigParams);
+
     const tempPrivateKey = Buffer.from(tempAccount.sk).toString('hex');
     
     console.log(`Generated temporary account: ${tempAddress}`);
@@ -73,7 +83,7 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     console.log("Processing parameters complete. Generating TEAL programs...");
     
     // Compile the TEAL programs - now using imported functions
-    const approvalProgramSource = createApprovalProgram(senderAddress, tempAddress, targetAssetId);
+    const approvalProgramSource = createApprovalProgram(senderAddress, multisigAddress, targetAssetId);
     const approvalProgram = await compileProgram(approvalProgramSource);
     
     const clearProgramSource = createClearProgram();
@@ -106,8 +116,9 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
       return {
         transaction: encodedTxn,
         tempAccount: {
-          address: tempAddress,
-          privateKey: tempPrivateKey
+          address: multisigAddress,
+          privateKey: tempPrivateKey,
+          msigParams
         },
         amount: amount,
         microAmount: microAmount

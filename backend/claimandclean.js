@@ -60,15 +60,20 @@ router.post('/generate-optimized-claim', async (req, res) => {
       return res.status(400).json({ error: 'Funds have already been claimed' });
     }
     
-    // Reconstruct temporary account from private key
-    const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
-    const publicKey = secretKeyUint8.slice(32, 64);
-    const tempAddress = algosdk.encodeAddress(publicKey);
-    
-    const tempAccountObj = {
-      addr: tempAddress,
-      sk: secretKeyUint8
-    };
+    // Reconstruct temp key (one cosigner)
+const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
+const publicKey = secretKeyUint8.slice(32, 64);
+const tempAddress = algosdk.encodeAddress(publicKey);
+const tempAccountObj = { addr: tempAddress, sk: secretKeyUint8 };
+
+// Pull multisig params + msig address from DB record
+const msigParams = escrow?.tempAccount?.msigParams;
+const multisigAddress = escrow?.tempAccount?.address;
+
+if (!msigParams || !multisigAddress) {
+  return res.status(500).json({ error: 'Missing multisig parameters in escrow record' });
+}
+
     
     console.log("Generating optimized claim for user already opted in");
     
@@ -97,50 +102,50 @@ router.post('/generate-optimized-claim', async (req, res) => {
     
     const transactions = [];
     
-    // Transaction 1: App call to claim funds (sends asset to user)
-    const claimTxn = algosdk.makeApplicationCallTxnFromObject({
-      sender: tempAccountObj.addr,
-      appIndex: parseInt(appId),
-      onComplete: algosdk.OnApplicationComplete.NoOpOC,
-      appArgs: [new Uint8Array(Buffer.from("claim"))],
-      accounts: [recipientAddress],
-      foreignAssets: [targetAssetId],
-      suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
-    });
-    transactions.push(claimTxn);
-    
-    // Transaction 2: Return fee coverage to creator (if applicable)
-    if (feeCoverageAmount > 0) {
-      const returnFeeTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        sender: tempAccountObj.addr,
-        receiver: escrow.senderAddress,
-        amount: feeCoverageAmount,
-        note: new Uint8Array(Buffer.from('AlgoSend fee coverage returned to creator')),
-        suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-      });
-      transactions.push(returnFeeTxn);
-    }
+    // Txn 1: App call (multisig is the sender)
+const claimTxn = algosdk.makeApplicationCallTxnFromObject({
+  sender: multisigAddress,
+  appIndex: parseInt(appId),
+  onComplete: algosdk.OnApplicationComplete.NoOpOC,
+  appArgs: [new Uint8Array(Buffer.from("claim"))],
+  accounts: [recipientAddress],
+  foreignAssets: [targetAssetId],
+  suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
+});
+transactions.push(claimTxn);
 
-    // Transaction 3: Close temp account and send remaining balance to platform
-    const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
-    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: tempAccountObj.addr,
-      receiver: PLATFORM_ADDRESS,
-      amount: 0, // All remaining balance goes to closeRemainderTo
-      closeRemainderTo: PLATFORM_ADDRESS,
-      note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
-      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-    });
-    transactions.push(closeAccountTxn);
+// Txn 2: return fee coverage (if any) — also from msig
+if (feeCoverageAmount > 0) {
+  const returnFeeTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    sender: multisigAddress,
+    receiver: escrow.senderAddress,
+    amount: feeCoverageAmount,
+    note: new Uint8Array(Buffer.from('AlgoSend fee coverage returned to creator')),
+    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+  });
+  transactions.push(returnFeeTxn);
+}
 
-    // Group the transactions
-    algosdk.assignGroupID(transactions);
+// Txn 3: close msig account remainder to PLATFORM
+const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
+const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  sender: multisigAddress,
+  receiver: PLATFORM_ADDRESS,
+  amount: 0,
+  closeRemainderTo: PLATFORM_ADDRESS,
+  note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
+  suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+});
+transactions.push(closeAccountTxn);
 
-    // Sign all transactions with temp account
-    const signedTransactions = transactions.map(txn => {
-      const signedTxn = algosdk.signTransaction(txn, tempAccountObj.sk);
-      return Buffer.from(signedTxn.blob).toString('base64');
-    });
+algosdk.assignGroupID(transactions);
+
+
+const signedTransactions = transactions.map(txn => {
+  const { blob } = algosdk.signMultisigTransaction(txn, msigParams, tempAccountObj.sk);
+  return Buffer.from(blob).toString('base64');
+});
+
 
     console.log(`Optimized claim transaction group created (${transactions.length} transactions)`);
     

@@ -215,6 +215,7 @@ router.post('/submit-app-creation', async (req, res) => {
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: {
         address: tempAccount.address,
+        msigParams: tempAccount.msigParams,
         // Don't store private key in DB for security
       },
       // Add status tracking
