@@ -102,15 +102,33 @@ const handleReclaim = async (appId) => {
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
-    // For the multisig transaction, create a version the wallet can sign (with sender = your address)
-    const multisigTxn = txns[1]; // The original multisig transaction
+    // Get suggested params for creating the signable version
+    const suggestedParams = {
+      fee: txns[1].fee,
+      firstRound: txns[1].firstRound,
+      lastRound: txns[1].lastRound,
+      genesisHash: txns[1].genesisHash,
+      genesisID: txns[1].genesisID,
+      flatFee: true
+    };
+    
+    // Create a signable version of the multisig payment transaction
+    const signableMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: activeAddress, // Your address instead of multisig
+      receiver: algosdk.encodeAddress(txns[1].receiver.publicKey),
+      amount: txns[1].amount,
+      closeRemainderTo: algosdk.encodeAddress(txns[1].closeRemainderTo.publicKey),
+      note: txns[1].note,
+      suggestedParams: suggestedParams
+    });
+    
     const signableTxns = [
       txns[0], // App call - already from your address
-      {
-        ...multisigTxn,
-        sender: algosdk.decodeAddress(activeAddress) // Change sender to your address for signing
-      }
+      signableMultisigTxn // Modified payment from your address
     ];
+    
+    // Assign the same group ID to maintain transaction group
+    algosdk.assignGroupID(signableTxns);
     
     // Sign the modified transactions
     const signedTxns = await signTransactions(signableTxns);
@@ -128,8 +146,9 @@ const handleReclaim = async (appId) => {
         const userSignature = signedTxnDecoded.sig;
         
         // Create multisig transaction from the ORIGINAL transaction (with multisig sender)
+        const originalMultisigTxn = txns[1];
         const msigParams = txnData.multisigParams;
-        const msigTxn = algosdk.createMultisigTransaction(multisigTxn, msigParams);
+        const msigTxn = algosdk.createMultisigTransaction(originalMultisigTxn, msigParams);
         
         // Find signer index
         const signerIndex = msigParams.addrs.indexOf(activeAddress);
