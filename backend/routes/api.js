@@ -193,6 +193,28 @@ router.post('/submit-app-creation', async (req, res) => {
     // Generate claim URL
     const claimUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claim?app=${appId}#key=${tempAccount.privateKey}`;
     
+    // Extract the actual address string from tempAccount
+let tempAccountAddressString;
+if (typeof tempAccount.address === 'string') {
+  tempAccountAddressString = tempAccount.address;
+} else if (tempAccount.address && typeof tempAccount.address === 'object') {
+  // Handle various object formats
+  if (tempAccount.address.toString && typeof tempAccount.address.toString === 'function' && tempAccount.address.toString() !== '[object Object]') {
+    tempAccountAddressString = tempAccount.address.toString();
+  } else if (tempAccount.address.publicKey) {
+    // Reconstruct from publicKey if available
+    const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
+    tempAccountAddressString = algosdk.encodeAddress(publicKeyArray);
+  } else {
+    console.error('Cannot extract address from tempAccount.address:', tempAccount.address);
+    throw new Error('Invalid tempAccount address format');
+  }
+} else {
+  throw new Error('Missing tempAccount address');
+}
+
+console.log('Storing tempAccount address as string:', tempAccountAddressString);
+
     const escrowRecord = {
       appId: Number(appId),
       appAddress: postAppTxns.appAddress,
@@ -213,7 +235,7 @@ router.post('/submit-app-creation', async (req, res) => {
       cleanedUpAt: null,
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: {
-        address: typeof tempAccount.address === 'string' ? tempAccount.address : tempAccount.address.toString(),
+        address: tempAccountAddressString,
         multisigParams: tempAccount.multisigParams,  // ADD THIS
         keypairAddr: tempAccount.keypairAddr         // ADD THIS
       },
