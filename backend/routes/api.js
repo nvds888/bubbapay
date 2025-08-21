@@ -691,11 +691,12 @@ router.post('/generate-reclaim', async (req, res) => {
       });
     }
     
-    // Generate the reclaim transaction
+    // Generate the reclaim transaction group (now includes multisig close)
     const txnData = await generateReclaimTransaction({
       appId: parseInt(appId),
       senderAddress,
-      assetId: escrow.assetId
+      assetId: escrow.assetId,
+      tempAccount: escrow.tempAccount // Pass the stored tempAccount data
     });
     
     res.status(200).json(txnData);
@@ -708,7 +709,7 @@ router.post('/generate-reclaim', async (req, res) => {
   }
 });
 
-// Submit reclaim transaction
+// Submit reclaim transaction group
 router.post('/submit-reclaim', async (req, res) => {
   try {
     const { signedTxn, appId, senderAddress } = req.body;
@@ -744,9 +745,14 @@ router.post('/submit-reclaim', async (req, res) => {
       });
     }
     
-    // Submit the signed transaction
+    // Submit the signed transaction group
     try {
-      const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      // Handle both single transaction (legacy) and group transaction (new multisig)
+      const rawTransactions = Array.isArray(signedTxn) 
+        ? signedTxn.map(txn => Buffer.from(txn, 'base64'))
+        : [Buffer.from(signedTxn, 'base64')];
+      
+      const { txid } = await algodClient.sendRawTransaction(rawTransactions).do();
       
       // Wait for confirmation
       await algosdk.waitForConfirmation(algodClient, txid, 5);
@@ -790,7 +796,7 @@ router.post('/submit-reclaim', async (req, res) => {
       res.status(200).json({
         success: true,
         amount: escrow.amount,
-        message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}`
+        message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'} and closed multisig account`
       });
     } catch (error) {
       console.error('Error submitting reclaim transaction:', error);
@@ -806,9 +812,9 @@ router.post('/submit-reclaim', async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error('Error reclaiming USDC:', error);
+    console.error('Error reclaiming funds:', error);
     res.status(500).json({ 
-      error: 'Failed to reclaim USDC', 
+      error: 'Failed to reclaim funds', 
       details: error.message 
     });
   }

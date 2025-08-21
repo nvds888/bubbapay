@@ -292,11 +292,11 @@ async function compileProgram(programSource) {
   }
 }
 
-async function generateReclaimTransaction({ appId, senderAddress, assetId = null }) {
+async function generateReclaimTransaction({ appId, senderAddress, assetId = null, tempAccount }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
   try {
-    console.log("Generating reclaim transaction for app:", appId);
+    console.log("Generating reclaim transaction group for app:", appId);
     
     if (!appId || isNaN(parseInt(appId))) {
       throw new Error("Invalid app ID");
@@ -305,13 +305,34 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     if (!algosdk.isValidAddress(senderAddress)) {
       throw new Error("Invalid sender address");
     }
+
+    if (!tempAccount || !tempAccount.msigParams) {
+      throw new Error("Missing multisig parameters for reclaim");
+    }
     
-    const appIdInt = Number(appId); 
+    const appIdInt = Number(appId);
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Calculate exact fee (1 inner transaction for asset transfer)
-    const exactFee = calculateTransactionFee(true, 1); // 2000 microALGO
+    // Reconstruct multisig address from stored params
+    const cleanAddrs = tempAccount.msigParams.addrs.map(addr => {
+      if (typeof addr === 'string') {
+        return addr;
+      } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
+        const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
+        return algosdk.encodeAddress(publicKeyArray);
+      } else {
+        throw new Error('Invalid address format in multisig params');
+      }
+    });
+
+    const cleanMsigParams = {
+      ...tempAccount.msigParams,
+      addrs: cleanAddrs
+    };
+
+    const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
     
+    // Transaction 1: App call to reclaim funds (from creator)
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
@@ -320,15 +341,39 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       foreignAssets: [targetAssetId],
       suggestedParams: { 
         ...suggestedParams,
-        fee: exactFee,
+        fee: 2000,
         flatFee: true 
       }
     });
+
+    // Transaction 2: Close multisig account (from multisig to creator)
+    const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: multisigAddress,
+      receiver: senderAddress,
+      amount: 0,
+      closeRemainderTo: senderAddress,
+      note: new Uint8Array(Buffer.from('Reclaim: close multisig account')),
+      suggestedParams: { 
+        ...suggestedParams,
+        fee: 1000,
+        flatFee: true 
+      }
+    });
+
+    // Group the transactions
+    const txnGroup = [reclaimTxn, closeMultisigTxn];
+    algosdk.assignGroupID(txnGroup);
     
-    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64');
+    // Encode both transactions
+    const encodedTxns = txnGroup.map(txn => 
+      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
+    );
     
-    console.log(`Reclaim transaction created with exact fee: ${exactFee / 1e6} ALGO`);
-    return { transaction: encodedTxn };
+    console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
+    return { 
+      transactions: encodedTxns,
+      multisigParams: cleanMsigParams
+    };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
     throw new Error(`Failed to create reclaim transaction: ${error.message}`);

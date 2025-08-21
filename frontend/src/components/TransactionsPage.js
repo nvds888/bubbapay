@@ -78,69 +78,105 @@ function TransactionsPage() {
     }).format(date);
   };
   
-  // Handle reclaiming funds
-  const handleReclaim = async (appId) => {
-    if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
-      return;
-    }
+  // Handle reclaiming funds with multisig
+const handleReclaim = async (appId) => {
+  if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
+    return;
+  }
+  
+  setIsReclaiming(true);
+  setReclaimStatus({ appId, status: 'Generating transactions...' });
+  
+  try {
+    // Generate the reclaim transaction group
+    const txnData = await api.generateReclaimTransaction({
+      appId,
+      senderAddress: activeAddress
+    });
     
-    setIsReclaiming(true);
-    setReclaimStatus({ appId, status: 'Generating transaction...' });
+    setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    try {
-      // Generate the reclaim transaction
-      const txnData = await api.generateReclaimTransaction({
-        appId,
-        senderAddress: activeAddress
-      });
-      
-      setReclaimStatus({ appId, status: 'Waiting for signature...' });
-      
-      // Convert base64 transaction to Uint8Array
-      const txnUint8 = new Uint8Array(Buffer.from(txnData.transaction, 'base64'));
-      
-      // Decode the transaction for proper signing
-      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
-      
-      // Sign with use-wallet (supports multiple wallets)
-      const signedTxns = await signTransactions([txn]);
-      
-      // Convert the signed transaction to base64
-      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
-      
-      setReclaimStatus({ appId, status: 'Submitting transaction...' });
-      
-      // Submit the signed transaction
-      const result = await api.submitReclaimTransaction({
-        signedTxn: signedTxnBase64,
-        appId,
-        senderAddress: activeAddress
-      });
-      
-      // Update the local transactions state to reflect the reclaim
-      setTransactions(prev => prev.map(tx => {
-        if (tx.appId === parseInt(appId)) {
-          return { ...tx, reclaimed: true, reclaimedAt: new Date() };
+    // Convert base64 transactions to Uint8Array and decode
+    const txns = txnData.transactions.map(txnBase64 => {
+      const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
+      return algosdk.decodeUnsignedTransaction(txnUint8);
+    });
+    
+    // Sign with use-wallet (group of transactions)
+    const signedTxns = await signTransactions(txns);
+    
+    setReclaimStatus({ appId, status: 'Processing signatures...' });
+    
+    // Convert signed transactions to proper format
+    const processedTxns = signedTxns.map((signedTxn, index) => {
+      if (index === 0) {
+        // First transaction (app call) - normal signature from creator
+        return Buffer.from(signedTxn).toString('base64');
+      } else {
+        // Second transaction (multisig close) - needs multisig formatting
+        const originalTxn = txns[index];
+        const multisigParams = txnData.multisigParams;
+        
+        // Create multisig transaction using algosdk
+        const msigTxn = algosdk.createMultisigTransaction(originalTxn, multisigParams);
+        
+        // Extract the signature from the wallet response
+        const walletSigData = algosdk.decodeSignedTransaction(signedTxn);
+        const signature = walletSigData.sig;
+        
+        // Find which address in the multisig this signature corresponds to
+        const signerAddress = activeAddress; // The creator is signing
+        const addressIndex = multisigParams.addrs.indexOf(signerAddress);
+        
+        if (addressIndex === -1) {
+          throw new Error('Signer address not found in multisig parameters');
         }
-        return tx;
-      }));
-      
-      setReclaimStatus({ appId, status: 'Success' });
-      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}`);
-      
-    } catch (error) {
-      console.error('Error reclaiming funds:', error);
-      setReclaimStatus({ appId, status: 'Failed' });
-      alert(`Failed to reclaim funds: ${error.message || error}`);
-    } finally {
-      setIsReclaiming(false);
-      // Reset status after a delay
-      setTimeout(() => {
-        setReclaimStatus({ appId: null, status: '' });
-      }, 3000);
-    }
-  };
+        
+        // Append the signature to the multisig transaction
+        const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
+          msigTxn,
+          multisigParams,
+          addressIndex,
+          signature
+        );
+        
+        return Buffer.from(finalMsigTxn).toString('base64');
+      }
+    });
+    
+    setReclaimStatus({ appId, status: 'Submitting transactions...' });
+    
+    // Submit the processed transaction group
+    const result = await api.submitReclaimTransaction({
+      signedTxn: processedTxns, // Now sending array of transactions
+      appId,
+      senderAddress: activeAddress
+    });
+    
+    // Update the local transactions state to reflect the reclaim
+    setTransactions(prev => prev.map(tx => {
+      if (tx.appId === parseInt(appId)) {
+        return { ...tx, reclaimed: true, reclaimedAt: new Date() };
+      }
+      return tx;
+    }));
+    
+    setReclaimStatus({ appId, status: 'Success' });
+    const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
+    alert(`Successfully reclaimed ${result.amount} ${assetSymbol} and closed multisig account`);
+    
+  } catch (error) {
+    console.error('Error reclaiming funds:', error);
+    setReclaimStatus({ appId, status: 'Failed' });
+    alert(`Failed to reclaim funds: ${error.message || error}`);
+  } finally {
+    setIsReclaiming(false);
+    // Reset status after a delay
+    setTimeout(() => {
+      setReclaimStatus({ appId: null, status: '' });
+    }, 3000);
+  }
+};
   
 
   const handleCleanup = async (appId) => {
