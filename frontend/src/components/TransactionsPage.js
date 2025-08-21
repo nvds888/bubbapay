@@ -104,27 +104,28 @@ function TransactionsPage() {
       let finalTxns = [];
       
       if (txnData.hasMultisigClosure && transactions.length > 1) {
-        // Transaction 1: Sign the reclaim app call normally
-        const signedReclaimTxns = await signTransactions([transactions[0]]);
-        finalTxns.push(Buffer.from(signedReclaimTxns[0]).toString('base64'));
+        // Send ENTIRE group to wallet - wallet will only sign what it can
+        const signedTxns = await signTransactions(transactions);
         
-        // Transaction 2: Handle multisig temp account closure
+        // Transaction 1: Reclaim (signed by wallet)
+        finalTxns.push(Buffer.from(signedTxns[0]).toString('base64'));
+        
+        // Transaction 2: Multisig temp account closure
+        // Wallet couldn't sign this, so we handle it manually
         const multisigTxn = transactions[1];
+        const userSignature = signedTxns[1]; // This will be the user's signature attempt
         
-        // Sign the multisig transaction (wallet will sign with sender's key)
-        const signedMultisigTxns = await signTransactions([multisigTxn]);
-        
-        // Create multisig transaction with sender's signature
+        // Create multisig transaction and append signature
         const msigTxn = algosdk.createMultisigTransaction(multisigTxn, txnData.multisigParams);
         const finalMultisigTxn = algosdk.appendSignRawMultisigSignature(
           msigTxn, 
-          signedMultisigTxns[0]
+          userSignature
         );
         
         finalTxns.push(Buffer.from(finalMultisigTxn.blob).toString('base64'));
       } else {
         // Single transaction (just reclaim)
-        const signedTxns = await signTransactions([transactions[0]]);
+        const signedTxns = await signTransactions(transactions);
         finalTxns.push(Buffer.from(signedTxns[0]).toString('base64'));
       }
       
