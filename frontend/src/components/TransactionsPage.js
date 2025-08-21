@@ -78,7 +78,7 @@ function TransactionsPage() {
     }).format(date);
   };
   
-// Handle reclaiming funds with multisig
+// Handle reclaiming funds with proper multisig handling
 const handleReclaim = async (appId) => {
   if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
     return;
@@ -96,56 +96,51 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // Convert base64 transactions to Uint8Array for signing
+    // Convert base64 transactions to decoded transactions
     const txns = txnData.transactions.map(txnBase64 => {
       const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
-    // For use-wallet, we need to create WalletTransaction objects according to ARC-1
-    // But use-wallet expects just the transaction objects, so we modify the second transaction
-    
-    // For the multisig transaction (second one), we need to tell the wallet 
-    // it's signing as the creator for a multisig account
-    console.log('Multisig params:', txnData.multisigParams);
-    console.log('Creator address:', activeAddress);
-    
-    // The key insight: we modify the transaction to indicate multisig signing
-    // by creating a custom signing function that uses algosdk multisig functions
+    // Sign all transactions normally - wallet signs with your private key
     const signedTxns = await signTransactions(txns);
     
-    setReclaimStatus({ appId, status: 'Processing multisig signature...' });
+    setReclaimStatus({ appId, status: 'Processing signatures...' });
     
-    // Process the signed transactions - first is normal, second needs multisig formatting
+    // Process signatures - convert multisig transaction signature
     const finalTxns = signedTxns.map((signedTxn, index) => {
       if (index === 0) {
-        // First transaction: normal app call signature
+        // Normal app call transaction - use as-is
         return Buffer.from(signedTxn).toString('base64');
       } else {
-        // Second transaction: extract signature and format as multisig
-        if (signedTxn === null) {
-          throw new Error('Wallet failed to sign the multisig transaction. Ensure your wallet supports multisig transactions.');
+        // Multisig transaction - reformat the signature
+        if (!signedTxn) {
+          throw new Error('Failed to get signature for multisig transaction');
         }
         
-        // Extract the signature from the signed transaction
-        const signedTxnObj = algosdk.decodeSignedTransaction(new Uint8Array(signedTxn));
-        const signature = signedTxnObj.sig;
+        // Decode the signed transaction to extract the signature
+        const signedTxnDecoded = algosdk.decodeSignedTransaction(new Uint8Array(signedTxn));
+        const userSignature = signedTxnDecoded.sig;
         
-        // Create the multisig transaction
-        const msigTxn = algosdk.createMultisigTransaction(txns[index], txnData.multisigParams);
+        // Create a proper multisig transaction
+        const originalTxn = txns[index];
+        const msigParams = txnData.multisigParams;
         
-        // Find the index of the creator address in the multisig
-        const creatorIndex = txnData.multisigParams.addrs.indexOf(activeAddress);
-        if (creatorIndex === -1) {
-          throw new Error('Creator address not found in multisig parameters');
+        // Create the multisig transaction shell
+        const msigTxn = algosdk.createMultisigTransaction(originalTxn, msigParams);
+        
+        // Find which position in the multisig this signature belongs to
+        const signerIndex = msigParams.addrs.indexOf(activeAddress);
+        if (signerIndex === -1) {
+          throw new Error('Signer not found in multisig addresses');
         }
         
-        // Append the signature at the correct position
+        // Append the signature to the multisig transaction
         const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
           msigTxn,
-          txnData.multisigParams,
-          creatorIndex,
-          signature
+          msigParams,
+          signerIndex,
+          userSignature
         );
         
         return Buffer.from(finalMsigTxn).toString('base64');
