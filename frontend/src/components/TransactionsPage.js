@@ -102,6 +102,13 @@ const handleReclaim = async (appId) => {
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
+    // Debug the transactions
+    console.log('Number of transactions:', txns.length);
+    console.log('Transaction 0 group:', txns[0].group);
+    console.log('Transaction 1 group:', txns[1].group);
+    console.log('Group IDs match:', txns[0].group && txns[1].group && 
+      Buffer.from(txns[0].group).toString('hex') === Buffer.from(txns[1].group).toString('hex'));
+    
     // Sign the dummy transactions (wallet can sign these since they're from your address)
     const signedTxns = await signTransactions(txns);
     
