@@ -773,7 +773,7 @@ router.post('/submit-reclaim', async (req, res) => {
       console.log('Signature is Uint8Array:', multisigSignature instanceof Uint8Array);
       console.log('Signature length:', multisigSignature.length);
       
-      // Reconstruct multisig address from stored escrow data
+      // Reconstruct multisig parameters ensuring proper data types
       const cleanAddrs = escrow.tempAccount.msigParams.addrs.map(addr => {
         if (typeof addr === 'string') {
           return addr;
@@ -785,17 +785,14 @@ router.post('/submit-reclaim', async (req, res) => {
         }
       });
 
-      // For multisig address generation (uses addresses)
       const cleanMsigParams = {
-        ...escrow.tempAccount.msigParams,
+        version: escrow.tempAccount.msigParams.version,
+        threshold: escrow.tempAccount.msigParams.threshold,
         addrs: cleanAddrs
       };
 
-      // For multisig signing (needs public keys)
-      const msigParamsForSigning = {
-        ...escrow.tempAccount.msigParams,
-        addrs: cleanAddrs.map(addr => algosdk.decodeAddress(addr).publicKey)
-      };
+      console.log('Clean multisig params:', cleanMsigParams);
+      console.log('Addresses are strings:', cleanAddrs.every(addr => typeof addr === 'string'));
 
       const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
       
@@ -820,20 +817,24 @@ router.post('/submit-reclaim', async (req, res) => {
       const groupId = decodedSignedTxns[0].txn.group;
       realMultisigTxn.group = groupId;
       
-      // Create multisig transaction (use address-based params for creation)
+      // Create multisig transaction
       const msigTxn = algosdk.createMultisigTransaction(realMultisigTxn, cleanMsigParams);
       
-      // Find signer index (use address-based params for lookup)
+      // Find signer index
       const signerIndex = cleanMsigParams.addrs.indexOf(senderAddress);
       if (signerIndex === -1) {
         throw new Error('Signer not found in multisig addresses');
       }
       
-      // Append signature to multisig transaction (use public key-based params for signing)
+      console.log('Signer index:', signerIndex);
+      console.log('Signer address:', senderAddress);
+      console.log('Multisig addresses:', cleanMsigParams.addrs);
+      
+      // Append signature to multisig transaction
       const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
         msigTxn,
-        msigParamsForSigning,
-        signerIndex,
+        cleanMsigParams,
+        senderAddress, // Use string address as per documentation
         multisigSignature
       );
       
