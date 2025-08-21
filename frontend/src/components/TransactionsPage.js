@@ -96,56 +96,67 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // Convert base64 transactions to Uint8Array and decode
+    // Convert base64 transactions to Uint8Array for signing
     const txns = txnData.transactions.map(txnBase64 => {
       const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
-    // Sign with use-wallet (group of transactions)
+    // For use-wallet, we need to create WalletTransaction objects according to ARC-1
+    // But use-wallet expects just the transaction objects, so we modify the second transaction
+    
+    // For the multisig transaction (second one), we need to tell the wallet 
+    // it's signing as the creator for a multisig account
+    console.log('Multisig params:', txnData.multisigParams);
+    console.log('Creator address:', activeAddress);
+    
+    // The key insight: we modify the transaction to indicate multisig signing
+    // by creating a custom signing function that uses algosdk multisig functions
     const signedTxns = await signTransactions(txns);
     
-    setReclaimStatus({ appId, status: 'Processing signatures...' });
+    setReclaimStatus({ appId, status: 'Processing multisig signature...' });
     
-    // Convert signed transactions to proper format
-    const processedTxns = signedTxns.map((signedTxn, index) => {
+    // Process the signed transactions - first is normal, second needs multisig formatting
+    const finalTxns = signedTxns.map((signedTxn, index) => {
       if (index === 0) {
-        // First transaction (app call) - normal signature from creator
+        // First transaction: normal app call signature
         return Buffer.from(signedTxn).toString('base64');
       } else {
-        // Second transaction (multisig close) - needs multisig formatting
-        const originalTxn = txns[index];
-        const multisigParams = txnData.multisigParams;
+        // Second transaction: extract signature and format as multisig
+        if (signedTxn === null) {
+          throw new Error('Wallet failed to sign the multisig transaction. Ensure your wallet supports multisig transactions.');
+        }
         
-        console.log('Debug - signedTxn type:', typeof signedTxn);
-        console.log('Debug - signedTxn length:', signedTxn?.length);
-        console.log('Debug - signedTxn instanceof Uint8Array:', signedTxn instanceof Uint8Array);
-        console.log('Debug - signedTxn first 10 bytes:', Array.from(signedTxn.slice(0, 10)));
+        // Extract the signature from the signed transaction
+        const signedTxnObj = algosdk.decodeSignedTransaction(new Uint8Array(signedTxn));
+        const signature = signedTxnObj.sig;
         
-        // Step 1: Create multisig transaction from unsigned txn
-        const msigTxn = algosdk.createMultisigTransaction(originalTxn, multisigParams);
+        // Create the multisig transaction
+        const msigTxn = algosdk.createMultisigTransaction(txns[index], txnData.multisigParams);
         
-        // Step 2: For multisig, we need to sign the transaction ourselves
-        // The wallet can't properly sign multisig transactions
+        // Find the index of the creator address in the multisig
+        const creatorIndex = txnData.multisigParams.addrs.indexOf(activeAddress);
+        if (creatorIndex === -1) {
+          throw new Error('Creator address not found in multisig parameters');
+        }
         
-        // Get the transaction ID to create a signature
-        const txnForSigning = originalTxn;
+        // Append the signature at the correct position
+        const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
+          msigTxn,
+          txnData.multisigParams,
+          creatorIndex,
+          signature
+        );
         
-        // We need to create a signature manually since wallet multisig is broken
-        // But we don't have the private key here...
-        
-        // Alternative approach: Skip the multisig close for now
-        // Just return the multisig transaction unsigned and see if that works
-        console.log('Skipping multisig signature for debugging...');
-        return Buffer.from(algosdk.encodeUnsignedTransaction(originalTxn)).toString('base64');
+        return Buffer.from(finalMsigTxn).toString('base64');
       }
     });
     
     setReclaimStatus({ appId, status: 'Submitting transactions...' });
     
-    // Submit the processed transaction group
+    // Submit the transaction group
     const result = await api.submitReclaimTransaction({
-      signedTxn: processedTxns, // Now sending array of transactions
+      signedTxn: finalTxns,
       appId,
       senderAddress: activeAddress
     });
