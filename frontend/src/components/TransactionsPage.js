@@ -78,8 +78,7 @@ function TransactionsPage() {
     }).format(date);
   };
   
-  // Handle reclaiming funds with multisig
-// Handle reclaiming funds with multisig
+ // Handle reclaiming funds with multisig
 const handleReclaim = async (appId) => {
   if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
     return;
@@ -118,22 +117,39 @@ const handleReclaim = async (appId) => {
         const originalTxn = txns[index];
         const multisigParams = txnData.multisigParams;
         
-        // Create multisig transaction using algosdk
+        // Step 1: Create multisig transaction from unsigned txn
         const msigTxn = algosdk.createMultisigTransaction(originalTxn, multisigParams);
         
-        // Extract the signature from the wallet response (it's already a Uint8Array)
-        const walletSigData = algosdk.decodeSignedTransaction(new Uint8Array(signedTxn));
-        const signature = walletSigData.sig;
+        // Step 2: Extract signature from wallet response
+        // Wallets return signed transaction data, extract just the signature
+        let signature;
+        try {
+          // Try to decode as signed transaction first
+          const walletSigData = algosdk.decodeSignedTransaction(new Uint8Array(signedTxn));
+          signature = walletSigData.sig;
+        } catch (decodeError) {
+          // If that fails, wallet might have returned raw signature or different format
+          console.log('Decode failed, trying alternative signature extraction:', decodeError);
+          
+          // Some wallets return the raw signature bytes
+          const sigBytes = new Uint8Array(signedTxn);
+          if (sigBytes.length === 64) {
+            // Standard signature length
+            signature = sigBytes;
+          } else {
+            throw new Error('Unable to extract signature from wallet response');
+          }
+        }
         
-        // Find which address in the multisig this signature corresponds to
-        const signerAddress = activeAddress; // The creator is signing
+        // Step 3: Find signer address index
+        const signerAddress = activeAddress;
         const addressIndex = multisigParams.addrs.indexOf(signerAddress);
         
         if (addressIndex === -1) {
           throw new Error('Signer address not found in multisig parameters');
         }
         
-        // Append the signature to the multisig transaction
+        // Step 4: Append signature to multisig transaction
         const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
           msigTxn,
           multisigParams,
