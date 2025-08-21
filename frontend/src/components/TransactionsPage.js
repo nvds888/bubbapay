@@ -101,14 +101,17 @@ function TransactionsPage() {
         return algosdk.decodeUnsignedTransaction(txnUint8);
       });
       
-      // Sign first transaction (reclaim) normally
-      const signedTxns = await signTransactions([transactions[0]]);
-      let finalTxns = [Buffer.from(signedTxns[0]).toString('base64')];
+      let finalTxns = [];
       
-      // Handle multisig temp account closure
       if (txnData.hasMultisigClosure && transactions.length > 1) {
-        // Sign the multisig transaction (temp account closure)
+        // Transaction 1: Sign the reclaim app call normally
+        const signedReclaimTxns = await signTransactions([transactions[0]]);
+        finalTxns.push(Buffer.from(signedReclaimTxns[0]).toString('base64'));
+        
+        // Transaction 2: Handle multisig temp account closure
         const multisigTxn = transactions[1];
+        
+        // Sign the multisig transaction (wallet will sign with sender's key)
         const signedMultisigTxns = await signTransactions([multisigTxn]);
         
         // Create multisig transaction with sender's signature
@@ -119,6 +122,10 @@ function TransactionsPage() {
         );
         
         finalTxns.push(Buffer.from(finalMultisigTxn.blob).toString('base64'));
+      } else {
+        // Single transaction (just reclaim)
+        const signedTxns = await signTransactions([transactions[0]]);
+        finalTxns.push(Buffer.from(signedTxns[0]).toString('base64'));
       }
       
       setReclaimStatus({ appId, status: 'Submitting transaction...' });
