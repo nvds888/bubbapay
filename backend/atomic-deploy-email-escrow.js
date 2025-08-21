@@ -70,7 +70,6 @@ const multisigAddress = algosdk.multisigAddress(msigParams);
 
     const tempPrivateKey = Buffer.from(tempAccount.sk).toString('hex');
     
-    console.log(`Generated temporary account: ${tempAddress}`);
     
     // Convert to microUnits
     const microAmount = toMicroUnits(amount, targetAssetId);
