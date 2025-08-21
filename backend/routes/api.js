@@ -758,7 +758,20 @@ router.post('/submit-reclaim', async (req, res) => {
       );
       
       // Extract signature from second transaction (dummy multisig)
-      const multisigSignature = decodedSignedTxns[1].sig;
+      let multisigSignature = decodedSignedTxns[1].sig;
+      
+      // Ensure signature is a Uint8Array
+      if (!(multisigSignature instanceof Uint8Array)) {
+        if (multisigSignature && typeof multisigSignature === 'object' && multisigSignature.length) {
+          multisigSignature = new Uint8Array(Object.values(multisigSignature));
+        } else {
+          throw new Error('Invalid signature format from wallet');
+        }
+      }
+      
+      console.log('Signature type:', typeof multisigSignature);
+      console.log('Signature is Uint8Array:', multisigSignature instanceof Uint8Array);
+      console.log('Signature length:', multisigSignature.length);
       
       // Reconstruct multisig address from stored escrow data
       const cleanAddrs = escrow.tempAccount.msigParams.addrs.map(addr => {
