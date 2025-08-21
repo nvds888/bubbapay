@@ -112,12 +112,22 @@ const handleReclaim = async (appId) => {
       flatFee: true
     };
     
+    // Debug the transaction fields
+    console.log('Transaction 1 fields:');
+    console.log('- receiver:', txns[1].receiver);
+    console.log('- closeRemainderTo:', txns[1].closeRemainderTo);
+    console.log('- amount:', txns[1].amount);
+    console.log('- note:', txns[1].note);
+    
     // Create a signable version of the multisig payment transaction
+    const receiverAddr = txns[1].receiver ? algosdk.encodeAddress(txns[1].receiver.publicKey) : activeAddress;
+    const closeRemainderAddr = txns[1].closeRemainderTo ? algosdk.encodeAddress(txns[1].closeRemainderTo.publicKey) : activeAddress;
+    
     const signableMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: activeAddress, // Your address instead of multisig
-      receiver: algosdk.encodeAddress(txns[1].receiver.publicKey),
+      receiver: receiverAddr,
       amount: txns[1].amount,
-      closeRemainderTo: algosdk.encodeAddress(txns[1].closeRemainderTo.publicKey),
+      closeRemainderTo: closeRemainderAddr,
       note: txns[1].note,
       suggestedParams: suggestedParams
     });
