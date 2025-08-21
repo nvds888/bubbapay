@@ -110,9 +110,25 @@ const handleReclaim = async (appId) => {
         return txn;
       } else {
         // Second transaction: multisig payment
-        // Create a copy with YOUR address as sender so wallet will sign it
-        const signableTxn = { ...txn };
-        signableTxn.sender = algosdk.decodeAddress(activeAddress);
+        // Create a NEW transaction with YOUR address as sender so wallet will sign it
+        const suggestedParams = txn.genesisHash ? {
+          genesisHash: txn.genesisHash,
+          genesisID: txn.genesisID,
+          firstRound: txn.firstRound,
+          lastRound: txn.lastRound,
+          fee: txn.fee,
+          flatFee: true
+        } : txn;
+        
+        const signableTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+          sender: activeAddress, // Use YOUR address instead of multisig
+          receiver: algosdk.encodeAddress(txn.to.publicKey),
+          amount: txn.amount,
+          closeRemainderTo: algosdk.encodeAddress(txn.closeRemainderTo.publicKey),
+          note: txn.note,
+          suggestedParams
+        });
+        
         return signableTxn;
       }
     });
