@@ -213,7 +213,7 @@ router.post('/submit-app-creation', async (req, res) => {
       cleanedUpAt: null,
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: {
-        address: tempAccount.address,
+        address: typeof tempAccount.address === 'string' ? tempAccount.address : tempAccount.address.toString(),
         multisigParams: tempAccount.multisigParams,  // ADD THIS
         keypairAddr: tempAccount.keypairAddr         // ADD THIS
       },
@@ -654,6 +654,7 @@ router.get('/algo-availability/:address', async (req, res) => {
 });
 
 // Generate reclaim transaction
+// Generate reclaim transaction
 router.post('/generate-reclaim', async (req, res) => {
   try {
     const { appId, senderAddress } = req.body;
@@ -709,28 +710,39 @@ router.post('/generate-reclaim', async (req, res) => {
     const transactions = [reclaimTxn];
 
     // Add temp account closure if multisig exists
-    if (escrow.tempAccount?.multisigParams) {
+    if (escrow.tempAccount?.multisigParams && escrow.tempAccount?.address) {
       try {
-        const tempAccountInfo = await algodClient.accountInformation(escrow.tempAccount.address).do();
+        // Ensure address is a string
+        const tempAccountAddress = typeof escrow.tempAccount.address === 'string' 
+          ? escrow.tempAccount.address 
+          : escrow.tempAccount.address.toString();
+          
+        console.log('Checking temp account balance for:', tempAccountAddress);
+        const tempAccountInfo = await algodClient.accountInformation(tempAccountAddress).do();
         const tempBalance = safeToNumber(tempAccountInfo.amount);
+        
+        console.log('Temp account balance:', tempBalance / 1e6, 'ALGO');
         
         if (tempBalance > 1000) {
           const tempCloseTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-            sender: escrow.tempAccount.address, // Multisig address
+            sender: tempAccountAddress, // Multisig address
             receiver: senderAddress,
             amount: 0,
             closeRemainderTo: senderAddress,
+            note: new Uint8Array(Buffer.from('Temp account closure via multisig')),
             suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
           });
           transactions.push(tempCloseTxn);
+          console.log('Added temp account closure transaction');
         }
       } catch (error) {
-        console.log('Could not check temp account balance:', error);
+        console.log('Could not check temp account balance:', error.message);
       }
     }
 
     if (transactions.length > 1) {
       algosdk.assignGroupID(transactions);
+      console.log('Created transaction group with', transactions.length, 'transactions');
     }
 
     const encodedTxns = transactions.map(txn => 
