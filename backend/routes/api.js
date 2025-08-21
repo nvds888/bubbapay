@@ -772,8 +772,23 @@ router.post('/submit-reclaim', async (req, res) => {
       const finalTxns = [];
       finalTxns.push(Buffer.from(signedTxns[0], 'base64')); // App call signed transaction
       
-      // Create properly signed multisig transaction
-      const realMultisigTxn = realTxnData.realTxnGroup[1];
+      // Create properly signed multisig transaction with the same group ID
+      const realMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        sender: multisigAddress,
+        receiver: senderAddress,
+        amount: 0,
+        closeRemainderTo: senderAddress,
+        note: new Uint8Array(Buffer.from('Reclaim: close multisig account')),
+        suggestedParams: { 
+          ...suggestedParams,
+          fee: 1000,
+          flatFee: true 
+        }
+      });
+      
+      // Set the same group ID as the signed transactions
+      const groupId = decodedSignedTxns[0].txn.group;
+      realMultisigTxn.group = groupId;
       const msigParams = realTxnData.multisigParams;
       
       // Create multisig transaction
