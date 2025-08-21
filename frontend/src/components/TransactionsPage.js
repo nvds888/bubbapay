@@ -122,9 +122,9 @@ const handleReclaim = async (appId) => {
         
         const signableTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
           sender: activeAddress, // Use YOUR address instead of multisig
-          receiver: algosdk.encodeAddress(txn.to.publicKey),
+          receiver: algosdk.encodeAddress(txn.to),
           amount: txn.amount,
-          closeRemainderTo: algosdk.encodeAddress(txn.closeRemainderTo.publicKey),
+          closeRemainderTo: algosdk.encodeAddress(txn.closeRemainderTo),
           note: txn.note,
           suggestedParams
         });
