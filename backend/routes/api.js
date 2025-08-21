@@ -785,9 +785,16 @@ router.post('/submit-reclaim', async (req, res) => {
         }
       });
 
+      // For multisig address generation (uses addresses)
       const cleanMsigParams = {
         ...escrow.tempAccount.msigParams,
         addrs: cleanAddrs
+      };
+
+      // For multisig signing (needs public keys)
+      const msigParamsForSigning = {
+        ...escrow.tempAccount.msigParams,
+        addrs: cleanAddrs.map(addr => algosdk.decodeAddress(addr).publicKey)
       };
 
       const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
@@ -813,19 +820,19 @@ router.post('/submit-reclaim', async (req, res) => {
       const groupId = decodedSignedTxns[0].txn.group;
       realMultisigTxn.group = groupId;
       
-      // Create multisig transaction
+      // Create multisig transaction (use address-based params for creation)
       const msigTxn = algosdk.createMultisigTransaction(realMultisigTxn, cleanMsigParams);
       
-      // Find signer index
+      // Find signer index (use address-based params for lookup)
       const signerIndex = cleanMsigParams.addrs.indexOf(senderAddress);
       if (signerIndex === -1) {
         throw new Error('Signer not found in multisig addresses');
       }
       
-      // Append signature to multisig transaction
+      // Append signature to multisig transaction (use public key-based params for signing)
       const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
         msigTxn,
-        cleanMsigParams,
+        msigParamsForSigning,
         signerIndex,
         multisigSignature
       );
