@@ -838,10 +838,14 @@ router.post('/submit-reclaim', async (req, res) => {
         multisigSignature
       );
       
-      // Use the first transaction as-is (app call), second is the multisig
+      // Use the first transaction as-is (app call), second is the multisig blob
       const finalTxns = [];
       finalTxns.push(Buffer.from(signedTxns[0], 'base64')); // App call signed transaction
-      finalTxns.push(finalMsigTxn); // Multisig transaction
+      finalTxns.push(finalMsigTxn.blob); // Multisig transaction blob (not the whole object)
+      
+      console.log('Final transactions array length:', finalTxns.length);
+      console.log('Transaction 0 type:', finalTxns[0].constructor.name);
+      console.log('Transaction 1 type:', finalTxns[1].constructor.name);
       
       // Submit the final transaction group
       const { txid } = await algodClient.sendRawTransaction(finalTxns).do();
