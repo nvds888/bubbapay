@@ -55,19 +55,12 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
       throw new Error("Invalid 'amount'. Must be a positive number.");
     }
     
-    const tempKeypair = algosdk.generateAccount();
-const tempPrivateKey = Buffer.from(tempKeypair.sk).toString('hex');
-
-const multisigParams = {
-  version: 1,
-  threshold: 1,
-  addrs: [tempKeypair.addr, senderAddress].sort()
-};
-
-const tempAddress = algosdk.multisigAddress(multisigParams);
-
-console.log(`Individual keypair: ${tempKeypair.addr}`);
-console.log(`Multisig temp account: ${tempAddress}`);
+    // Generate temporary account for authorization
+    const tempAccount = algosdk.generateAccount();
+    const tempAddress = tempAccount.addr;
+    const tempPrivateKey = Buffer.from(tempAccount.sk).toString('hex');
+    
+    console.log(`Generated temporary account: ${tempAddress}`);
     
     // Convert to microUnits
     const microAmount = toMicroUnits(amount, targetAssetId);
@@ -114,8 +107,7 @@ console.log(`Multisig temp account: ${tempAddress}`);
         transaction: encodedTxn,
         tempAccount: {
           address: tempAddress,
-          privateKey: tempPrivateKey,
-          multisigParams: multisigParams
+          privateKey: tempPrivateKey
         },
         amount: amount,
         microAmount: microAmount
@@ -290,7 +282,7 @@ async function compileProgram(programSource) {
   }
 }
 
-async function generateReclaimTransaction({ appId, senderAddress, assetId = null, multisigParams }) {
+async function generateReclaimTransaction({ appId, senderAddress, assetId = null }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
   try {
@@ -318,40 +310,15 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       foreignAssets: [targetAssetId],
       suggestedParams: { 
         ...suggestedParams,
-        fee: 2000,
+        fee: exactFee,
         flatFee: true 
       }
     });
     
-    const transactions = [reclaimTxn];
+    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64');
     
-    // Transaction 2: Close temp account (multisig) if params provided
-    if (multisigParams) {
-      const tempMultisigAddress = algosdk.multisigAddress(multisigParams);
-      
-      const closeTempTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        sender: tempMultisigAddress,
-        receiver: senderAddress,
-        amount: 0,
-        closeRemainderTo: senderAddress,
-        note: new Uint8Array(Buffer.from('AlgoSend temp account close')),
-        suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-      });
-      
-      transactions.push(closeTempTxn);
-    }
-    
-    // Group transactions
-    algosdk.assignGroupID(transactions);
-    
-    const encodedTxns = transactions.map(txn => 
-      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
-    );
-    
-    return { 
-      transactions: encodedTxns,
-      multisigTxnIndex: multisigParams ? 1 : null
-    };
+    console.log(`Reclaim transaction created with exact fee: ${exactFee / 1e6} ALGO`);
+    return { transaction: encodedTxn };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
     throw new Error(`Failed to create reclaim transaction: ${error.message}`);

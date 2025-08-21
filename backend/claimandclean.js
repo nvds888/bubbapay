@@ -31,10 +31,7 @@ function hashPrivateKey(privateKey, appId) {
   return hash.digest('hex');
 }
 
-// claimandclean.js
-
-// claimandclean.js
-
+// Generate optimized claim transaction group for users already opted in
 router.post('/generate-optimized-claim', async (req, res) => {
   try {
     const { tempPrivateKey, appId, recipientAddress, assetId } = req.body;
@@ -102,7 +99,7 @@ router.post('/generate-optimized-claim', async (req, res) => {
     
     // Transaction 1: App call to claim funds (sends asset to user)
     const claimTxn = algosdk.makeApplicationCallTxnFromObject({
-      sender: algosdk.multisigAddress(escrow.multisigParams), // Use multisig address as sender
+      sender: tempAccountObj.addr,
       appIndex: parseInt(appId),
       onComplete: algosdk.OnApplicationComplete.NoOpOC,
       appArgs: [new Uint8Array(Buffer.from("claim"))],
@@ -115,7 +112,7 @@ router.post('/generate-optimized-claim', async (req, res) => {
     // Transaction 2: Return fee coverage to creator (if applicable)
     if (feeCoverageAmount > 0) {
       const returnFeeTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        sender: tempAccountObj.addr, // This can stay as temp account
+        sender: tempAccountObj.addr,
         receiver: escrow.senderAddress,
         amount: feeCoverageAmount,
         note: new Uint8Array(Buffer.from('AlgoSend fee coverage returned to creator')),
@@ -127,7 +124,7 @@ router.post('/generate-optimized-claim', async (req, res) => {
     // Transaction 3: Close temp account and send remaining balance to platform
     const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
     const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: tempAccountObj.addr, // This can stay as temp account
+      sender: tempAccountObj.addr,
       receiver: PLATFORM_ADDRESS,
       amount: 0, // All remaining balance goes to closeRemainderTo
       closeRemainderTo: PLATFORM_ADDRESS,
@@ -139,40 +136,10 @@ router.post('/generate-optimized-claim', async (req, res) => {
     // Group the transactions
     algosdk.assignGroupID(transactions);
 
-    // Normalize multisigParams.addrs to ensure all addresses are strings
-    const multisigParams = escrow.multisigParams || {
-      version: 1,
-      threshold: 1,
-      addrs: [tempAddress, escrow.senderAddress].sort()
-    };
-
-    const fixedAddrs = multisigParams.addrs.map(addr => {
-      if (typeof addr === 'string') {
-        return addr;
-      }
-      if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
-        const pkBytes = new Uint8Array(Object.values(addr.publicKey));
-        return algosdk.encodeAddress(pkBytes);
-      }
-      throw new Error('Invalid multisig address format in database');
-    });
-
-    const fixedMultisigParams = {
-      ...multisigParams,
-      addrs: fixedAddrs.sort() // Re-sort after fixing, as required by multisig
-    };
-
-    // Sign all transactions
-    const signedTransactions = transactions.map((txn, index) => {
-      if (index === 0) {
-        // First transaction (claimTxn) uses multisig address
-        const signedTxn = algosdk.signMultisigTransaction(txn, fixedMultisigParams, tempAccountObj.sk);
-        return Buffer.from(signedTxn.blob).toString('base64');
-      } else {
-        // Other transactions (fee return, close account) use temp account directly
-        const signedTxn = algosdk.signTransaction(txn, tempAccountObj.sk);
-        return Buffer.from(signedTxn).toString('base64');
-      }
+    // Sign all transactions with temp account
+    const signedTransactions = transactions.map(txn => {
+      const signedTxn = algosdk.signTransaction(txn, tempAccountObj.sk);
+      return Buffer.from(signedTxn.blob).toString('base64');
     });
 
     console.log(`Optimized claim transaction group created (${transactions.length} transactions)`);
@@ -318,14 +285,7 @@ router.post('/generate-optin-and-claim', async (req, res) => {
 
     // Transaction 1: Fee coverage (temp account) - if applicable
     if (feeCoverageAmount > 0) {
-      const multisigParams = escrow.multisigParams || {
-        version: 1,
-        threshold: 1,
-        addrs: [tempAddress, escrow.senderAddress].sort()
-      };
-      
-      // Sign as multisig
-      const signedTxn = algosdk.signMultisigTransaction(txn, multisigParams, tempAccountObj.sk);
+      const signedTxn = algosdk.signTransaction(transactions[currentIndex], tempAccountObj.sk);
       signedTransactions.push(Buffer.from(signedTxn.blob).toString('base64'));
       currentIndex++;
     }

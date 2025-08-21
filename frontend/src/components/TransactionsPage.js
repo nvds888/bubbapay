@@ -96,37 +96,23 @@ function TransactionsPage() {
       
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      const allTransactions = txnData.transactions.map(txnBase64 => {
-        const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
-        return algosdk.decodeUnsignedTransaction(txnUint8);
-      });
+      // Convert base64 transaction to Uint8Array
+      const txnUint8 = new Uint8Array(Buffer.from(txnData.transaction, 'base64'));
       
-      // Sign with use-wallet
-      const signedTxns = await signTransactions(allTransactions);
+      // Decode the transaction for proper signing
+      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
       
-      // Handle multisig formatting if needed
-      let finalSignedTxns = [];
+      // Sign with use-wallet (supports multiple wallets)
+      const signedTxns = await signTransactions([txn]);
       
-      for (let i = 0; i < signedTxns.length; i++) {
-        if (i === txnData.multisigTxnIndex) {
-          // This is the multisig transaction (temp account close)
-          const escrow = transactions.find(tx => tx.appId === parseInt(appId));
-          const multisigParams = escrow.multisigParams;
-          
-          // Convert wallet signature to multisig format
-          const multisigTxn = algosdk.createMultisigTransaction(allTransactions[i], multisigParams);
-          const finalSignedTxn = algosdk.appendSignRawMultisigSignature(multisigTxn, signedTxns[i]);
-          finalSignedTxns.push(Buffer.from(finalSignedTxn.blob).toString('base64'));
-        } else {
-          // Regular transaction
-          finalSignedTxns.push(Buffer.from(signedTxns[i]).toString('base64'));
-        }
-      }
+      // Convert the signed transaction to base64
+      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
       
-      // Submit the signed transactions
+      setReclaimStatus({ appId, status: 'Submitting transaction...' });
+      
+      // Submit the signed transaction
       const result = await api.submitReclaimTransaction({
-        signedTxn: finalSignedTxns[0], // Main reclaim transaction
-        signedTxns: finalSignedTxns, // All transactions
+        signedTxn: signedTxnBase64,
         appId,
         senderAddress: activeAddress
       });
