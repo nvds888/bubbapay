@@ -108,33 +108,16 @@ function TransactionsPage() {
         const reclaimTxn = transactions[0];
         const signedReclaimTxns = await signTransactions([reclaimTxn]);
         
-        // Step 2: Create temp version of multisig transaction for signing
+        // Step 2: Create temp transaction for getting signature with same group ID
         const originalMultisigTxn = transactions[1];
+        const tempTxnForSigning = { ...originalMultisigTxn };
+        tempTxnForSigning.from = algosdk.decodeAddress(activeAddress);
         
-        // Create identical transaction but with user as sender to get signature
-        const tempTxnForSigning = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-          sender: activeAddress,
-          receiver: algosdk.encodeAddress(originalMultisigTxn.to.publicKey),
-          amount: originalMultisigTxn.amount,
-          closeRemainderTo: originalMultisigTxn.closeRemainderTo ? 
-            algosdk.encodeAddress(originalMultisigTxn.closeRemainderTo.publicKey) : undefined,
-          note: originalMultisigTxn.note,
-          suggestedParams: {
-            fee: originalMultisigTxn.fee,
-            firstRound: originalMultisigTxn.firstRound,
-            lastRound: originalMultisigTxn.lastRound,
-            genesisHash: originalMultisigTxn.genesisHash,
-            genesisID: originalMultisigTxn.genesisID,
-            flatFee: true
-          }
-        });
-        
-        // Step 3: Get user's signature on the temp transaction
         const signedTempTxns = await signTransactions([tempTxnForSigning]);
         const decodedTempTxn = algosdk.decodeSignedTransaction(signedTempTxns[0]);
         const userSignature = decodedTempTxn.sig;
         
-        // Step 4: Clean multisig parameters
+        // Step 3: Clean multisig parameters
         const cleanMultisigParams = {
           version: Number(txnData.multisigParams.version),
           threshold: Number(txnData.multisigParams.threshold),
@@ -145,19 +128,27 @@ function TransactionsPage() {
           })
         };
         
-        console.log('Clean multisig params:', cleanMultisigParams);
-        console.log('User signature length:', userSignature.length);
-        
-        // Step 5: Create multisig transaction from original unsigned transaction
+        // Step 4: Create multisig transaction and apply signature
         const msigTxn = algosdk.createMultisigTransaction(originalMultisigTxn, cleanMultisigParams);
-        
-        // Step 6: Append the user's signature to the multisig transaction
         const finalMultisigTxn = algosdk.appendSignRawMultisigSignature(msigTxn, userSignature);
         
-        // Step 7: Build final transaction group maintaining original group ID
+        // Step 5: Ensure both transactions maintain the same group ID
+        const signedReclaimTxn = algosdk.decodeSignedTransaction(signedReclaimTxns[0]);
+        const originalGroupId = signedReclaimTxn.txn.group;
+        
+        // Re-encode the multisig transaction with proper group ID
+        const finalMultisigTxnWithGroup = {
+          ...finalMultisigTxn,
+          txn: {
+            ...finalMultisigTxn.txn,
+            group: originalGroupId
+          }
+        };
+        
+        // Step 6: Build final transaction array
         finalTxns = [
           Buffer.from(signedReclaimTxns[0]).toString('base64'),
-          Buffer.from(finalMultisigTxn.blob).toString('base64')
+          Buffer.from(algosdk.encodeSignedTransaction(finalMultisigTxnWithGroup)).toString('base64')
         ];
         
         console.log('Successfully created grouped transactions with multisig');
