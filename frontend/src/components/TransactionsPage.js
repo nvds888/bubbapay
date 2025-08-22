@@ -78,7 +78,7 @@ function TransactionsPage() {
     }).format(date);
   };
   
-// Handle reclaiming funds - backend handles multisig complexity
+// Handle reclaiming funds - proper ARC-1 implementation
 const handleReclaim = async (appId) => {
   if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
     return;
@@ -88,7 +88,7 @@ const handleReclaim = async (appId) => {
   setReclaimStatus({ appId, status: 'Generating transactions...' });
   
   try {
-    // Generate the reclaim transactions (backend creates dummy signable versions)
+    // Generate the reclaim transactions using ARC-1 approach
     const txnData = await api.generateReclaimTransaction({
       appId,
       senderAddress: activeAddress
@@ -96,30 +96,32 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // Convert base64 transactions to decoded transactions for signing
-    const txns = txnData.transactions.map(txnBase64 => {
-      const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
+    // Convert ARC-1 wallet transactions to unsigned transactions for signing
+    const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
+      const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
       return algosdk.decodeUnsignedTransaction(txnUint8);
     });
     
-    // Debug the transactions
-    console.log('Number of transactions:', txns.length);
-    console.log('Transaction 0 group:', txns[0].group);
-    console.log('Transaction 1 group:', txns[1].group);
-    console.log('Group IDs match:', txns[0].group && txns[1].group && 
-      Buffer.from(txns[0].group).toString('hex') === Buffer.from(txns[1].group).toString('hex'));
+    console.log('Reclaim transactions:', {
+      txn1: `App call from ${unsignedTxns[0].sender}`,
+      txn2: `Multisig payment from ${unsignedTxns[1].sender}`,
+      groupId: Buffer.from(unsignedTxns[0].group).toString('hex')
+    });
     
-    // Sign the dummy transactions (wallet can sign these since they're from your address)
-    const signedTxns = await signTransactions(txns);
+    // Sign using use-wallet - it should handle the multisig properly based on ARC-1
+    const signedTxns = await signTransactions(unsignedTxns);
     
     setReclaimStatus({ appId, status: 'Submitting transactions...' });
     
     // Convert signed transactions to base64 for backend
-    const signedTxnsBase64 = signedTxns.map(signedTxn => 
-      Buffer.from(signedTxn).toString('base64')
-    );
+    const signedTxnsBase64 = signedTxns.map(signedTxn => {
+      if (!signedTxn) {
+        throw new Error('Failed to sign transaction');
+      }
+      return Buffer.from(signedTxn).toString('base64');
+    });
     
-    // Backend will handle extracting signatures and creating proper multisig
+    // Submit the properly signed transactions
     const result = await api.submitReclaimTransaction({
       signedTxns: signedTxnsBase64,
       appId,
@@ -136,12 +138,23 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Success' });
     const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-    alert(`Successfully reclaimed ${result.amount} ${assetSymbol} and closed multisig account`);
+    alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
     
   } catch (error) {
     console.error('Error reclaiming funds:', error);
     setReclaimStatus({ appId, status: 'Failed' });
-    alert(`Failed to reclaim funds: ${error.message || error}`);
+    
+    // Better error handling
+    let errorMessage = 'Failed to reclaim funds';
+    if (error.message.includes('rejected')) {
+      errorMessage = 'Reclaim rejected - funds may have already been claimed';
+    } else if (error.message.includes('insufficient')) {
+      errorMessage = 'Insufficient ALGO for transaction fees';
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    }
+    
+    alert(`${errorMessage}: ${error.message || error}`);
   } finally {
     setIsReclaiming(false);
     // Reset status after a delay

@@ -346,9 +346,9 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Transaction 2: Dummy signable version (from creator address)
-    const dummyMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: senderAddress, // Creator address so wallet can sign
+    // Transaction 2: REAL multisig transaction to close the multisig account
+    const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: multisigAddress,
       receiver: senderAddress,
       amount: 0,
       closeRemainderTo: senderAddress,
@@ -360,24 +360,27 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Create ONE group with signable transactions
-    const signableTxnGroup = [reclaimTxn, dummyMultisigTxn];
-    algosdk.assignGroupID(signableTxnGroup);
+    // Create transaction group
+    const txnGroup = [reclaimTxn, closeMultisigTxn];
+    algosdk.assignGroupID(txnGroup);
     
-    // For backend submission, we'll recreate the real multisig transaction 
-    // with the same group ID when needed
-    
-    // Encode signable transactions for frontend
-    const signableEncodedTxns = signableTxnGroup.map(txn => 
-      Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
-    );
+    // Prepare transactions for ARC-1 signing
+    const walletTransactions = [
+      {
+        txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
+        // No additional fields needed - wallet will sign with creator's account normally
+      },
+      {
+        txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
+        msig: cleanMsigParams,
+        signers: [senderAddress] // Only creator needs to sign this multisig transaction
+      }
+    ];
     
     console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
     return { 
-      signableTransactions: signableEncodedTxns, // Frontend signs these
-      multisigParams: cleanMsigParams,
-      // We'll recreate the real multisig transaction in submit endpoint
-      groupId: signableTxnGroup[0].group // Store the group ID for later use
+      walletTransactions: walletTransactions,
+      multisigParams: cleanMsigParams
     };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
