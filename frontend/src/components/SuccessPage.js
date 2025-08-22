@@ -182,9 +182,9 @@ function SuccessPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Your Link is Ready!</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Claim Link is Ready!</h1>
         <p className="text-gray-600 text-sm">
-          You can now share it with the recipient
+          You can directly share it via WhatsApp or Telegram
         </p>
       </div>
 
