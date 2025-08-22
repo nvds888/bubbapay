@@ -93,6 +93,8 @@ const handleReclaim = async (appId) => {
       appId,
       senderAddress: activeAddress
     });
+
+    console.log('WalletTransactions being sent to wallet:', JSON.stringify(txnData.walletTransactions, null, 2));
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
