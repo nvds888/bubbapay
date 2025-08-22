@@ -1,7 +1,7 @@
 {
   "short_name": "BubbaPay",
   "name": "BubbaPay - Send Crypto Anywhere",
-  "description": "Send crypto to anyone, anywhere, anytime by link",
+  "description": "Send crypto to anyone with just a link",
   "icons": [
     {
       "src": "favicon.ico",

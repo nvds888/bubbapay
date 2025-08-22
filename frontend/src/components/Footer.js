@@ -25,7 +25,7 @@ function Footer() {
                 </span>
               </div>
               <p className="text-gray-600 max-w-md mb-4 text-sm">
-                Send internet money to anyone, anywhere, anytime.
+                Send crypto to anyone with just a link.
               </p>
               
               {/* Social links - minimal */}

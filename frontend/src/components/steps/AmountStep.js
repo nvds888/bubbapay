@@ -231,15 +231,15 @@ const getTransactionStatus = () => {
             ))}
           </div>
           
-          {assetBalance !== null && parseFloat(assetBalance) > 0 && (
-            <button 
-              type="button"
-              onClick={setMaxAmount}
-              className="btn-ghost text-xs mt-2 w-full"
-            >
-              Use max balance ({parseFloat(assetBalance).toFixed(2)} {selectedAssetInfo?.symbol || 'tokens'})
-            </button>
-          )}
+          {assetBalance !== null && parseFloat(assetBalance) >= 0.01 && (
+  <button 
+    type="button"
+    onClick={setMaxAmount}
+    className="btn-ghost text-xs mt-2 w-full"
+  >
+    Use max balance ({parseFloat(assetBalance).toFixed(2)} {selectedAssetInfo?.symbol || 'tokens'})
+  </button>
+)}
         </div>
         
         {/* Status indicator */}
