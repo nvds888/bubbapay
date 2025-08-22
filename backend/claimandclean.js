@@ -161,9 +161,26 @@ transactions.push(closeAccountTxn);
 
 algosdk.assignGroupID(transactions);
 
+// Around line where you do the signing
+console.log('=== MULTISIG SIGNING DEBUG ===');
+console.log('Multisig address:', multisigAddress);
+console.log('Temp account address:', tempAddress);
+console.log('Clean multisig params:', JSON.stringify(cleanMsigParams, null, 2));
+console.log('Number of transactions to sign:', transactions.length);
 
 const signedTransactions = transactions.map(txn => {
+  console.log(`Signing transaction ${index + 1} with multisig`);
+  console.log(`Transaction sender: ${txn.sender}`);
   const { blob } = algosdk.signMultisigTransaction(txn, cleanMsigParams, tempAccountObj.sk);
+
+  // Decode the signed transaction to verify multisig structure
+  const decodedSigned = algosdk.decodeSignedTransaction(blob);
+  console.log(`Transaction ${index + 1} signed - has msig:`, !!decodedSigned.msig);
+  if (decodedSigned.msig) {
+    console.log(`Multisig subsigs count:`, decodedSigned.msig.subsig?.length || 0);
+    console.log(`Multisig threshold:`, decodedSigned.msig.thr);
+  }
+  
   return Buffer.from(blob).toString('base64');
 });
 
