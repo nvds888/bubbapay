@@ -249,7 +249,7 @@ function ClaimPage() {
         {escrowDetails && (
           <div className="mb-6">
             {/* Main display section */}
-            <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">
               You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
             </h2>
             <p className="text-gray-600">
@@ -265,7 +265,7 @@ function ClaimPage() {
         
         <button
           onClick={enableWallet}
-          className="btn-primary px-6 py-3 font-medium"
+          className="btn-primary px-4 py-2 font-medium"
         >
           Connect Wallet
         </button>
@@ -541,7 +541,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           {escrowDetails && (
             <div className="mb-6">
               {/* CHANGE 7e: Another "You've received" message in wallet content */}
-              <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">
                 You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
               </h2>
               <p className="text-gray-600">
