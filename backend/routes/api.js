@@ -712,7 +712,7 @@ router.post('/generate-reclaim', async (req, res) => {
   }
 });
 
-// Submit reclaim transaction group
+// Submit reclaim transaction group - ARC-1 + proper multisig formatting
 router.post('/submit-reclaim', async (req, res) => {
   try {
     const { signedTxns, appId, senderAddress } = req.body;
@@ -731,54 +731,173 @@ router.post('/submit-reclaim', async (req, res) => {
     });
     
     if (!escrow) {
-      return res.status(403).json({ 
-        error: 'You are not authorized to reclaim these funds' 
-      });
+      return res.status(403).json({ error: 'You are not authorized to reclaim these funds' });
     }
     
     if (escrow.claimed) {
-      return res.status(400).json({ 
-        error: 'Funds have already been claimed and cannot be reclaimed' 
-      });
+      return res.status(400).json({ error: 'Funds have already been claimed and cannot be reclaimed' });
     }
     
     if (escrow.reclaimed) {
-      return res.status(400).json({ 
-        error: 'Funds have already been reclaimed' 
-      });
+      return res.status(400).json({ error: 'Funds have already been reclaimed' });
     }
     
-    // Convert signed transactions from base64 to Buffer
-    const txnBuffers = signedTxns.map(signedTxn => {
-      if (signedTxn === null) {
-        throw new Error('Received null signed transaction');
-      }
-      return Buffer.from(signedTxn, 'base64');
-    });
-    
-    let txId;
-    
     try {
-      // Submit the signed transaction group directly
-      const submitResponse = await algodClient.sendRawTransaction(txnBuffers).do();
-      txId = submitResponse.txid;
+      // Transaction 1: App call - can be submitted as-is (normal signature)
+      const appCallSignedTxn = Buffer.from(signedTxns[0], 'base64');
+      
+      // Transaction 2: Multisig payment - needs reconstruction
+      const multisigSignedTxn = algosdk.decodeSignedTransaction(Buffer.from(signedTxns[1], 'base64'));
+      
+      // Extract the signature from what the wallet returned
+      const walletSignature = multisigSignedTxn.sig;
+      if (!walletSignature) {
+        throw new Error('No signature found in multisig transaction');
+      }
+      
+      // Reconstruct clean multisig params
+      const cleanAddrs = escrow.tempAccount.msigParams.addrs.map(addr => {
+        if (typeof addr === 'string') {
+          return addr;
+        } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
+          const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
+          return algosdk.encodeAddress(publicKeyArray);
+        } else {
+          throw new Error('Invalid address format in multisig params');
+        }
+      });
+
+      const cleanMsigParams = {
+        version: escrow.tempAccount.msigParams.version,
+        threshold: escrow.tempAccount.msigParams.threshold,
+        addrs: cleanAddrs
+      };
+
+      const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
+      
+      // Get fresh suggested params and recreate the exact multisig transaction
+      const suggestedParams = await algodClient.getTransactionParams().do();
+      
+      const recreatedMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        sender: multisigAddress,
+        receiver: senderAddress,
+        amount: 0,
+        closeRemainderTo: senderAddress,
+        note: new Uint8Array(Buffer.from('Reclaim: close multisig account')),
+        suggestedParams: { 
+          ...suggestedParams,
+          fee: 1000,
+          flatFee: true 
+        }
+      });
+      
+      // Set the same group ID as the app call transaction
+      const appCallTxn = algosdk.decodeSignedTransaction(appCallSignedTxn);
+      recreatedMultisigTxn.group = appCallTxn.txn.group;
+      
+      // Create the multisig transaction structure
+      const msigTxn = algosdk.createMultisigTransaction(recreatedMultisigTxn, cleanMsigParams);
+      
+      // Append the signature from the wallet in the correct multisig format
+      const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
+        msigTxn,
+        cleanMsigParams,
+        senderAddress,
+        walletSignature
+      );
+      
+      // Create final transaction group for submission
+      const finalTxnGroup = [
+        appCallSignedTxn,           // App call signed transaction (as Buffer)
+        finalMsigTxn.blob           // Properly formatted multisig transaction blob
+      ];
+      
+      console.log('Submitting properly formatted transaction group');
+      
+      // Submit the transaction group
+      const { txid } = await algodClient.sendRawTransaction(finalTxnGroup).do();
       
       // Wait for confirmation
-      await algosdk.waitForConfirmation(algodClient, txId, 5);
+      await algosdk.waitForConfirmation(algodClient, txid, 5);
       
-    } catch (submitError) {
-      // Handle duplicate submission
-      if (submitError.message && submitError.message.includes('transaction already in ledger')) {
+      // Update the escrow record
+      await escrowCollection.updateOne(
+        { _id: escrow._id },
+        { 
+          $set: { 
+            reclaimed: true,
+            reclaimedAt: new Date(),
+            reclaimTxId: txid
+          } 
+        }
+      );
+      
+      // Send notification email if needed
+      if (escrow.recipientEmail) {
+        try {
+          const assetInfo = getAssetInfo(escrow.assetId);
+          const msg = {
+            to: escrow.recipientEmail,
+            from: process.env.FROM_EMAIL,
+            subject: `${assetInfo?.symbol || 'Token'} Transfer Cancelled`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>${assetInfo?.symbol || 'Token'} Transfer Cancelled</h2>
+                <p>We're writing to let you know that the ${escrow.amount} ${assetInfo?.symbol || 'tokens'} transfer that was sent to you has been cancelled by the sender and is no longer available to claim.</p>
+                <p>If you believe this is a mistake, please contact the sender directly.</p>
+              </div>
+            `
+          };
+          
+          await sgMail.send(msg);
+        } catch (emailError) {
+          console.error('Error sending reclaim notification email:', emailError);
+        }
+      }
+      
+      const assetInfo = getAssetInfo(escrow.assetId);
+      res.status(200).json({
+        success: true,
+        amount: escrow.amount,
+        txId: txid,
+        message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'} and closed multisig account`
+      });
+      
+    } catch (txnError) {
+      console.error('Transaction processing error:', txnError);
+      
+      // Handle duplicate submission for reclaim
+      if (txnError.message && txnError.message.includes('transaction already in ledger')) {
         console.log('Reclaim transaction already in ledger, extracting txId...');
         
-        const txIdMatch = submitError.message.match(/transaction already in ledger: ([A-Z0-9]+)/);
+        const txIdMatch = txnError.message.match(/transaction already in ledger: ([A-Z0-9]+)/);
         if (txIdMatch && txIdMatch[1]) {
-          txId = txIdMatch[1];
+          const txId = txIdMatch[1];
           console.log(`Extracted reclaim txId from error: ${txId}`);
           
           try {
             await algosdk.waitForConfirmation(algodClient, txId, 5);
             console.log('Successfully confirmed existing reclaim transaction');
+            
+            // Update database
+            await escrowCollection.updateOne(
+              { _id: escrow._id },
+              { 
+                $set: { 
+                  reclaimed: true,
+                  reclaimedAt: new Date(),
+                  reclaimTxId: txId
+                } 
+              }
+            );
+            
+            const assetInfo = getAssetInfo(escrow.assetId);
+            return res.status(200).json({
+              success: true,
+              amount: escrow.amount,
+              txId: txId,
+              message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'} and closed multisig account`
+            });
           } catch (confirmError) {
             console.error('Error confirming existing reclaim transaction:', confirmError);
             throw new Error('Reclaim transaction was submitted but confirmation failed');
@@ -787,52 +906,9 @@ router.post('/submit-reclaim', async (req, res) => {
           throw new Error('Could not extract transaction ID from reclaim duplicate submission error');
         }
       } else {
-        throw submitError;
+        throw txnError;
       }
     }
-    
-    // Update the escrow record
-    await escrowCollection.updateOne(
-      { _id: escrow._id },
-      { 
-        $set: { 
-          reclaimed: true,
-          reclaimedAt: new Date(),
-          reclaimTxId: txId
-        } 
-      }
-    );
-    
-    // Send notification email if needed
-    if (escrow.recipientEmail) {
-      try {
-        const assetInfo = getAssetInfo(escrow.assetId);
-        const msg = {
-          to: escrow.recipientEmail,
-          from: process.env.FROM_EMAIL,
-          subject: `${assetInfo?.symbol || 'Token'} Transfer Cancelled`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>${assetInfo?.symbol || 'Token'} Transfer Cancelled</h2>
-              <p>We're writing to let you know that the ${escrow.amount} ${assetInfo?.symbol || 'tokens'} transfer that was sent to you has been cancelled by the sender and is no longer available to claim.</p>
-              <p>If you believe this is a mistake, please contact the sender directly.</p>
-            </div>
-          `
-        };
-        
-        await sgMail.send(msg);
-      } catch (emailError) {
-        console.error('Error sending reclaim notification email:', emailError);
-      }
-    }
-    
-    const assetInfo = getAssetInfo(escrow.assetId);
-    res.status(200).json({
-      success: true,
-      amount: escrow.amount,
-      txId: txId,
-      message: `Successfully reclaimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'} and closed multisig account`
-    });
     
   } catch (error) {
     console.error('Error reclaiming funds:', error);
