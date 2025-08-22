@@ -522,7 +522,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
   const formatAmount = (amount) => parseFloat(amount).toFixed(2);
   const formatAddress = (address) => {
     if (!address) return '';
-    return `${address.substring(0, 3)}...${address.substring(address.length - 2)}`;
+    return `${address.substring(0, 4)}...${address.substring(address.length - 3)}`;
   };
   
   // Render wallet-connected content
