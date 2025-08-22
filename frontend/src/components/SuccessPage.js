@@ -184,7 +184,7 @@ function SuccessPage() {
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 mb-2">Claim Link is Ready!</h1>
         <p className="text-gray-600 text-sm">
-          You can directly share it via WhatsApp or Telegram
+          You can share directly via WhatsApp or Telegram
         </p>
       </div>
 

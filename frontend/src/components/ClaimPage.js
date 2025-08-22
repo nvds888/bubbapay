@@ -618,7 +618,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           </p>
           
           {escrowDetails?.payRecipientFees && (
-            <div className="mb-4 card card-compact inline-block">
+  <div className="mb-4 card card-compact">
               <div className="flex items-center space-x-2 text-green-600">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -675,15 +675,15 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           </p>
           
           {escrowDetails?.payRecipientFees && (
-            <div className="mb-4 card card-compact inline-block">
-              <div className="flex items-center space-x-2 text-green-600">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-sm">Fee cov will be returned to sender</span>
-              </div>
-            </div>
-          )}
+  <div className="mb-4 card card-compact">
+    <div className="flex items-center space-x-2 text-green-600">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+      <span className="text-sm">Fee cov will be returned to sender</span>
+    </div>
+  </div>
+)}
           
           <button
             onClick={handleOptimizedClaim}
@@ -728,7 +728,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
             
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">Successfully Claimed! 🎉</h2>
 <p className="text-gray-600 mb-2">
-  <span className="text-green-600 font-normal">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been send to your wallet
+  <span className="text-green-600 font-normal">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been send to {formatAddress(accountAddress)}
 </p>
 {isOptedIn && escrowDetails?.payRecipientFees ? (
   <p className="text-gray-500 text-xs mb-2">
@@ -740,9 +740,6 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
     {escrowDetails?.payRecipientFees && " - fees covered by sender"}
   </p>
 ) : null}
-            <p className="text-gray-500 text-sm">
-              Wallet: <span className="font-mono">{formatAddress(accountAddress)}</span>
-            </p>
           </div>
           
           <div className="space-y-4">
