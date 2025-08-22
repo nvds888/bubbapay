@@ -109,7 +109,16 @@ const handleReclaim = async (appId) => {
     });
     
     // Sign using use-wallet - it should handle the multisig properly based on ARC-1
+    console.log('Sending to wallet for signing:', unsignedTxns.length, 'transactions');
     const signedTxns = await signTransactions(unsignedTxns);
+
+    // DEBUG: Check what wallet returned
+console.log('Wallet returned:', signedTxns.map((txn, i) => ({
+  index: i,
+  isNull: txn === null,
+  hasData: !!txn,
+  length: txn ? txn.length : 0
+})));
     
     setReclaimStatus({ appId, status: 'Submitting transactions...' });
     
