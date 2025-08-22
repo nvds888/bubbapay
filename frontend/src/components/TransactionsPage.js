@@ -359,7 +359,7 @@ console.log('Wallet returned:', signedTxns.map((txn, i) => ({
             </div>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Transactions Yet</h3>
-          <p className="text-gray-600 mb-4 text-sm">You haven't sent any $$ yet. Create your first transfer!</p>
+          <p className="text-gray-600 mb-4 text-sm">You haven't created any link yet. Create your first link!</p>
           <Link 
             to="/"
             className="btn-primary px-4 py-2 font-medium"
@@ -597,7 +597,7 @@ console.log('Wallet returned:', signedTxns.map((txn, i) => ({
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span>Send More $$</span>
+          <span>Create another link</span>
         </Link>
       </div>
     </div>

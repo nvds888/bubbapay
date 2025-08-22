@@ -178,69 +178,22 @@ function SuccessPage() {
       {/* Success header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Magic Link Created!</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Your Link is Ready!</h1>
         <p className="text-gray-600 text-sm">
-          You can now share the link with the recipient so that they can claim the {getAssetSymbol()}.
+          You can now share it with the recipient
         </p>
       </div>
-      
-      {/* Transaction summary */}
-      {escrowDetails && (
-        <div className="card card-normal">
-          <h3 className="font-medium text-gray-900 mb-3">Summary</h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Amount:</span>
-              <span className="font-semibold text-gray-900">{formatAmount(escrowDetails.amount)} {getAssetSymbol()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Date:</span>
-              <span className="text-gray-900">
-                {escrowDetails.createdAt ? new Intl.DateTimeFormat('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }).format(new Date(escrowDetails.createdAt)) : 'Just now'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Status:</span>
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                Awaiting Claim
-              </span>
-            </div>
-            {escrowDetails.appId && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Contract:</span>
-                <a
-                  href={`https://lora.algokit.io/mainnet/application/${escrowDetails.appId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1"
-                >
-                  <span className="text-xs">View Explorer</span>
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
+
       {/* Claim URL section with security */}
       {escrowDetails?.claimUrl && (escrowDetails.isShareable !== false) && (
         <div className="card card-normal">
           <h3 className="font-medium text-gray-900 mb-3">Share Claim Link</h3>
           <p className="text-gray-600 text-sm mb-4">
-            Send this link to your recipient so they can claim the {getAssetSymbol()}.
+            With this link the recipient can claim {getAssetSymbol()}.
           </p>
           
           <div className="space-y-3">
@@ -321,21 +274,54 @@ function SuccessPage() {
         </div>
       )}
       
-      {/* Security reminder */}
-      <div className="status-warning">
-        <div className="flex items-start space-x-3">
-          <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          <div className="text-sm">
-            <p className="font-medium text-amber-800">Security Reminder:</p>
-            <p className="text-amber-700 mt-1">
-              Keep this claim link secure. Anyone with access to it can claim the funds. 
-              This link is only shown once for security reasons.
-            </p>
+      {/* Transaction summary */}
+      {escrowDetails && (
+        <div className="card card-normal">
+          <h3 className="font-medium text-gray-900 mb-3">Summary</h3>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Amount:</span>
+              <span className="font-semibold text-gray-900">{formatAmount(escrowDetails.amount)} {getAssetSymbol()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Date:</span>
+              <span className="text-gray-900">
+                {escrowDetails.createdAt ? new Intl.DateTimeFormat('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }).format(new Date(escrowDetails.createdAt)) : 'Just now'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Status:</span>
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Awaiting Claim
+              </span>
+            </div>
+            {escrowDetails.appId && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Contract:</span>
+                <a
+                  href={`https://lora.algokit.io/mainnet/application/${escrowDetails.appId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1"
+                >
+                  <span className="text-xs">View Explorer</span>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
+      
+      
       
       {/* Action buttons */}
       <div className="flex flex-col space-y-3">
@@ -346,7 +332,7 @@ function SuccessPage() {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
-          <span>View All Transactions</span>
+          <span>Manage Your Links</span>
         </Link>
         
         <Link 

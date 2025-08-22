@@ -154,14 +154,14 @@ function AmountStep({
     </svg>
   </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
-    Create Magic Link
+    Create Bubba Link
   </h2>
   <div className="flex items-center justify-center space-x-2 mb-2">
     <div className="px-3 py-1 bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 transition-colors">
       <span className="text-purple-700 text-sm font-medium">{selectedAssetInfo?.symbol || 'Asset'}</span>
     </div>
   </div>
-  <p className="text-gray-600 text-sm">Send crypto to anyone with just a link - no wallet required</p>
+  <p className="text-gray-600 text-sm">Send crypto to anyone with just a link</p>
 </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -374,7 +374,7 @@ function AmountStep({
                 className="w-4 h-4 text-purple-600 rounded"
                 onClick={(e) => e.stopPropagation()}
               />
-              <span>Cover Recipient Fees (Onboarding Wizzard)</span>
+              <span>Cover Recipient Fees</span>
             </div>
             <svg className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} 
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -82,17 +82,13 @@ function ConfirmStep({
     </svg>
   </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
-    {recoveryMode ? 'Complete Link Creation' : 'Finalise Your Magic Link'}
+    {recoveryMode ? 'Complete Link Creation' : 'Finalise Your Bubba Link'}
   </h2>
   <div className="flex items-center justify-center space-x-2 mb-2">
     <div className="px-3 py-1 bg-green-50 border border-green-200 rounded-full hover:bg-green-100 transition-colors">
       <span className="text-green-700 text-sm font-medium">Shareable Claim Link</span>
     </div>
   </div>
-  <p className="text-gray-600 text-sm">
-    {!isWalletConnected ? 'Connect your wallet to continue' : 
-     recoveryMode ? 'Fund your existing link App' : 'Complete the two steps below to generate the link'}
-  </p>
 </div>
       
       {/* Transaction summary */}
