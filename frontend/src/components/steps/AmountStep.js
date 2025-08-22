@@ -122,36 +122,36 @@ const maxAmount = (Math.floor(balance * 100) / 100).toFixed(2);
   };
 
   // Get status for balance/ALGO checks
-  const getTransactionStatus = () => {
-    if (!isConnected) return { type: 'warning', message: 'Connect wallet to continue' };
-    if (balanceLoading || algoLoading) return { type: 'info', message: 'Checking balances...' };
-    if (balanceError || algoError) return { type: 'error', message: balanceError || algoError };
-    
-    if (algoAvailability && !algoAvailability.hasSufficientAlgo) {
-      return { type: 'error', message: `Need ${algoAvailability.shortfall} more ALGO` };
+const getTransactionStatus = () => {
+  if (!isConnected) return { type: 'warning', message: 'Connect wallet to continue' };
+  if (balanceLoading || algoLoading) return { type: 'info', message: 'Checking balances...' };
+  if (balanceError || algoError) return { type: 'error', message: balanceError || algoError };
+  
+  if (algoAvailability && !algoAvailability.hasSufficientAlgo) {
+    return { type: 'error', message: `Need ${algoAvailability.shortfall} more ALGO` };
+  }
+  
+  if (algoAvailability && !algoAvailability.canCompleteGroupTxns) {
+    return { type: 'warning', message: `Need ${algoAvailability.groupTxnShortfall} more ALGO after app creation` };
+  }
+  
+  // Check asset balance - minimum 0.01 required
+  if (assetBalance !== null) {
+    const balance = parseFloat(assetBalance);
+    if (balance < 0.01) {
+      return { 
+        type: 'warning', 
+        message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance (minimum 0.01 required)` 
+      };
     }
-    
-    if (algoAvailability && !algoAvailability.canCompleteGroupTxns) {
-      return { type: 'warning', message: `Need ${algoAvailability.groupTxnShortfall} more ALGO after app creation` };
-    }
-    
-    // Check asset balance 
-    if (assetBalance !== null) {
-      const balance = parseFloat(assetBalance);
-      if (balance === 0) {
-        return { 
-          type: 'warning', 
-          message: `Sufficient ALGO, but no ${selectedAssetInfo?.symbol || 'asset'} balance` 
-        };
-      }
-    }
-    
-    if (algoAvailability && algoAvailability.hasSufficientAlgo && algoAvailability.canCompleteGroupTxns) {
-      return { type: 'success', message: 'Transaction ready' };
-    }
-    
-    return null;
-  };
+  }
+  
+  if (algoAvailability && algoAvailability.hasSufficientAlgo && algoAvailability.canCompleteGroupTxns) {
+    return { type: 'success', message: 'Transaction ready' };
+  }
+  
+  return null;
+};
 
   const status = getTransactionStatus();
   
