@@ -109,8 +109,9 @@ function AmountStep({
   const setMaxAmount = () => {
     if (assetBalance && parseFloat(assetBalance) > 0) {
       setError('');
-      // Use the exact balance, but ensure it doesn't exceed what the user actually has
-      const maxAmount = parseFloat(assetBalance).toFixed(2);
+      
+      const balance = parseFloat(assetBalance);
+const maxAmount = (Math.floor(balance * 100) / 100).toFixed(2);
       handleInputChange({
         target: {
           name: 'amount',
@@ -132,6 +133,17 @@ function AmountStep({
     
     if (algoAvailability && !algoAvailability.canCompleteGroupTxns) {
       return { type: 'warning', message: `Need ${algoAvailability.groupTxnShortfall} more ALGO after app creation` };
+    }
+    
+    // Check asset balance 
+    if (assetBalance !== null) {
+      const balance = parseFloat(assetBalance);
+      if (balance === 0) {
+        return { 
+          type: 'warning', 
+          message: `Sufficient ALGO, but no ${selectedAssetInfo?.symbol || 'asset'} balance` 
+        };
+      }
     }
     
     if (algoAvailability && algoAvailability.hasSufficientAlgo && algoAvailability.canCompleteGroupTxns) {

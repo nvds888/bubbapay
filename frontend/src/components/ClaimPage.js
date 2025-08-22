@@ -253,7 +253,7 @@ function ClaimPage() {
               You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
             </h2>
             <p className="text-gray-600">
-              Connect your wallet to claim the funds
+              Connect your wallet to claim crypto
             </p>
             {escrowDetails.payRecipientFees && (
               <div className="mt-2 text-xs text-gray-500">
@@ -290,7 +290,7 @@ function ClaimPage() {
                 alt="Bubbapay Logo"
                 className="w-12 h-12 rounded-lg object-cover mb-3 mx-auto"
               />
-              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your internet money</h1>
+              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your crypto</h1>
               <p className="text-gray-600 text-sm">Secure and instant on Algorand</p>
             </div>
             
