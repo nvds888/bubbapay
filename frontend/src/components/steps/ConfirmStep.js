@@ -82,7 +82,7 @@ function ConfirmStep({
     </svg>
   </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
-    {recoveryMode ? 'Complete Link Creation' : 'Finalise Your Bubba Link'}
+    {recoveryMode ? 'Complete Link Creation' : 'Finalise Your Claim Link'}
   </h2>
   <div className="flex items-center justify-center space-x-2 mb-2">
     <div className="px-3 py-1 bg-green-50 border border-green-200 rounded-full hover:bg-green-100 transition-colors">

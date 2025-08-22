@@ -154,7 +154,7 @@ function AmountStep({
     </svg>
   </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
-    Create Bubba Link
+    Create Claim Link
   </h2>
   <div className="flex items-center justify-center space-x-2 mb-2">
     <div className="px-3 py-1 bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 transition-colors">
