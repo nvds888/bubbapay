@@ -100,7 +100,13 @@ const handleReclaim = async (appId) => {
     
     // Convert ARC-1 back to unsigned transactions for Lute compatibility
     const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
-      const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
+      // Convert base64 to Uint8Array using browser-native methods
+      const binaryString = atob(walletTxn.txn);
+      const txnUint8 = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        txnUint8[i] = binaryString.charCodeAt(i);
+      }
+      
       const txn = algosdk.decodeUnsignedTransaction(txnUint8);
       
       // Set authAddr if present (for the multisig transaction)
@@ -123,12 +129,18 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Submitting transactions...' });
     
-    // Convert signed transactions to base64 for backend
+    // Convert signed transactions to base64 for backend using browser-native methods
     const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
       if (!signedTxn) {
         throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null for this transaction.`);
       }
-      return Buffer.from(signedTxn).toString('base64');
+      
+      // Convert Uint8Array to base64 using browser-native methods
+      let binaryString = '';
+      for (let i = 0; i < signedTxn.length; i++) {
+        binaryString += String.fromCharCode(signedTxn[i]);
+      }
+      return btoa(binaryString);
     });
     
     // Submit the properly signed transactions
