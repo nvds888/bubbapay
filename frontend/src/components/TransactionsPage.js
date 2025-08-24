@@ -118,15 +118,40 @@ const unsignedTxns = txnData.walletTransactions.map((walletTxn, index) => {
   });
   
   // Set authAddr if present (for the multisig transaction)
-  if (walletTxn.authAddr) {
-    console.log(`Setting authAddr for transaction ${index}:`, walletTxn.authAddr);
-    txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr);
+if (walletTxn.authAddr) {
+  console.log(`Setting authAddr for transaction ${index}:`, walletTxn.authAddr);
+  
+  try {
+    // Validate the address first
+    if (typeof walletTxn.authAddr !== 'string') {
+      throw new Error(`AuthAddr must be a string, got: ${typeof walletTxn.authAddr}`);
+    }
+    
+    // Decode the address
+    const decodedAuthAddr = algosdk.decodeAddress(walletTxn.authAddr);
+    console.log(`Decoded authAddr for transaction ${index}:`, {
+      original: walletTxn.authAddr,
+      decoded: decodedAuthAddr,
+      decodedType: typeof decodedAuthAddr,
+      isUint8Array: decodedAuthAddr instanceof Uint8Array
+    });
+    
+    txn.authAddr = decodedAuthAddr;
+    
+    // Verify it was set correctly
     console.log(`Transaction ${index} AFTER authAddr:`, {
       sender: txn.sender,
       authAddr: algosdk.encodeAddress(txn.authAddr),
-      type: txn.type
+      type: txn.type,
+      authAddrType: typeof txn.authAddr,
+      authAddrIsUint8Array: txn.authAddr instanceof Uint8Array
     });
+    
+  } catch (authAddrError) {
+    console.error(`Failed to set authAddr for transaction ${index}:`, authAddrError);
+    throw new Error(`Invalid authAddr: ${authAddrError.message}`);
   }
+}
   
   return txn;
 });
