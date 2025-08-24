@@ -372,7 +372,8 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       },
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        authAddr: senderAddress
+        msig: cleanMsigParams,
+        signers: [senderAddress]
       }
     ];
     
