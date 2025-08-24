@@ -98,14 +98,9 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // Convert ARC-1 walletTransactions back to unsigned transactions for Lute
-    const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
-      const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
-      return algosdk.decodeUnsignedTransaction(txnUint8);
-    });
-    
-    console.log('Sending unsigned transactions to Lute wallet:', unsignedTxns.length);
-    const signedTxns = await signTransactions(unsignedTxns);
+    // Pass simplified ARC-1 format directly to wallet (with authAddr only)
+    console.log('Sending simplified ARC-1 transactions to wallet');
+    const signedTxns = await signTransactions(txnData.walletTransactions);
 
     console.log('Wallet returned:', signedTxns.map((txn, i) => ({
       index: i,
