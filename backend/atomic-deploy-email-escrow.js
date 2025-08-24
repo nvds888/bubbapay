@@ -372,9 +372,13 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       },
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        msig: cleanMsigParams,
-        signers: [senderAddress],
-        authAddr: senderAddress
+        msig: {
+          version: cleanMsigParams.version,
+          threshold: cleanMsigParams.threshold, 
+          addrs: cleanMsigParams.addrs
+        },
+        signers: [senderAddress]
+        // Remove authAddr - it might be causing the parsing issue
       }
     ];
     
