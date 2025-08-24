@@ -746,13 +746,13 @@ router.post('/submit-reclaim', async (req, res) => {
       // Transaction 1: App call - submit as-is (regular signature)
       const appCallSignedTxn = Buffer.from(signedTxns[0], 'base64');
       
-      // Transaction 2: Payment signed with authAddr - extract signature
-      const paymentSignedTxn = algosdk.decodeSignedTransaction(Buffer.from(signedTxns[1], 'base64'));
+      // Transaction 2: User payment - extract signature
+      const userPaymentSignedTxn = algosdk.decodeSignedTransaction(Buffer.from(signedTxns[1], 'base64'));
       
-      // Extract the signature from the wallet-signed transaction
-      const userSignature = paymentSignedTxn.sig;
+      // Extract the signature from the user-signed transaction
+      const userSignature = userPaymentSignedTxn.sig;
       if (!userSignature) {
-        throw new Error('No signature found in payment transaction');
+        throw new Error('No signature found in user payment transaction');
       }
       
       // Reconstruct clean multisig params from database
@@ -775,10 +775,10 @@ router.post('/submit-reclaim', async (req, res) => {
     
       const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
       
-      // Recreate the unsigned multisig transaction (same as what was signed)
+      // Create the REAL multisig transaction (different from what user signed)
       const suggestedParams = await algodClient.getTransactionParams().do();
-      const unsignedMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        sender: multisigAddress,
+      const multisigPaymentTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+        sender: multisigAddress,  // Different sender than what user signed
         receiver: senderAddress,
         amount: 0,
         closeRemainderTo: senderAddress,
@@ -792,10 +792,10 @@ router.post('/submit-reclaim', async (req, res) => {
       
       // Set the same group ID as the app call transaction
       const appCallTxn = algosdk.decodeSignedTransaction(appCallSignedTxn);
-      unsignedMultisigTxn.group = appCallTxn.txn.group;
+      multisigPaymentTxn.group = appCallTxn.txn.group;
       
       // Create proper multisig transaction and add the user's signature
-      const msigTxn = algosdk.createMultisigTransaction(unsignedMultisigTxn, cleanMsigParams);
+      const msigTxn = algosdk.createMultisigTransaction(multisigPaymentTxn, cleanMsigParams);
       const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
         msigTxn,
         cleanMsigParams,

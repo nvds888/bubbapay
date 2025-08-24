@@ -98,7 +98,7 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // Convert ARC-1 wallet transactions to unsigned transactions for signing
+   // Convert ARC-1 wallet transactions to unsigned transactions for signing
 const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
   const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
   const txn = algosdk.decodeUnsignedTransaction(txnUint8);
