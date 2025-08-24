@@ -98,15 +98,36 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    const signedTxns = await signTransactions(txnData.walletTransactions);
+   // Convert ARC-1 wallet transactions to unsigned transactions for signing
+const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
+  const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
+  const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+  
+  // Set authAddr if present (for the multisig transaction)
+  if (walletTxn.authAddr) {
+    txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr).publicKey;
+  }
+  
+  return txn;
+});
+    
+    console.log('Reclaim transactions:', {
+      txn1: `App call from ${unsignedTxns[0].sender}`,
+      txn2: `Multisig payment from ${unsignedTxns[1].sender}`,
+      groupId: Buffer.from(unsignedTxns[0].group).toString('hex')
+    });
+    
+    // Sign using use-wallet - it should handle the multisig properly based on ARC-1
+    console.log('Sending to wallet for signing:', unsignedTxns.length, 'transactions');
+    const signedTxns = await signTransactions(unsignedTxns);
 
     // DEBUG: Check what wallet returned
-    console.log('Wallet returned:', signedTxns.map((txn, i) => ({
-      index: i,
-      isNull: txn === null,
-      hasData: !!txn,
-      length: txn ? txn.length : 0
-    })));
+console.log('Wallet returned:', signedTxns.map((txn, i) => ({
+  index: i,
+  isNull: txn === null,
+  hasData: !!txn,
+  length: txn ? txn.length : 0
+})));
     
     setReclaimStatus({ appId, status: 'Submitting transactions...' });
     
