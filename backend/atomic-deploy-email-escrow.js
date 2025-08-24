@@ -354,7 +354,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       closeRemainderTo: senderAddress,
       suggestedParams: { 
         ...suggestedParams,
-        fee: 1000,
+        fee: 2000,
         flatFee: true 
       }
     });
