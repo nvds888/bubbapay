@@ -349,9 +349,8 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     // Transaction 2: REAL multisig transaction to close the multisig account
     const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: multisigAddress,
+      sender: senderAddress,
       receiver: senderAddress,
-      authAddr: senderAddress,
       amount: 0,
       closeRemainderTo: senderAddress,
       suggestedParams: { 
