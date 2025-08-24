@@ -352,7 +352,6 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       receiver: senderAddress,
       amount: 0,
       closeRemainderTo: senderAddress,
-      note: new Uint8Array(Buffer.from('Reclaim: close multisig account')),
       suggestedParams: { 
         ...suggestedParams,
         fee: 1000,
