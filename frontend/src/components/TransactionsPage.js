@@ -117,42 +117,73 @@ function TransactionsPage() {
       });
       
       // Sign using use-wallet - it should handle the multisig properly based on ARC-1
-      console.log('Sending to wallet for signing:', unsignedTxns.length, 'transactions');
-      let signedTxns;
-      try {
-        signedTxns = await signTransactions(unsignedTxns);
-        // Detailed logging of wallet response
-        console.log('Wallet signing response:', {
-          transactionCount: signedTxns.length,
-          details: signedTxns.map((txn, i) => ({
-            index: i,
-            isNull: txn === null,
-            hasData: !!txn,
-            length: txn ? txn.length : 0,
-            type: txn ? algosdk.decodeSignedTransaction(txn).txn.type : 'N/A'
-          }))
-        });
-      } catch (signError) {
-        // Log specific signing error
-        console.error('Wallet signing error:', {
-          message: signError.message,
-          stack: signError.stack,
-          code: signError.code,
-          details: signError
-        });
-        throw signError;
+  console.log('Sending to wallet for signing:', unsignedTxns.length, 'transactions');
+  let signedTxns;
+  try {
+    signedTxns = await signTransactions(unsignedTxns);
+    // Detailed logging of wallet response
+    console.log('Wallet signing response:', {
+      transactionCount: signedTxns.length,
+      details: signedTxns.map((txn, i) => ({
+        index: i,
+        isNull: txn === null,
+        hasData: !!txn,
+        length: txn ? txn.length : 0,
+        type: txn ? algosdk.decodeSignedTransaction(txn).txn.type : 'N/A',
+        // Add decoded transaction details for debugging
+        decoded: txn ? {
+          sender: algosdk.encodeAddress(algosdk.decodeSignedTransaction(txn).txn.sender),
+          type: algosdk.decodeSignedTransaction(txn).txn.type,
+          group: txn ? Buffer.from(algosdk.decodeSignedTransaction(txn).txn.group || []).toString('hex') : 'N/A'
+        } : null
+      })),
+      // Log wallet provider details
+      walletProvider: {
+        providerId: useWallet.activeWallet?.providerId || 'unknown',
+        account: useWallet.activeAddress || 'none'
       }
-      
-      setReclaimStatus({ appId, status: 'Submitting transactions...' });
-      
-      // Convert signed transactions to base64 for backend
-      const signedTxnsBase64 = signedTxns.map(signedTxn => {
-        if (!signedTxn) {
-          console.error('Null signed transaction detected at index:', signedTxns.indexOf(signedTxn));
-          throw new Error('Failed to sign transaction');
-        }
-        return Buffer.from(signedTxn).toString('base64');
+    });
+  } catch (signError) {
+    // Log specific signing error with more context
+    console.error('Wallet signing error:', {
+      message: signError.message,
+      stack: signError.stack,
+      code: signError.code,
+      details: signError,
+      // Add wallet provider info for context
+      walletProvider: {
+        providerId: useWallet.activeWallet?.providerId || 'unknown',
+        account: useWallet.activeAddress || 'none'
+      },
+      // Log raw transaction data for debugging
+      rawTransactions: unsignedTxns.map((txn, i) => ({
+        index: i,
+        sender: algosdk.encodeAddress(txn.sender),
+        type: txn.type,
+        group: Buffer.from(txn.group || []).toString('hex'),
+        authAddr: txn.authAddr ? algosdk.encodeAddress(txn.authAddr) : 'none'
+      }))
+    });
+    throw signError;
+  }
+  
+  setReclaimStatus({ appId, status: 'Submitting transactions...' });
+  
+  // Convert signed transactions to base64 for backend
+  const signedTxnsBase64 = signedTxns.map(signedTxn => {
+    if (!signedTxn) {
+      console.error('Null signed transaction detected at index:', signedTxns.indexOf(signedTxn), {
+        transactionDetails: unsignedTxns[signedTxns.indexOf(signedTxn)] ? {
+          sender: algosdk.encodeAddress(unsignedTxns[signedTxns.indexOf(signedTxn)].sender),
+          type: unsignedTxns[signedTxns.indexOf(signedTxn)].type,
+          group: Buffer.from(unsignedTxns[signedTxns.indexOf(signedTxn)].group || []).toString('hex'),
+          authAddr: unsignedTxns[signedTxns.indexOf(signedTxn)].authAddr ? algosdk.encodeAddress(unsignedTxns[signedTxns.indexOf(signedTxn)].authAddr) : 'none'
+        } : 'N/A'
       });
+      throw new Error('Failed to sign transaction');
+    }
+    return Buffer.from(signedTxn).toString('base64');
+  });
       
       // Submit the properly signed transactions
       const result = await api.submitReclaimTransaction({
