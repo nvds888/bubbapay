@@ -327,7 +327,8 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     const cleanMsigParams = {
       ...tempAccount.msigParams,
-      addrs: cleanAddrs
+      addrs: cleanAddrs,
+      authAddr: senderAddress
     };
 
     const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
@@ -371,6 +372,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       },
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
+        msig: cleanMsigParams,
       }
     ];
     
