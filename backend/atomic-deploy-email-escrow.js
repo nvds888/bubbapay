@@ -354,7 +354,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       closeRemainderTo: senderAddress,
       suggestedParams: { 
         ...suggestedParams,
-        fee: 2000,
+        fee: 1000,
         flatFee: true 
       }
     });
@@ -371,8 +371,6 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       },
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        msig: cleanMsigParams,
-        signers: [senderAddress]
       }
     ];
     
