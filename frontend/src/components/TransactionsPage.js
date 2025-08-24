@@ -105,18 +105,26 @@ function TransactionsPage() {
         // Set authAddr if present (for the multisig transaction)
         if (walletTxn.authAddr) {
           try {
-            // Validate and decode the authAddr
-            if (!algosdk.isValidAddress(walletTxn.authAddr)) {
-              throw new Error(`Invalid authAddr format for transaction ${index}: ${walletTxn.authAddr}`);
+            // Ensure authAddr is a string and valid
+            const authAddr = String(walletTxn.authAddr).trim();
+            if (!algosdk.isValidAddress(authAddr)) {
+              throw new Error(`Invalid authAddr format for transaction ${index}: ${authAddr}`);
             }
-            txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr).publicKey;
+            // Explicitly decode the address to get the publicKey (Uint8Array)
+            const decodedAddress = algosdk.decodeAddress(authAddr);
+            if (!decodedAddress.publicKey || !(decodedAddress.publicKey instanceof Uint8Array)) {
+              throw new Error(`Decoded authAddr is not a valid Uint8Array for transaction ${index}: ${authAddr}`);
+            }
+            txn.authAddr = decodedAddress.publicKey;
+            console.log(`Set authAddr for transaction ${index}:`, algosdk.encodeAddress(txn.authAddr));
           } catch (decodeError) {
             console.error(`Failed to decode authAddr for transaction ${index}:`, {
               authAddr: walletTxn.authAddr,
+              type: typeof walletTxn.authAddr,
               error: decodeError.message,
               stack: decodeError.stack
             });
-            throw decodeError;
+            throw new Error(`Failed to decode authAddr for transaction ${index}: ${decodeError.message}`);
           }
         }
         
@@ -201,42 +209,43 @@ function TransactionsPage() {
         appId,
         senderAddress: activeAddress
       });
-    
-    // Update the local transactions state to reflect the reclaim
-    setTransactions(prev => prev.map(tx => {
-      if (tx.appId === parseInt(appId)) {
-        return { ...tx, reclaimed: true, reclaimedAt: new Date() };
+      
+      // Update the local transactions state to reflect the reclaim
+      setTransactions(prev => prev.map(tx => {
+        if (tx.appId === parseInt(appId)) {
+          return { ...tx, reclaimed: true, reclaimedAt: new Date() };
+        }
+        return tx;
+      }));
+      
+      setReclaimStatus({ appId, status: 'Success' });
+      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
+      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
+      
+    } catch (error) {
+      console.error('Error reclaiming funds:', error);
+      setReclaimStatus({ appId, status: 'Failed' });
+      
+      // Better error handling
+      let errorMessage = 'Failed to reclaim funds';
+      if (error.message.includes('rejected')) {
+        errorMessage = 'Reclaim rejected - funds may have already been claimed';
+      } else if (error.message.includes('insufficient')) {
+        errorMessage = 'Insufficient ALGO for transaction fees';
+      } else if (error.message.includes('malformed')) {
+        errorMessage = 'Invalid address format';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
       }
-      return tx;
-    }));
-    
-    setReclaimStatus({ appId, status: 'Success' });
-    const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-    alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
-    
-  } catch (error) {
-    console.error('Error reclaiming funds:', error);
-    setReclaimStatus({ appId, status: 'Failed' });
-    
-    // Better error handling
-    let errorMessage = 'Failed to reclaim funds';
-    if (error.message.includes('rejected')) {
-      errorMessage = 'Reclaim rejected - funds may have already been claimed';
-    } else if (error.message.includes('insufficient')) {
-      errorMessage = 'Insufficient ALGO for transaction fees';
-    } else if (error.response?.data?.error) {
-      errorMessage = error.response.data.error;
+      
+      alert(`${errorMessage}: ${error.message || error}`);
+    } finally {
+      setIsReclaiming(false);
+      setTimeout(() => {
+        setReclaimStatus({ appId: null, status: '' });
+      }, 3000);
     }
-    
-    alert(`${errorMessage}: ${error.message || error}`);
-  } finally {
-    setIsReclaiming(false);
-    // Reset status after a delay
-    setTimeout(() => {
-      setReclaimStatus({ appId: null, status: '' });
-    }, 3000);
-  }
-};
+  };
   
 
   const handleCleanup = async (appId) => {
