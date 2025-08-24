@@ -313,27 +313,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const appIdInt = Number(appId);
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Reconstruct multisig address from stored params
-    const cleanAddrs = tempAccount.msigParams.addrs.map(addr => {
-      if (typeof addr === 'string') {
-        return addr;
-      } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
-        const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
-        return algosdk.encodeAddress(publicKeyArray);
-      } else {
-        throw new Error('Invalid address format in multisig params');
-      }
-    });
-
-    const cleanMsigParams = {
-      version: tempAccount.msigParams.version,
-      threshold: tempAccount.msigParams.threshold,
-      addrs: cleanAddrs
-    };
-
-    const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
-    
-    // Transaction 1: App call to reclaim funds (from creator)
+    // Transaction 1: The REAL app call to reclaim funds (from creator).
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
@@ -342,17 +322,18 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       foreignAssets: [targetAssetId],
       suggestedParams: { 
         ...suggestedParams,
-        fee: 2000,
+        fee: 2000, // Fee for app call + inner txn
         flatFee: true 
       }
     });
 
-    // Transaction 2: REAL multisig transaction to close the multisig account
-    const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: multisigAddress,
-      receiver: senderAddress,
-      amount: 0,
-      closeRemainderTo: senderAddress,
+    // Transaction 2: A DUMMY payment transaction from the user to themselves.
+    // The backend will harvest the signature from this to use on the REAL multisig transaction.
+    const userPaymentTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      sender: senderAddress,
+      receiver: senderAddress, // Sending to self
+      amount: 0, // 0 amount
+      note: new Uint8Array(Buffer.from('Signature for multisig account close')),
       suggestedParams: { 
         ...suggestedParams,
         fee: 1000,
@@ -361,26 +342,20 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     });
 
     // Create transaction group
-    const txnGroup = [reclaimTxn, closeMultisigTxn];
+    const txnGroup = [reclaimTxn, userPaymentTxn];
     algosdk.assignGroupID(txnGroup);
     
-    // Prepare transactions for ARC-1 signing
-    const walletTransactions = [
-      {
-        txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
-        // No additional fields needed - wallet will sign with creator's account normally
-      },
-      {
-        txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        msig: cleanMsigParams,
-        signers: [senderAddress]
-      }
-    ];
+    // Prepare transactions for the wallet.
+    // NOTE: This is NOT an ARC-1 multisig object anymore. It's just two
+    // standard transactions that the user's wallet can sign directly.
+    const walletTransactions = txnGroup.map(txn => ({
+      txn: Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64')
+    }));
     
-    console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
+    console.log(`Reclaim transaction group created for user signing.`);
     return { 
       walletTransactions: walletTransactions,
-      multisigParams: cleanMsigParams
+      // No multisigParams are needed on the frontend for this pattern
     };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
