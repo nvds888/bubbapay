@@ -78,73 +78,88 @@ function TransactionsPage() {
     }).format(date);
   };
   
-// Handle reclaiming funds - proper ARC-1 implementation
-const handleReclaim = async (appId) => {
-  if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
-    return;
-  }
+  const handleReclaim = async (appId) => {
+    if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
+      return;
+    }
+    
+    setIsReclaiming(true);
+    setReclaimStatus({ appId, status: 'Generating transactions...' });
+    
+    try {
+      // Generate the reclaim transactions using ARC-1 approach
+      const txnData = await api.generateReclaimTransaction({
+        appId,
+        senderAddress: activeAddress
+      });
   
-  setIsReclaiming(true);
-  setReclaimStatus({ appId, status: 'Generating transactions...' });
-  
-  try {
-    // Generate the reclaim transactions using ARC-1 approach
-    const txnData = await api.generateReclaimTransaction({
-      appId,
-      senderAddress: activeAddress
-    });
-
-    console.log('WalletTransactions being sent to wallet:', JSON.stringify(txnData.walletTransactions, null, 2));
-    
-    setReclaimStatus({ appId, status: 'Waiting for signature...' });
-    
-   // Convert ARC-1 wallet transactions to unsigned transactions for signing
-const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
-  const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
-  const txn = algosdk.decodeUnsignedTransaction(txnUint8);
-  
-  // Set authAddr if present (for the multisig transaction)
-  if (walletTxn.authAddr) {
-    txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr);
-  }
-  
-  return txn;
-});
-    
-    console.log('Reclaim transactions:', {
-      txn1: `App call from ${unsignedTxns[0].sender}`,
-      txn2: `Multisig payment from ${unsignedTxns[1].sender}`,
-      groupId: Buffer.from(unsignedTxns[0].group).toString('hex')
-    });
-    
-    // Sign using use-wallet - it should handle the multisig properly based on ARC-1
-    console.log('Sending to wallet for signing:', unsignedTxns.length, 'transactions');
-    const signedTxns = await signTransactions(unsignedTxns);
-
-    // DEBUG: Check what wallet returned
-console.log('Wallet returned:', signedTxns.map((txn, i) => ({
-  index: i,
-  isNull: txn === null,
-  hasData: !!txn,
-  length: txn ? txn.length : 0
-})));
-    
-    setReclaimStatus({ appId, status: 'Submitting transactions...' });
-    
-    // Convert signed transactions to base64 for backend
-    const signedTxnsBase64 = signedTxns.map(signedTxn => {
-      if (!signedTxn) {
-        throw new Error('Failed to sign transaction');
+      console.log('WalletTransactions being sent to wallet:', JSON.stringify(txnData.walletTransactions, null, 2));
+      
+      setReclaimStatus({ appId, status: 'Waiting for signature...' });
+      
+      // Convert ARC-1 wallet transactions to unsigned transactions for signing
+      const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
+        const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
+        const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+        
+        // Set authAddr if present (for the multisig transaction)
+        if (walletTxn.authAddr) {
+          txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr);
+        }
+        
+        return txn;
+      });
+      
+      console.log('Reclaim transactions:', {
+        txn1: `App call from ${unsignedTxns[0].sender}`,
+        txn2: `Multisig payment from ${unsignedTxns[1].sender}`,
+        groupId: Buffer.from(unsignedTxns[0].group).toString('hex')
+      });
+      
+      // Sign using use-wallet - it should handle the multisig properly based on ARC-1
+      console.log('Sending to wallet for signing:', unsignedTxns.length, 'transactions');
+      let signedTxns;
+      try {
+        signedTxns = await signTransactions(unsignedTxns);
+        // Detailed logging of wallet response
+        console.log('Wallet signing response:', {
+          transactionCount: signedTxns.length,
+          details: signedTxns.map((txn, i) => ({
+            index: i,
+            isNull: txn === null,
+            hasData: !!txn,
+            length: txn ? txn.length : 0,
+            type: txn ? algosdk.decodeSignedTransaction(txn).txn.type : 'N/A'
+          }))
+        });
+      } catch (signError) {
+        // Log specific signing error
+        console.error('Wallet signing error:', {
+          message: signError.message,
+          stack: signError.stack,
+          code: signError.code,
+          details: signError
+        });
+        throw signError;
       }
-      return Buffer.from(signedTxn).toString('base64');
-    });
-    
-    // Submit the properly signed transactions
-    const result = await api.submitReclaimTransaction({
-      signedTxns: signedTxnsBase64,
-      appId,
-      senderAddress: activeAddress
-    });
+      
+      setReclaimStatus({ appId, status: 'Submitting transactions...' });
+      
+      // Convert signed transactions to base64 for backend
+      const signedTxnsBase64 = signedTxns.map(signedTxn => {
+        if (!signedTxn) {
+          console.error('Null signed transaction detected at index:', signedTxns.indexOf(signedTxn));
+          throw new Error('Failed to sign transaction');
+        }
+        return Buffer.from(signedTxn).toString('base64');
+      });
+      
+      // Submit the properly signed transactions
+      const result = await api.submitReclaimTransaction({
+        signedTxns: signedTxnsBase64,
+        appId,
+        senderAddress: activeAddress
+      });
     
     // Update the local transactions state to reflect the reclaim
     setTransactions(prev => prev.map(tx => {
