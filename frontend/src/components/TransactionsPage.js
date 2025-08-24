@@ -98,8 +98,7 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-   // Pass ARC-1 payload straight to the wallet connector:
-const signedTxns = await signTransactions(txnData.walletTransactions);
+    const signedTxns = await signTransactions(txnData.walletTransactions);
 
 
     // DEBUG: Check what wallet returned
