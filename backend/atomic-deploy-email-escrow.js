@@ -349,7 +349,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     // Transaction 2: REAL multisig transaction to close the multisig account
     const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: multisigAddress, // Correct sender: multisigAddress
+      sender: senderAddress,
       receiver: senderAddress,
       amount: 0,
       closeRemainderTo: senderAddress,
@@ -360,26 +360,10 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Transaction 3: Parallel transaction for wallet to sign (same fields, different sender)
-    const walletSignTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: senderAddress, // Sender is user’s address for wallet signing
-      receiver: senderAddress,
-      amount: 0,
-      closeRemainderTo: senderAddress,
-      suggestedParams: { 
-        ...suggestedParams,
-        fee: 1000,
-        flatFee: true 
-      }
-    });
-
-    // Create transaction group with the REAL transactions
+    // Create transaction group
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
-
-    // Assign the same group ID to the wallet signing transaction
-    walletSignTxn.group = closeMultisigTxn.group;
-
+    
     // Prepare transactions for ARC-1 signing
     const walletTransactions = [
       {
@@ -387,8 +371,8 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
         // No additional fields needed - wallet will sign with creator's account normally
       },
       {
-        txn: Buffer.from(algosdk.encodeUnsignedTransaction(walletSignTxn)).toString('base64'),
-        authAddr: senderAddress // Indicate the user’s address for clarity
+        txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
+        authAddr: senderAddress
       }
     ];
     
