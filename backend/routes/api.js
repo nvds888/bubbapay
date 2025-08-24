@@ -743,19 +743,19 @@ router.post('/submit-reclaim', async (req, res) => {
     }
     
     try {
-      // Transaction 1: App call - can be submitted as-is (normal signature)
+      // Transaction 1: App call - submit as-is (regular signature)
       const appCallSignedTxn = Buffer.from(signedTxns[0], 'base64');
       
-      // Transaction 2: Multisig payment - needs reconstruction
-      const multisigSignedTxn = algosdk.decodeSignedTransaction(Buffer.from(signedTxns[1], 'base64'));
+      // Transaction 2: Payment signed with authAddr - extract signature
+      const paymentSignedTxn = algosdk.decodeSignedTransaction(Buffer.from(signedTxns[1], 'base64'));
       
-      // Extract the signature from what the wallet returned
-      const walletSignature = multisigSignedTxn.sig;
-      if (!walletSignature) {
-        throw new Error('No signature found in multisig transaction');
+      // Extract the signature from the wallet-signed transaction
+      const userSignature = paymentSignedTxn.sig;
+      if (!userSignature) {
+        throw new Error('No signature found in payment transaction');
       }
       
-      // Reconstruct clean multisig params
+      // Reconstruct clean multisig params from database
       const cleanAddrs = escrow.tempAccount.msigParams.addrs.map(addr => {
         if (typeof addr === 'string') {
           return addr;
@@ -766,19 +766,18 @@ router.post('/submit-reclaim', async (req, res) => {
           throw new Error('Invalid address format in multisig params');
         }
       });
-
+    
       const cleanMsigParams = {
         version: escrow.tempAccount.msigParams.version,
         threshold: escrow.tempAccount.msigParams.threshold,
         addrs: cleanAddrs
       };
-
+    
       const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
       
-      // Get fresh suggested params and recreate the exact multisig transaction
+      // Recreate the unsigned multisig transaction (same as what was signed)
       const suggestedParams = await algodClient.getTransactionParams().do();
-      
-      const recreatedMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      const unsignedMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: multisigAddress,
         receiver: senderAddress,
         amount: 0,
@@ -793,28 +792,19 @@ router.post('/submit-reclaim', async (req, res) => {
       
       // Set the same group ID as the app call transaction
       const appCallTxn = algosdk.decodeSignedTransaction(appCallSignedTxn);
-      recreatedMultisigTxn.group = appCallTxn.txn.group;
+      unsignedMultisigTxn.group = appCallTxn.txn.group;
       
-      // Create the multisig transaction structure
-      const msigTxn = algosdk.createMultisigTransaction(recreatedMultisigTxn, cleanMsigParams);
-      
-      // Append the signature from the wallet in the correct multisig format
+      // Create proper multisig transaction and add the user's signature
+      const msigTxn = algosdk.createMultisigTransaction(unsignedMultisigTxn, cleanMsigParams);
       const finalMsigTxn = algosdk.appendSignRawMultisigSignature(
         msigTxn,
         cleanMsigParams,
         senderAddress,
-        walletSignature
+        userSignature
       );
       
-      // Create final transaction group for submission
-      const finalTxnGroup = [
-        appCallSignedTxn,           // App call signed transaction (as Buffer)
-        finalMsigTxn.blob           // Properly formatted multisig transaction blob
-      ];
-      
-      console.log('Submitting properly formatted transaction group');
-      
-      // Submit the transaction group
+      // Submit both transactions
+      const finalTxnGroup = [appCallSignedTxn, finalMsigTxn.blob];
       const { txid } = await algodClient.sendRawTransaction(finalTxnGroup).do();
       
       // Wait for confirmation
