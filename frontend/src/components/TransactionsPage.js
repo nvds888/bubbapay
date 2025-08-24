@@ -98,18 +98,24 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-   // Convert ARC-1 wallet transactions to unsigned transactions for signing
-const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
-  const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
-  const txn = algosdk.decodeUnsignedTransaction(txnUint8);
-  
-  // Set authAddr if present (for the multisig transaction)
-  if (walletTxn.authAddr) {
-    txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr).publicKey;
-  }
-  
-  return txn;
-});
+    const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
+      const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
+      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+      
+      // Ensure sender address is valid
+      if (!txn.from || !algosdk.isValidAddress(algosdk.encodeAddress(txn.from.publicKey))) {
+        throw new Error(`Invalid sender address in transaction: ${algosdk.encodeAddress(txn.from.publicKey)}`);
+      }
+      
+      // Set authAddr if present
+      if (walletTxn.authAddr) {
+        txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr).publicKey;
+      }
+      
+      return txn;
+    });
+
+    console.log('Raw walletTransactions:', JSON.stringify(txnData.walletTransactions, null, 2));
     
     console.log('Reclaim transactions:', {
       txn1: `App call from ${unsignedTxns[0].sender}`,
