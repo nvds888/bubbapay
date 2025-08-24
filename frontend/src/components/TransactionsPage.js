@@ -103,10 +103,6 @@ const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
   const txnUint8 = new Uint8Array(Buffer.from(walletTxn.txn, 'base64'));
   const txn = algosdk.decodeUnsignedTransaction(txnUint8);
   
-  // Set authAddr if present (for the multisig transaction)
-  if (walletTxn.authAddr) {
-    txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr);
-  }
   
   return txn;
 });
