@@ -55,21 +55,12 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
       throw new Error("Invalid 'amount'. Must be a positive number.");
     }
     
-    // Generate temporary account
-const tempAccount = algosdk.generateAccount();
-
-// Build multisig params (2-of-2 in this example)
-const msigParams = {
-  version: 1,
-  threshold: 1,
-  addrs: [ senderAddress, tempAccount.addr ],
-};
-
-// Derive the multisig address
-const multisigAddress = algosdk.multisigAddress(msigParams);
-
+    // Generate temporary account for authorization
+    const tempAccount = algosdk.generateAccount();
+    const tempAddress = tempAccount.addr;
     const tempPrivateKey = Buffer.from(tempAccount.sk).toString('hex');
     
+    console.log(`Generated temporary account: ${tempAddress}`);
     
     // Convert to microUnits
     const microAmount = toMicroUnits(amount, targetAssetId);
@@ -82,7 +73,7 @@ const multisigAddress = algosdk.multisigAddress(msigParams);
     console.log("Processing parameters complete. Generating TEAL programs...");
     
     // Compile the TEAL programs - now using imported functions
-    const approvalProgramSource = createApprovalProgram(senderAddress, multisigAddress, targetAssetId);
+    const approvalProgramSource = createApprovalProgram(senderAddress, tempAddress, targetAssetId);
     const approvalProgram = await compileProgram(approvalProgramSource);
     
     const clearProgramSource = createClearProgram();
@@ -115,9 +106,8 @@ const multisigAddress = algosdk.multisigAddress(msigParams);
       return {
         transaction: encodedTxn,
         tempAccount: {
-          address: multisigAddress,
-          privateKey: tempPrivateKey,
-          msigParams
+          address: tempAddress,
+          privateKey: tempPrivateKey
         },
         amount: amount,
         microAmount: microAmount
@@ -207,7 +197,7 @@ const appAddress = appAddressObj.toString();
     if (payRecipientFees) {
       recipientFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: senderAddress,
-        receiver: appAddress,
+        receiver: tempAccountAddress,
         amount: 210000,
         note: new Uint8Array(Buffer.from('Recipient fee funding to temp account')),
         suggestedParams: { ...suggestedParams, fee: EXACT_FEES.RECIPIENT_FUNDING, flatFee: true }
@@ -292,41 +282,43 @@ async function compileProgram(programSource) {
   }
 }
 
-async function generateReclaimTransaction({ appId, senderAddress, assetId = null, tempAccount }) {
+async function generateReclaimTransaction({ appId, senderAddress, assetId = null }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
   try {
-    console.log("=== Generating Simplified Reclaim Transaction ===");
+    console.log("Generating reclaim transaction for app:", appId);
     
-    // Validate inputs
     if (!appId || isNaN(parseInt(appId))) {
       throw new Error("Invalid app ID");
     }
+    
     if (!algosdk.isValidAddress(senderAddress)) {
       throw new Error("Invalid sender address");
     }
-
-    const appIdInt = Number(appId);
+    
+    const appIdInt = Number(appId); 
     const suggestedParams = await algodClient.getTransactionParams().do();
-
-    // Single transaction: reclaim assets only (fee coverage stays in app)
+    
+    // Calculate exact fee (1 inner transaction for asset transfer)
+    const exactFee = calculateTransactionFee(true, 1); // 2000 microALGO
+    
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
       onComplete: algosdk.OnApplicationComplete.NoOpOC,
       appArgs: [new Uint8Array(Buffer.from("reclaim"))],
       foreignAssets: [targetAssetId],
-      suggestedParams: {
+      suggestedParams: { 
         ...suggestedParams,
-        fee: 2000,
-        flatFee: true,
-      },
+        fee: exactFee,
+        flatFee: true 
+      }
     });
-
-    // Return single transaction (no multisig needed)
-    return {
-      transaction: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
-    };
+    
+    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64');
+    
+    console.log(`Reclaim transaction created with exact fee: ${exactFee / 1e6} ALGO`);
+    return { transaction: encodedTxn };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
     throw new Error(`Failed to create reclaim transaction: ${error.message}`);

@@ -78,141 +78,69 @@ function TransactionsPage() {
     }).format(date);
   };
   
+  // Handle reclaiming funds
   const handleReclaim = async (appId) => {
-  if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
-    return;
-  }
-
-  setIsReclaiming(true);
-  setReclaimStatus({ appId, status: 'Generating transactions...' });
-
-  try {
-    // Generate reclaim transaction
-    const txnData = await api.generateReclaimTransaction({
-      appId,
-      senderAddress: activeAddress,
-    });
-
-    console.log('Generated WalletTransactions:', txnData.walletTransactions?.length || 0);
+    if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
+      return;
+    }
     
-    // Validate wallet transactions before sending
-    if (!txnData.walletTransactions || !Array.isArray(txnData.walletTransactions)) {
-      throw new Error('Invalid wallet transactions received from backend');
-    }
-
-    // Validate each transaction has required fields
-    txnData.walletTransactions.forEach((wt, index) => {
-      if (!wt.txn || typeof wt.txn !== 'string') {
-        throw new Error(`WalletTransaction ${index + 1} missing or invalid txn field`);
-      }
-      if (!wt.signers || !Array.isArray(wt.signers)) {
-        throw new Error(`WalletTransaction ${index + 1} missing signers field`);
-      }
-      
-      // Validate base64 encoding
-      try {
-        atob(wt.txn);
-      } catch (e) {
-        throw new Error(`WalletTransaction ${index + 1} has invalid base64 txn encoding`);
-      }
-    });
-
-    setReclaimStatus({ appId, status: 'Waiting for signature...' });
-
-    // Sign transactions using ARC-1 compliant wallet transaction format
-    let signedTxns;
+    setIsReclaiming(true);
+    setReclaimStatus({ appId, status: 'Generating transaction...' });
+    
     try {
-      signedTxns = await signTransactions(txnData.walletTransactions);
-    } catch (walletError) {
-      console.error('Wallet signing error:', walletError);
+      // Generate the reclaim transaction
+      const txnData = await api.generateReclaimTransaction({
+        appId,
+        senderAddress: activeAddress
+      });
       
-      // Provide user-friendly error messages
-      if (walletError.message?.includes('rejected') || walletError.code === 4001) {
-        throw new Error('Transaction signing was cancelled by user');
-      } else if (walletError.message?.includes('RangeError') || walletError.message?.includes('DataView')) {
-        throw new Error('Invalid transaction format - please try again');
-      } else if (walletError.message?.includes('multisig')) {
-        throw new Error('Multisig signing failed - verify wallet supports multisig transactions');
-      } else {
-        throw new Error(`Wallet signing failed: ${walletError.message || 'Unknown error'}`);
-      }
-    }
-
-    // Validate signed transactions
-    if (!signedTxns || !Array.isArray(signedTxns)) {
-      throw new Error('Wallet returned invalid signed transactions');
-    }
-
-    if (signedTxns.length !== txnData.walletTransactions.length) {
-      throw new Error(`Expected ${txnData.walletTransactions.length} signed transactions, got ${signedTxns.length}`);
-    }
-
-    // Convert signed transactions to base64 format
-    const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
-      if (!signedTxn) {
-        throw new Error(`Wallet failed to sign transaction ${index + 1}`);
-      }
+      setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      if (typeof signedTxn === 'string') {
-        // Already base64 encoded
-        return signedTxn;
-      } else if (signedTxn instanceof Uint8Array) {
-        // Convert Uint8Array to base64
-        return Buffer.from(signedTxn).toString('base64');
-      } else {
-        throw new Error(`Unexpected signed transaction format: ${typeof signedTxn}`);
-      }
-    });
-
-    setReclaimStatus({ appId, status: 'Submitting transactions...' });
-
-    // Submit signed transactions
-    const result = await api.submitReclaimTransaction({
-      signedTxns: signedTxnsBase64,
-      appId,
-      senderAddress: activeAddress,
-    });
-
-    // Update local state on success
-    setTransactions(prev =>
-      prev.map(tx => {
+      // Convert base64 transaction to Uint8Array
+      const txnUint8 = new Uint8Array(Buffer.from(txnData.transaction, 'base64'));
+      
+      // Decode the transaction for proper signing
+      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+      
+      // Sign with use-wallet (supports multiple wallets)
+      const signedTxns = await signTransactions([txn]);
+      
+      // Convert the signed transaction to base64
+      const signedTxnBase64 = Buffer.from(signedTxns[0]).toString('base64');
+      
+      setReclaimStatus({ appId, status: 'Submitting transaction...' });
+      
+      // Submit the signed transaction
+      const result = await api.submitReclaimTransaction({
+        signedTxn: signedTxnBase64,
+        appId,
+        senderAddress: activeAddress
+      });
+      
+      // Update the local transactions state to reflect the reclaim
+      setTransactions(prev => prev.map(tx => {
         if (tx.appId === parseInt(appId)) {
           return { ...tx, reclaimed: true, reclaimedAt: new Date() };
         }
         return tx;
-      }),
-    );
-
-    setReclaimStatus({ appId, status: 'Success' });
-    const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-    alert(`Successfully reclaimed ${result.amount || 'funds'} ${assetSymbol}!`);
-    
-  } catch (error) {
-    console.error('Error reclaiming funds:', error);
-    setReclaimStatus({ appId, status: 'Failed' });
-
-    // Provide specific error messages
-    let errorMessage = 'Failed to reclaim funds';
-    if (error.message?.includes('cancelled') || error.message?.includes('rejected')) {
-      errorMessage = 'Transaction was cancelled';
-    } else if (error.message?.includes('insufficient')) {
-      errorMessage = 'Insufficient ALGO for transaction fees';
-    } else if (error.message?.includes('Invalid transaction format')) {
-      errorMessage = 'Transaction encoding error - please try again';
-    } else if (error.response?.data?.error) {
-      errorMessage = error.response.data.error;
-    } else if (error.message) {
-      errorMessage = error.message;
+      }));
+      
+      setReclaimStatus({ appId, status: 'Success' });
+      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
+      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}`);
+      
+    } catch (error) {
+      console.error('Error reclaiming funds:', error);
+      setReclaimStatus({ appId, status: 'Failed' });
+      alert(`Failed to reclaim funds: ${error.message || error}`);
+    } finally {
+      setIsReclaiming(false);
+      // Reset status after a delay
+      setTimeout(() => {
+        setReclaimStatus({ appId: null, status: '' });
+      }, 3000);
     }
-
-    alert(`${errorMessage}`);
-  } finally {
-    setIsReclaiming(false);
-    setTimeout(() => {
-      setReclaimStatus({ appId: null, status: '' });
-    }, 3000);
-  }
-};
+  };
   
 
   const handleCleanup = async (appId) => {
@@ -365,7 +293,7 @@ function TransactionsPage() {
             </svg>
             <div className="text-sm">
               <p className="font-medium text-amber-800">Important Security Note:</p>
-              <p className="text-amber-700 mt-1">Claim links are only displayed once during creation. The creator can always reclaim unclaimed funds below.</p>
+              <p className="text-amber-700 mt-1">Claim links are only displayed once during creation for security. If a link was lost, the creator can always reclaim unclaimed funds below.</p>
             </div>
           </div>
         </div>
@@ -398,7 +326,7 @@ function TransactionsPage() {
             </div>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Transactions Yet</h3>
-          <p className="text-gray-600 mb-4 text-sm">You haven't created any link yet. Create your first link!</p>
+          <p className="text-gray-600 mb-4 text-sm">You haven't sent any $$ yet. Create your first transfer!</p>
           <Link 
             to="/"
             className="btn-primary px-4 py-2 font-medium"
@@ -478,35 +406,25 @@ function TransactionsPage() {
                       
                       {/* Action buttons */}
                       <div className="space-y-1">
-                      {!transaction.funded ? (
-  <div className="text-sm">
-    <span className="text-amber-600 font-medium block mb-1">Incomplete Transfer</span>
-    <Link 
-      to="/"
-      className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200"
-    >
-      Navigate to main flow to pick up where you left off
-    </Link>
-  </div>
-) : !transaction.claimed && !transaction.reclaimed ? (
-  <button
-    onClick={() => handleReclaim(transaction.appId)}
-    disabled={isReclaiming}
-    className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-  >
-    Reclaim Funds
-  </button>
-) : transaction.cleanedUp ? (
-  <span className="text-gray-500 text-sm">Cleaned Up</span>
-) : (
-  <button
-    onClick={() => handleCleanup(transaction.appId)}
-    disabled={isCleaningUp}
-    className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-  >
-    Clean Up (0.46 ALGO)
-  </button>
-)}
+                        {!transaction.claimed && !transaction.reclaimed ? (
+                          <button
+                            onClick={() => handleReclaim(transaction.appId)}
+                            disabled={isReclaiming}
+                            className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+                          >
+                            Reclaim Funds
+                          </button>
+                        ) : transaction.cleanedUp ? (
+                          <span className="text-gray-500 text-sm">Cleaned Up</span>
+                        ) : (
+                          <button
+                            onClick={() => handleCleanup(transaction.appId)}
+                            disabled={isCleaningUp}
+                            className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+                          >
+                            Clean Up (0.46 ALGO)
+                          </button>
+                        )}
                         
                         {/* Explorer link - always show */}
                         <a
@@ -580,35 +498,25 @@ function TransactionsPage() {
                   </div>
                   
                   <div className="space-y-2">
-                  {!transaction.funded ? (
-  <div className="text-sm">
-    <span className="text-amber-600 font-medium block mb-1">Incomplete Transfer</span>
-    <Link 
-      to="/"
-      className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200"
-    >
-      Navigate to main flow to pick up where you left off
-    </Link>
-  </div>
-) : !transaction.claimed && !transaction.reclaimed ? (
-  <button
-    onClick={() => handleReclaim(transaction.appId)}
-    disabled={isReclaiming}
-    className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-  >
-    Reclaim Funds
-  </button>
-) : transaction.cleanedUp ? (
-  <span className="text-gray-500 text-sm">Cleaned Up</span>
-) : (
-  <button
-    onClick={() => handleCleanup(transaction.appId)}
-    disabled={isCleaningUp}
-    className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-  >
-    Clean Up (0.46 ALGO)
-  </button>
-)}
+                    {!transaction.claimed && !transaction.reclaimed ? (
+                      <button
+                        onClick={() => handleReclaim(transaction.appId)}
+                        disabled={isReclaiming}
+                        className="btn-secondary px-3 py-1.5 text-sm font-medium w-full"
+                      >
+                        Reclaim Funds
+                      </button>
+                    ) : transaction.cleanedUp ? (
+                      <span className="text-gray-500 text-sm">Cleaned Up</span>
+                    ) : (
+                      <button
+                        onClick={() => handleCleanup(transaction.appId)}
+                        disabled={isCleaningUp}
+                        className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
+                      >
+                        Clean Up (~0.46 ALGO)
+                      </button>
+                    )}
                     
                     {/* Explorer link - always show */}
                     <a
@@ -636,7 +544,7 @@ function TransactionsPage() {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span>Create another link</span>
+          <span>Send More $$</span>
         </Link>
       </div>
     </div>
