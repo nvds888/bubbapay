@@ -108,7 +108,7 @@ function TransactionsPage() {
         
         const txn = algosdk.decodeUnsignedTransaction(txnUint8);
         
-        // Set authAddr or msig if present
+        // Set authAddr if present
         if (walletTxn.authAddr) {
           txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr);
         }
@@ -119,15 +119,34 @@ function TransactionsPage() {
       // Prepare multisig metadata for the wallet
       const signers = txnData.walletTransactions.map(walletTxn => {
         if (walletTxn.msig) {
-          // Convert multisig structure for wallet
+          // Convert multisig structure for wallet using browser-native methods
           return {
             msig: {
               version: walletTxn.msig.v,
               threshold: walletTxn.msig.thr,
-              subsigs: walletTxn.msig.subsig.map(sub => ({
-                pk: Buffer.from(sub.pk, 'base64'), // Convert address to public key bytes
-                s: sub.s ? Buffer.from(sub.s, 'base64') : null
-              }))
+              subsigs: walletTxn.msig.subsig.map(sub => {
+                // Convert base64 public key to Uint8Array
+                const pkBinary = atob(sub.pk);
+                const pkBytes = new Uint8Array(pkBinary.length);
+                for (let i = 0; i < pkBinary.length; i++) {
+                  pkBytes[i] = pkBinary.charCodeAt(i);
+                }
+                
+                // Convert signature to Uint8Array if present
+                let sBytes = null;
+                if (sub.s) {
+                  const sBinary = atob(sub.s);
+                  sBytes = new Uint8Array(sBinary.length);
+                  for (let i = 0; i < sBinary.length; i++) {
+                    sBytes[i] = sBinary.charCodeAt(i);
+                  }
+                }
+                
+                return {
+                  pk: pkBytes,
+                  s: sBytes
+                };
+              })
             },
             authAddr: walletTxn.authAddr
           };
@@ -193,6 +212,8 @@ function TransactionsPage() {
         errorMessage = 'Insufficient ALGO for transaction fees';
       } else if (error.message.includes('null') || error.message.includes('sign')) {
         errorMessage = 'Wallet failed to sign multisig transaction. Ensure your wallet supports multisig and try again.';
+      } else if (error.message.includes('Buffer')) {
+        errorMessage = 'Internal error: Buffer not supported in browser environment';
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       }
@@ -206,7 +227,6 @@ function TransactionsPage() {
       }, 3000);
     }
   };
-  
 
   const handleCleanup = async (appId) => {
     if (!window.confirm("Clean up this contract to recover locked ALGO? This will permanently delete the contract.")) {
