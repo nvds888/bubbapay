@@ -97,7 +97,7 @@ function TransactionsPage() {
       
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      // Convert to algosdk transactions - authAddr is already set in backend
+      // Convert to algosdk transactions 
       const unsignedTxns = txnData.walletTransactions.map((walletTxn, index) => {
         const binaryString = atob(walletTxn.txn);
         const txnUint8 = new Uint8Array(binaryString.length);
@@ -106,6 +106,12 @@ function TransactionsPage() {
         }
         
         const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+        
+        // For the multisig transaction (index 1), ensure authAddr is set
+        if (index === 1) {
+          txn.authAddr = algosdk.decodeAddress(activeAddress);
+          console.log('Set authAddr directly in frontend for transaction 2:', activeAddress);
+        }
         
         // Log transaction details for debugging
         console.log(`Transaction ${index + 1}:`, {
