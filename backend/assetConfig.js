@@ -45,6 +45,15 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       isDefault: false,
       description: 'Akita Inu is an og Algorand meme token'
+    },
+    2656692124: {
+      id: 2656692124,
+      name: 'BallSack',
+      unitName: 'BALLSACK',
+      symbol: 'BallSack',
+      decimals: 10,
+      isDefault: false,
+      description: 'BallSack is a meme token'
     }
     // Add more assets here 
   };
