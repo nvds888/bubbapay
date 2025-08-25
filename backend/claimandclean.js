@@ -267,21 +267,6 @@ console.log('Calculated multisig address:', multisigAddress);
     const suggestedParams = await algodClient.getTransactionParams().do();
     const targetAssetId = assetId || escrow.assetId || getDefaultAssetId();
     
-    // Calculate fee coverage from APP balance
-let feeCoverageAmount = 0;
-if (escrow.payRecipientFees) {
-  const appAddress = algosdk.getApplicationAddress(parseInt(appId));
-  const appAccountInfo = await algodClient.accountInformation(appAddress).do();
-  const appBalance = safeToNumber(appAccountInfo.amount);
-  
-  const claimTxnFee = 2000;
-  const feeCoverageTxnFee = 2000;
-  const closeTxnFee = 1000;
-  const minimumBalance = 100000;
-  
-  const totalReserved = claimTxnFee + feeCoverageTxnFee + closeTxnFee + minimumBalance;
-  feeCoverageAmount = Math.max(0, appBalance - totalReserved);
-}
 
 const transactions = [];
 
