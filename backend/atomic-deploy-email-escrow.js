@@ -389,7 +389,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       },
       {
         txn: Buffer.from(multisigTxnEncoded).toString('base64'),
-        msig: msigStructure
+        authAddr: senderAddress
         // Note: Do NOT include authAddr unless the wallet explicitly supports it
       }
     ];
