@@ -106,12 +106,11 @@ function TransactionsPage() {
         }
         
         const txn = algosdk.decodeUnsignedTransaction(txnUint8);
-        
-        // For the multisig transaction, set authAddr to the signer
-        if (walletTxn.msig && walletTxn.signers && walletTxn.signers.length > 0) {
-          console.log('Setting authAddr for multisig transaction:', walletTxn.signers[0]);
-          txn.authAddr = algosdk.decodeAddress(walletTxn.signers[0]);
-        }
+
+// For the multisig transaction (second one), always set authAddr
+if (walletTxn.msig || algosdk.encodeAddress(txn.from) !== activeAddress) {
+  txn.authAddr = algosdk.decodeAddress(activeAddress);
+}
         
         return txn;
       });
