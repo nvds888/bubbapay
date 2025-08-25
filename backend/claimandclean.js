@@ -13,6 +13,8 @@ const ALGOD_PORT = process.env.ALGOD_PORT || '';
 
 const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
 
+const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
+
 // Helper function to safely convert BigInt to Number
 function safeToNumber(value) {
   if (typeof value === 'bigint') {
