@@ -326,10 +326,16 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     console.log("Clean multisig params:", cleanMsigParams);
     
-    const calculatedMultisigAddress = algosdk.multisigAddress(cleanMsigParams);
+    // FIXED: Properly handle Address object - use encodeAddress for conversion
+    const calculatedMultisigAddressObj = algosdk.multisigAddress(cleanMsigParams);
+    const calculatedMultisigAddress = algosdk.encodeAddress(calculatedMultisigAddressObj.publicKey);
+    
     console.log("Calculated multisig address:", calculatedMultisigAddress);
     console.log("Expected from wallet display: 442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE");
     console.log("Addresses match:", calculatedMultisigAddress === "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE");
+    
+    let finalMsigParams = cleanMsigParams;
+    let multisigAddress = calculatedMultisigAddress;
     
     // If addresses don't match, try different order
     if (calculatedMultisigAddress !== "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE") {
@@ -340,17 +346,32 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
         addrs: [...cleanAddrs].reverse() // Try reversed order
       };
       
-      const reversedMultisigAddress = algosdk.multisigAddress(reversedMsigParams);
+      const reversedMultisigAddressObj = algosdk.multisigAddress(reversedMsigParams);
+      const reversedMultisigAddress = algosdk.encodeAddress(reversedMultisigAddressObj.publicKey);
+      
       console.log("Reversed order multisig address:", reversedMultisigAddress);
       console.log("Reversed matches:", reversedMultisigAddress === "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE");
       
       if (reversedMultisigAddress === "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE") {
         // Use the reversed order
-        cleanMsigParams.addrs = reversedMsigParams.addrs;
+        finalMsigParams = reversedMsigParams;
+        multisigAddress = reversedMultisigAddress;
+      } else {
+        // Neither matches - this is a problem with the stored parameters
+        console.error("=== CRITICAL ERROR ===");
+        console.error("Neither normal nor reversed multisig parameters generate the expected address!");
+        console.error("This suggests the stored multisig parameters are incorrect.");
+        console.error("Expected: 442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE");
+        console.error("Calculated (normal): " + calculatedMultisigAddress);
+        console.error("Calculated (reversed): " + reversedMultisigAddress);
+        
+        // For now, continue with the calculated address (normal order)
+        // But this will likely fail in the wallet
+        console.error("Continuing with calculated address, but this will likely fail...");
       }
     }
     
-    const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
+    console.log("Final multisig address to use:", multisigAddress);
     
     // Continue with rest of function...
     const appIdInt = Number(appId);
@@ -370,7 +391,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     });
 
     const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: multisigAddress,
+      sender: multisigAddress, // Use the string address
       receiver: senderAddress,
       amount: 0,
       closeRemainderTo: senderAddress,
@@ -393,9 +414,9 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
         msig: {
-          version: cleanMsigParams.version,
-          threshold: cleanMsigParams.threshold,
-          addrs: cleanMsigParams.addrs
+          version: finalMsigParams.version,
+          threshold: finalMsigParams.threshold,
+          addrs: finalMsigParams.addrs
         },
         signers: [senderAddress]
       }
@@ -407,7 +428,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     
     return { 
       walletTransactions,
-      multisigParams: cleanMsigParams
+      multisigParams: finalMsigParams
     };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
