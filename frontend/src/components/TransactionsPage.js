@@ -82,83 +82,83 @@ function TransactionsPage() {
     if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
       return;
     }
-    
+  
     setIsReclaiming(true);
     setReclaimStatus({ appId, status: 'Generating transactions...' });
-    
+  
     try {
       const txnData = await api.generateReclaimTransaction({
         appId,
-        senderAddress: activeAddress
+        senderAddress: activeAddress,
       });
   
       console.log('WalletTransactions being sent to wallet:', JSON.stringify(txnData.walletTransactions, null, 2));
-      
+  
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
-      
+  
       // Convert transactions to algosdk format
       const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
+        // Decode base64 transaction to Uint8Array
         const binaryString = atob(walletTxn.txn);
         const txnUint8 = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
           txnUint8[i] = binaryString.charCodeAt(i);
         }
         const txn = algosdk.decodeUnsignedTransaction(txnUint8);
-        
-        // If msig is present, attach it to the transaction object for wallets that support it
+  
+        // Attach msig structure for multisig transaction
         if (walletTxn.msig) {
           txn.msig = {
             v: walletTxn.msig.v,
             thr: walletTxn.msig.thr,
             subsig: walletTxn.msig.subsig.map(sub => ({
-              pk: Buffer.from(sub.pk, 'base64')
-            }))
+              pk: new Uint8Array(atob(sub.pk).split('').map(char => char.charCodeAt(0))), // Convert base64 to Uint8Array
+            })),
           };
         }
-        
+  
         return txn;
       });
-      
+  
       // Sign with wallet
       const signedTxns = await signTransactions(unsignedTxns);
-      
+  
       // Convert signed transactions to base64
       const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
         if (!signedTxn) {
           throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null.`);
         }
-        let binaryString = '';
-        for (let i = 0; i < signedTxn.length; i++) {
-          binaryString += String.fromCharCode(signedTxn[i]);
-        }
+        // Convert Uint8Array to base64 using btoa
+        const binaryString = String.fromCharCode(...signedTxn);
         return btoa(binaryString);
       });
-      
+  
       setReclaimStatus({ appId, status: 'Submitting transactions...' });
-      
+  
       // Submit signed transactions
       const result = await api.submitReclaimTransaction({
         signedTxns: signedTxnsBase64,
         appId,
-        senderAddress: activeAddress
+        senderAddress: activeAddress,
       });
-      
+  
       // Update local state
-      setTransactions(prev => prev.map(tx => {
-        if (tx.appId === parseInt(appId)) {
-          return { ...tx, reclaimed: true, reclaimedAt: new Date() };
-        }
-        return tx;
-      }));
-      
+      setTransactions(prev =>
+        prev.map(tx => {
+          if (tx.appId === parseInt(appId)) {
+            return { ...tx, reclaimed: true, reclaimedAt: new Date() };
+          }
+          return tx;
+        }),
+      );
+  
       setReclaimStatus({ appId, status: 'Success' });
       const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
       alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
-      
     } catch (error) {
       console.error('Error reclaiming funds:', error);
       setReclaimStatus({ appId, status: 'Failed' });
-      
+  
       let errorMessage = 'Failed to reclaim funds';
       if (error.message.includes('rejected')) {
         errorMessage = 'Reclaim rejected - funds may have already been claimed';
@@ -169,7 +169,7 @@ function TransactionsPage() {
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       }
-      
+  
       alert(`${errorMessage}: ${error.message || error}`);
     } finally {
       setIsReclaiming(false);
