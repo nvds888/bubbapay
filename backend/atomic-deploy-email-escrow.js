@@ -333,9 +333,8 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
     console.log("Reconstructed multisig address:", multisigAddress);
-    console.log("Sender address for authAddr:", senderAddress);
     
-    // Transaction 1: App call to reclaim funds (from creator)
+    // Transaction 1: App call to reclaim funds (regular transaction)
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
@@ -349,11 +348,10 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Transaction 2: REAL multisig transaction to close the multisig account
+    // Transaction 2: Multisig transaction to close the multisig account
     const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: multisigAddress,
       receiver: senderAddress,
-      authAddr: senderAddress,  // This is crucial - tells the network who can authorize this
       amount: 0,
       closeRemainderTo: senderAddress,
       suggestedParams: { 
@@ -363,39 +361,31 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // DEBUGGING: Verify transactions before encoding
-    console.log('Reclaim transaction before encoding:', {
-      sender: algosdk.encodeAddress(reclaimTxn.sender),
-      authAddr: reclaimTxn.authAddr ? algosdk.encodeAddress(reclaimTxn.authAddr) : 'none'
-    });
-
-    console.log('Multisig transaction before encoding:', {
-      sender: algosdk.encodeAddress(closeMultisigTxn.sender),
-      authAddr: closeMultisigTxn.authAddr ? algosdk.encodeAddress(closeMultisigTxn.authAddr) : 'MISSING!',
-      closeRemainderTo: algosdk.encodeAddress(closeMultisigTxn.closeRemainderTo)
-    });
-
     // Create transaction group
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
     
-    // Prepare transactions for ARC-1 signing with proper authAddr handling
+    // Prepare transactions for ARC-1 signing with native multisig support
     const walletTransactions = [
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
-        // No authAddr needed for regular transaction - wallet signs with creator's account normally
+        // Regular transaction - no special handling needed
       },
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        authAddr: senderAddress,  // CRITICAL: This tells the wallet who should sign this transaction
-        signers: [senderAddress]  // Additional clarity for wallet about expected signer
+        // For multisig transaction, include multisig metadata
+        multisig: {
+          version: cleanMsigParams.version,
+          threshold: cleanMsigParams.threshold,
+          addrs: cleanMsigParams.addrs
+        },
+        signers: [senderAddress]  // Who should sign this multisig transaction
       }
     ];
 
-    // DEBUGGING: Verify the wallet transactions format
-    console.log('Wallet transactions for ARC-1:', JSON.stringify(walletTransactions, null, 2));
-    
+    console.log('ARC-1 multisig wallet transactions:', JSON.stringify(walletTransactions, null, 2));
     console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
+    
     return { 
       walletTransactions: walletTransactions,
       multisigParams: cleanMsigParams

@@ -93,53 +93,15 @@ function TransactionsPage() {
         senderAddress: activeAddress
       });
   
-      console.log('WalletTransactions being sent to wallet:', JSON.stringify(txnData.walletTransactions, null, 2));
+      console.log('Native ARC-1 multisig walletTransactions:', JSON.stringify(txnData.walletTransactions, null, 2));
       
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      // Convert ARC-1 back to unsigned transactions for Lute compatibility
-      const unsignedTxns = txnData.walletTransactions.map((walletTxn, index) => {
-        // Convert base64 to Uint8Array using browser-native methods
-        const binaryString = atob(walletTxn.txn);
-        const txnUint8 = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          txnUint8[i] = binaryString.charCodeAt(i);
-        }
-        
-        const txn = algosdk.decodeUnsignedTransaction(txnUint8);
-        
-        // CRITICAL: Set authAddr if present AND log it for debugging
-        if (walletTxn.authAddr) {
-          console.log(`Setting authAddr for transaction ${index}:`, walletTxn.authAddr);
-          txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr);
-          console.log(`Decoded authAddr for txn ${index}:`, algosdk.encodeAddress(txn.authAddr));
-        }
-        
-        // Log transaction details to verify authAddr is properly set
-        console.log(`Transaction ${index} details:`, {
-          sender: algosdk.encodeAddress(txn.sender),
-          authAddr: txn.authAddr ? algosdk.encodeAddress(txn.authAddr) : 'none',
-          hasAuthAddr: !!txn.authAddr,
-          type: txn.type
-        });
-        
-        return txn;
-      });
+      // Both Lute and Defly support ARC-1 directly, so send the ARC-1 format
+      console.log('Using native ARC-1 multisig support for all wallets');
       
-      // Before sending to wallet, verify transactions have correct authAddr
-      console.log('Transactions being sent to wallet:');
-      unsignedTxns.forEach((txn, i) => {
-        console.log(`Transaction ${i}:`, {
-          sender: algosdk.encodeAddress(txn.sender),
-          authAddr: txn.authAddr ? algosdk.encodeAddress(txn.authAddr) : 'MISSING!',
-          type: txn.type,
-          amount: txn.amount || 0
-        });
-      });
+      const signedTxns = await signTransactions(txnData.walletTransactions);
       
-      console.log('Sending unsigned transactions to Lute wallet:', unsignedTxns.length);
-      const signedTxns = await signTransactions(unsignedTxns);
-  
       console.log('Wallet returned:', signedTxns.map((txn, i) => ({
         index: i,
         isNull: txn === null,
@@ -149,13 +111,18 @@ function TransactionsPage() {
       
       setReclaimStatus({ appId, status: 'Submitting transactions...' });
       
-      // Convert signed transactions to base64 for backend using browser-native methods
+      // Convert signed transactions to base64 for backend
       const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
         if (!signedTxn) {
           throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null for this transaction.`);
         }
         
-        // Convert Uint8Array to base64 using browser-native methods
+        // If it's already a string (base64), return as is
+        if (typeof signedTxn === 'string') {
+          return signedTxn;
+        }
+        
+        // Otherwise convert Uint8Array to base64
         let binaryString = '';
         for (let i = 0; i < signedTxn.length; i++) {
           binaryString += String.fromCharCode(signedTxn[i]);
@@ -170,6 +137,10 @@ function TransactionsPage() {
         senderAddress: activeAddress
       });
       
+      setReclaimStatus({ appId, status: 'Success' });
+      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
+      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
+      
       // Update the local transactions state to reflect the reclaim
       setTransactions(prev => prev.map(tx => {
         if (tx.appId === parseInt(appId)) {
@@ -177,10 +148,6 @@ function TransactionsPage() {
         }
         return tx;
       }));
-      
-      setReclaimStatus({ appId, status: 'Success' });
-      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
       
     } catch (error) {
       console.error('Error reclaiming funds:', error);
@@ -193,7 +160,7 @@ function TransactionsPage() {
       } else if (error.message.includes('insufficient')) {
         errorMessage = 'Insufficient ALGO for transaction fees';
       } else if (error.message.includes('null')) {
-        errorMessage = 'Wallet failed to sign multisig transaction - authAddr may be missing';
+        errorMessage = 'Wallet failed to sign multisig transaction';
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       }
