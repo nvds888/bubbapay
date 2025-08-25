@@ -314,6 +314,17 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       throw new Error("Invalid temporary account or missing msigParams");
     }
 
+    // Validate msigParams
+    if (!Number.isInteger(tempAccount.msigParams.version) || tempAccount.msigParams.version !== 1) {
+      throw new Error("Invalid msigParams.version: must be 1");
+    }
+    if (!Number.isInteger(tempAccount.msigParams.threshold) || tempAccount.msigParams.threshold < 1) {
+      throw new Error("Invalid msigParams.threshold: must be a positive integer");
+    }
+    if (tempAccount.msigParams.addrs.length < 2) {
+      throw new Error("msigParams.addrs must contain at least two addresses");
+    }
+
     // Clean up msigParams addresses
     const cleanAddrs = tempAccount.msigParams.addrs.map((addr, index) => {
       console.log(`Processing address ${index}:`, addr);
@@ -328,6 +339,11 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       throw new Error(`Invalid address format at index ${index}`);
     });
 
+    // Ensure senderAddress is in cleanAddrs
+    if (!cleanAddrs.includes(senderAddress)) {
+      throw new Error("senderAddress must be included in msigParams.addrs");
+    }
+
     const cleanMsigParams = {
       version: tempAccount.msigParams.version,
       threshold: tempAccount.msigParams.threshold,
@@ -336,7 +352,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     // Calculate multisig address
     const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
-    const multisigAddressStr = multisigAddress; // Convert Address object to string
+    const multisigAddressStr = typeof multisigAddress === 'string' ? multisigAddress : algosdk.encodeAddress(multisigAddress.publicKey);
     console.log("Calculated multisig address:", multisigAddressStr);
 
     // Validate multisig address
@@ -354,6 +370,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     } else if (tempAccount.address && tempAccount.address.publicKey && typeof tempAccount.address.publicKey === 'object') {
       const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
       tempAccountAddress = algosdk.encodeAddress(publicKeyArray);
+      console.log(`Converted tempAccount.address from publicKey: ${tempAccountAddress}`);
     } else {
       throw new Error("Invalid tempAccount.address format");
     }
@@ -440,6 +457,12 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       } catch (err) {
         throw new Error(`Failed to decode WalletTransaction ${index + 1}: ${err.message}`);
       }
+    });
+
+    // Log transaction bytes for debugging
+    walletTransactions.forEach((wt, index) => {
+      const bytes = Buffer.from(wt.txn, 'base64');
+      console.log(`Transaction ${index + 1} raw bytes:`, bytes);
     });
 
     return {
