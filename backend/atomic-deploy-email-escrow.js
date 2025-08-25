@@ -313,26 +313,48 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const appIdInt = Number(appId);
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Reconstruct multisig address from stored params
-    const cleanAddrs = tempAccount.msigParams.addrs.map(addr => {
+    // THIS IS THE KEY FIX: Apply the same address reconstruction logic from your claim flow
+    const reconstructedAddrs = tempAccount.msigParams.addrs.map(addr => {
+      console.log("Processing address:", typeof addr, addr);
+      
       if (typeof addr === 'string') {
+        // Validate it's a proper address
+        if (!algosdk.isValidAddress(addr)) {
+          throw new Error(`Invalid address string: ${addr}`);
+        }
         return addr;
       } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
+        // Convert object with publicKey back to string address
         const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
-        return algosdk.encodeAddress(publicKeyArray);
+        const reconstructedAddr = algosdk.encodeAddress(publicKeyArray);
+        console.log("Reconstructed address:", reconstructedAddr);
+        return reconstructedAddr;
       } else {
+        console.error("Invalid address format:", addr);
         throw new Error('Invalid address format in multisig params');
       }
     });
 
+    // Create clean multisig params with ONLY string addresses
     const cleanMsigParams = {
       version: tempAccount.msigParams.version,
       threshold: tempAccount.msigParams.threshold,
-      addrs: cleanAddrs
+      addrs: reconstructedAddrs
     };
+
+    // Validate all addresses are strings and valid
+    cleanMsigParams.addrs.forEach((addr, i) => {
+      if (typeof addr !== 'string') {
+        throw new Error(`Address ${i} is not a string: ${typeof addr}`);
+      }
+      if (!algosdk.isValidAddress(addr)) {
+        throw new Error(`Address ${i} is invalid: ${addr}`);
+      }
+    });
 
     const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
     console.log("Reconstructed multisig address:", multisigAddress);
+    console.log("Clean msig params:", cleanMsigParams);
     
     // Transaction 1: App call to reclaim funds (regular transaction)
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
@@ -365,25 +387,40 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
     
-    // Prepare transactions for ARC-1 signing with native multisig support
+    // CRITICAL: Create ARC-1 wallet transactions with CLEAN multisig parameters
     const walletTransactions = [
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
-        // Regular transaction - no special handling needed
       },
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        // For multisig transaction, include multisig metadata
         msig: {
           version: cleanMsigParams.version,
           threshold: cleanMsigParams.threshold,
-          addrs: cleanMsigParams.addrs
+          addrs: cleanMsigParams.addrs  // These are now guaranteed to be clean string addresses
         },
-        signers: [senderAddress]  // Who should sign this multisig transaction
+        signers: [senderAddress]
       }
     ];
 
-    console.log('ARC-1 multisig wallet transactions:', JSON.stringify(walletTransactions, null, 2));
+    // Log the exact data being sent to wallet for debugging
+    console.log('Final ARC-1 wallet transactions:', JSON.stringify({
+      tx0: {
+        hasTxn: !!walletTransactions[0].txn,
+        txnLength: walletTransactions[0].txn.length
+      },
+      tx1: {
+        hasTxn: !!walletTransactions[1].txn,
+        txnLength: walletTransactions[1].txn.length,
+        msigVersion: walletTransactions[1].msig.version,
+        msigThreshold: walletTransactions[1].msig.threshold,
+        msigAddrsCount: walletTransactions[1].msig.addrs.length,
+        msigAddrs: walletTransactions[1].msig.addrs,
+        signersCount: walletTransactions[1].signers.length,
+        signers: walletTransactions[1].signers
+      }
+    }, null, 2));
+
     console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
     
     return { 
