@@ -79,100 +79,80 @@ function TransactionsPage() {
   };
   
   const handleReclaim = async (appId) => {
-    if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
-      return;
-    }
-    
-    setIsReclaiming(true);
-    setReclaimStatus({ appId, status: 'Generating transactions...' });
-    
     try {
-      // Generate the reclaim transactions using ARC-1 approach
-      const txnData = await api.generateReclaimTransaction({
-        appId,
-        senderAddress: activeAddress
+      if (!activeAddress) {
+        alert('Please connect your wallet first.');
+        return;
+      }
+  
+      setReclaimStatus({ appId, status: 'Pending' });
+  
+      const response = await fetch(`/api/reclaim-funds?appId=${appId}&address=${activeAddress}`);
+      if (!response.ok) throw new Error('Failed to prepare reclaim transaction');
+  
+      const txnData = await response.json();
+      if (!txnData?.walletTransactions || !Array.isArray(txnData.walletTransactions)) {
+        throw new Error('Invalid transaction data from backend');
+      }
+  
+      // 1) Ensure explicit signers for both transactions
+      const arc1 = txnData.walletTransactions.map((wtx) => {
+        const withSigners = { ...wtx };
+        if (!withSigners.signers) withSigners.signers = [activeAddress];
+        return withSigners;
       });
   
-      console.log('Native ARC-1 multisig walletTransactions:', JSON.stringify(txnData.walletTransactions, null, 2));
-      
-      setReclaimStatus({ appId, status: 'Waiting for signature...' });
-      
-      // Keep txn as base64 string instead of converting to Uint8Array
-      const transactionsToSign = txnData.walletTransactions;
-      
-      console.log('Using native ARC-1 multisig support for all wallets');
-      
-      const signedTxns = await signTransactions(transactionsToSign);
-      
-      console.log('Wallet returned:', signedTxns.map((txn, i) => ({
-        index: i,
-        isNull: txn === null,
-        hasData: !!txn,
-        length: txn ? txn.length : 0
-      })));
-      
-      setReclaimStatus({ appId, status: 'Submitting transactions...' });
-      
-      // Convert signed transactions to base64 for backend
-      const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
-        if (!signedTxn) {
-          throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null for this transaction.`);
+      // 2) Validate that each txn base64 decodes to a valid unsigned transaction
+      const decodeOk = (b64) => {
+        try {
+          const bytes = new Uint8Array(Buffer.from(b64, 'base64'));
+          algosdk.decodeUnsignedTransaction(bytes);
+          return true;
+        } catch {
+          return false;
         }
-        
-        // If it's already a string (base64), return as is
-        if (typeof signedTxn === 'string') {
-          return signedTxn;
+      };
+  
+      arc1.forEach((wtx, i) => {
+        if (typeof wtx.txn !== 'string' || !decodeOk(wtx.txn)) {
+          throw new Error(`Invalid base64 in walletTransactions[${i}].txn`);
         }
-        
-        // Otherwise convert Uint8Array to base64
-        const binaryString = String.fromCharCode(...signedTxn);
-        return btoa(binaryString);
       });
-      
-      // Submit the properly signed transactions
-      const result = await api.submitReclaimTransaction({
-        signedTxns: signedTxnsBase64,
-        appId,
-        senderAddress: activeAddress
+  
+      let signedTxns;
+      try {
+        console.log('Using native ARC-1 multisig support for all wallets');
+        signedTxns = await signTransactions(arc1);
+      } catch (arc1Err) {
+        console.warn('[ARC-1 path failed, retrying legacy bytes path]', arc1Err);
+        // 3) Fallback: use raw bytes array for wallets that choke on ARC-0001 msig (e.g., Lute)
+        const bytes = arc1.map(wtx => new Uint8Array(Buffer.from(wtx.txn, 'base64')));
+        signedTxns = await signTransactions(bytes);
+      }
+  
+      // Submit signed transactions to backend
+      const submitRes = await fetch('/api/submit-signed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signedTxns }),
       });
-      
+  
+      if (!submitRes.ok) throw new Error('Failed to submit signed transactions');
+  
       setReclaimStatus({ appId, status: 'Success' });
-      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
-      
-      // Update the local transactions state to reflect the reclaim
-      setTransactions(prev => prev.map(tx => {
-        if (tx.appId === parseInt(appId)) {
-          return { ...tx, reclaimed: true, reclaimedAt: new Date() };
-        }
-        return tx;
-      }));
-      
+      alert('Funds reclaimed successfully!');
     } catch (error) {
       console.error('Error reclaiming funds:', error);
-      setReclaimStatus({ appId, status: 'Failed' });
-      
-      // Better error handling
       let errorMessage = 'Failed to reclaim funds';
-      if (error.message.includes('rejected')) {
-        errorMessage = 'Reclaim rejected - funds may have already been claimed';
-      } else if (error.message.includes('insufficient')) {
-        errorMessage = 'Insufficient ALGO for transaction fees';
-      } else if (error.message.includes('null')) {
-        errorMessage = 'Wallet failed to sign multisig transaction';
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
+      if (/DataView|decode|Offset.*bounds/i.test(error?.message || '')) {
+        errorMessage = 'Wallet could not decode the base64 transaction (ARC-1 decode error). Retried with legacy bytes path.';
       }
-      
-      alert(`${errorMessage}: ${error.message || error}`);
-    } finally {
-      setIsReclaiming(false);
-      // Reset status after a delay
-      setTimeout(() => {
-        setReclaimStatus({ appId: null, status: '' });
-      }, 3000);
+      setReclaimStatus({ appId, status: 'Failed' });
+      alert(errorMessage);
     }
   };
+  
+  
   
 
   const handleCleanup = async (appId) => {
