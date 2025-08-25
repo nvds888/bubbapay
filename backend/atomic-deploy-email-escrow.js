@@ -336,13 +336,30 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     // Calculate multisig address
     const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
-    console.log("Calculated multisig address:", multisigAddress);
+    const multisigAddressStr = multisigAddress; // Convert Address object to string
+    console.log("Calculated multisig address:", multisigAddressStr);
 
     // Validate multisig address
     const expectedMultisigAddress = "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE";
-    if (multisigAddress !== expectedMultisigAddress) {
+    if (multisigAddressStr !== expectedMultisigAddress) {
       throw new Error(
-        `Calculated multisig address ${multisigAddress} does not match expected address ${expectedMultisigAddress}. Check stored msigParams.`
+        `Calculated multisig address ${multisigAddressStr} does not match expected address ${expectedMultisigAddress}. Check stored msigParams.`
+      );
+    }
+
+    // Validate tempAccount.address
+    let tempAccountAddress;
+    if (typeof tempAccount.address === 'string' && algosdk.isValidAddress(tempAccount.address)) {
+      tempAccountAddress = tempAccount.address;
+    } else if (tempAccount.address && tempAccount.address.publicKey && typeof tempAccount.address.publicKey === 'object') {
+      const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
+      tempAccountAddress = algosdk.encodeAddress(publicKeyArray);
+    } else {
+      throw new Error("Invalid tempAccount.address format");
+    }
+    if (tempAccountAddress !== multisigAddressStr) {
+      throw new Error(
+        `tempAccount.address ${tempAccountAddress} does not match calculated multisig address ${multisigAddressStr}`
       );
     }
 
@@ -365,7 +382,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     // Create multisig close transaction
     const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: multisigAddress,
+      sender: multisigAddressStr,
       receiver: senderAddress,
       amount: 0,
       closeRemainderTo: senderAddress,
@@ -413,11 +430,10 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
         const decodedTxn = algosdk.decodeUnsignedTransaction(Buffer.from(wt.txn, 'base64'));
         console.log(`WalletTransaction ${index + 1} decoded successfully:`, decodedTxn);
         if (index === 1) {
-          // Verify multisig transaction sender
           const expectedSender = algosdk.encodeAddress(decodedTxn.txn.sender.publicKey);
-          if (expectedSender !== multisigAddress) {
+          if (expectedSender !== multisigAddressStr) {
             throw new Error(
-              `WalletTransaction ${index + 1} sender ${expectedSender} does not match multisig address ${multisigAddress}`
+              `WalletTransaction ${index + 1} sender ${expectedSender} does not match multisig address ${multisigAddressStr}`
             );
           }
         }
