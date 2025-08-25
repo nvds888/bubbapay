@@ -100,7 +100,11 @@ function TransactionsPage() {
       // Convert base64 txn to Uint8Array for proper msgpack/ARC-1 handling in wallets
       const transactionsToSign = txnData.walletTransactions.map(item => ({
         ...item,
-        txn: new Uint8Array(Buffer.from(item.txn, 'base64'))  // Convert to binary for signing
+        txn: Uint8Array.from(
+          atob(item.txn)
+            .split('')
+            .map(char => char.charCodeAt(0))
+        ) // Convert base64 to Uint8Array using browser-native atob
       }));
       
       console.log('Using native ARC-1 multisig support for all wallets');
@@ -128,10 +132,7 @@ function TransactionsPage() {
         }
         
         // Otherwise convert Uint8Array to base64
-        let binaryString = '';
-        for (let i = 0; i < signedTxn.length; i++) {
-          binaryString += String.fromCharCode(signedTxn[i]);
-        }
+        const binaryString = String.fromCharCode(...signedTxn);
         return btoa(binaryString);
       });
       
