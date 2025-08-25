@@ -141,7 +141,7 @@ const getTransactionStatus = () => {
     if (balance < 0.01) {
       return { 
         type: 'warning', 
-        message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance (min 0.01)` 
+        message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
       };
     }
   }
