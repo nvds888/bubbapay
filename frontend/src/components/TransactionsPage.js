@@ -87,37 +87,81 @@ function TransactionsPage() {
     setReclaimStatus({ appId, status: 'Generating transactions...' });
   
     try {
+      // Generate reclaim transaction
       const txnData = await api.generateReclaimTransaction({
         appId,
         senderAddress: activeAddress,
       });
   
-      console.log('WalletTransactions being sent to wallet:', JSON.stringify(txnData.walletTransactions, null, 2));
+      console.log('Generated WalletTransactions:', txnData.walletTransactions?.length || 0);
+      
+      // Validate wallet transactions before sending
+      if (!txnData.walletTransactions || !Array.isArray(txnData.walletTransactions)) {
+        throw new Error('Invalid wallet transactions received from backend');
+      }
+  
+      // Validate each transaction has required fields
+      txnData.walletTransactions.forEach((wt, index) => {
+        if (!wt.txn || typeof wt.txn !== 'string') {
+          throw new Error(`WalletTransaction ${index + 1} missing or invalid txn field`);
+        }
+        if (!wt.signers || !Array.isArray(wt.signers)) {
+          throw new Error(`WalletTransaction ${index + 1} missing signers field`);
+        }
+        
+        // Validate base64 encoding
+        try {
+          atob(wt.txn);
+        } catch (e) {
+          throw new Error(`WalletTransaction ${index + 1} has invalid base64 txn encoding`);
+        }
+      });
   
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
   
-      // ✅ FIXED: Pass WalletTransaction objects directly to signTransactions (ARC-1 compliant)
-      // DO NOT convert to algosdk Transaction objects - this strips away msig/signers metadata
-      const signedTxns = await signTransactions(txnData.walletTransactions);
+      // Sign transactions using ARC-1 compliant wallet transaction format
+      let signedTxns;
+      try {
+        signedTxns = await signTransactions(txnData.walletTransactions);
+      } catch (walletError) {
+        console.error('Wallet signing error:', walletError);
+        
+        // Provide user-friendly error messages
+        if (walletError.message?.includes('rejected') || walletError.code === 4001) {
+          throw new Error('Transaction signing was cancelled by user');
+        } else if (walletError.message?.includes('RangeError') || walletError.message?.includes('DataView')) {
+          throw new Error('Invalid transaction format - please try again');
+        } else if (walletError.message?.includes('multisig')) {
+          throw new Error('Multisig signing failed - verify wallet supports multisig transactions');
+        } else {
+          throw new Error(`Wallet signing failed: ${walletError.message || 'Unknown error'}`);
+        }
+      }
   
-      // Convert signed transactions to base64 if needed
+      // Validate signed transactions
+      if (!signedTxns || !Array.isArray(signedTxns)) {
+        throw new Error('Wallet returned invalid signed transactions');
+      }
+  
+      if (signedTxns.length !== txnData.walletTransactions.length) {
+        throw new Error(`Expected ${txnData.walletTransactions.length} signed transactions, got ${signedTxns.length}`);
+      }
+  
+      // Convert signed transactions to base64 format
       const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
         if (!signedTxn) {
-          throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null.`);
+          throw new Error(`Wallet failed to sign transaction ${index + 1}`);
         }
         
-        // If it's already a base64 string, return it
         if (typeof signedTxn === 'string') {
+          // Already base64 encoded
           return signedTxn;
+        } else if (signedTxn instanceof Uint8Array) {
+          // Convert Uint8Array to base64
+          return Buffer.from(signedTxn).toString('base64');
+        } else {
+          throw new Error(`Unexpected signed transaction format: ${typeof signedTxn}`);
         }
-        
-        // If it's a Uint8Array, convert to base64
-        if (signedTxn instanceof Uint8Array) {
-          const binaryString = String.fromCharCode(...signedTxn);
-          return btoa(binaryString);
-        }
-        
-        throw new Error(`Unexpected signed transaction format: ${typeof signedTxn}`);
       });
   
       setReclaimStatus({ appId, status: 'Submitting transactions...' });
@@ -129,7 +173,7 @@ function TransactionsPage() {
         senderAddress: activeAddress,
       });
   
-      // Update local state
+      // Update local state on success
       setTransactions(prev =>
         prev.map(tx => {
           if (tx.appId === parseInt(appId)) {
@@ -141,24 +185,27 @@ function TransactionsPage() {
   
       setReclaimStatus({ appId, status: 'Success' });
       const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
+      alert(`Successfully reclaimed ${result.amount || 'funds'} ${assetSymbol}!`);
       
     } catch (error) {
       console.error('Error reclaiming funds:', error);
       setReclaimStatus({ appId, status: 'Failed' });
   
+      // Provide specific error messages
       let errorMessage = 'Failed to reclaim funds';
-      if (error?.message?.includes('rejected')) {
-        errorMessage = 'Reclaim rejected - funds may have already been claimed';
-      } else if (error?.message?.includes('insufficient')) {
+      if (error.message?.includes('cancelled') || error.message?.includes('rejected')) {
+        errorMessage = 'Transaction was cancelled';
+      } else if (error.message?.includes('insufficient')) {
         errorMessage = 'Insufficient ALGO for transaction fees';
-      } else if (error?.message?.includes('null')) {
-        errorMessage = 'Wallet failed to sign multisig transaction';
+      } else if (error.message?.includes('Invalid transaction format')) {
+        errorMessage = 'Transaction encoding error - please try again';
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
   
-      alert(`${errorMessage}: ${error.message || error}`);
+      alert(`${errorMessage}`);
     } finally {
       setIsReclaiming(false);
       setTimeout(() => {
