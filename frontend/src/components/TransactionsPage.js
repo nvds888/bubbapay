@@ -96,42 +96,28 @@ function TransactionsPage() {
   
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
   
-      // Convert wallet transactions to algosdk format
-      const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
-        // Decode base64 transaction to Uint8Array
-        const binaryString = atob(walletTxn.txn);
-        const txnUint8 = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          txnUint8[i] = binaryString.charCodeAt(i);
-        }
-        const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+      // ✅ FIXED: Pass WalletTransaction objects directly to signTransactions (ARC-1 compliant)
+      // DO NOT convert to algosdk Transaction objects - this strips away msig/signers metadata
+      const signedTxns = await signTransactions(txnData.walletTransactions);
   
-        // Handle multisig metadata if present
-        if (walletTxn.msig) {
-          // Convert ARC-1 MultisigMetadata to algosdk format
-          txn.msig = {
-            v: walletTxn.msig.version,
-            thr: walletTxn.msig.threshold,
-            subsig: walletTxn.msig.addrs.map(addr => ({
-              pk: new Uint8Array(algosdk.decodeAddress(addr).publicKey)
-            }))
-          };
-        }
-  
-        return txn;
-      });
-  
-      // Sign with wallet
-      const signedTxns = await signTransactions(unsignedTxns);
-  
-      // Convert signed transactions to base64
+      // Convert signed transactions to base64 if needed
       const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
         if (!signedTxn) {
           throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null.`);
         }
-        // Convert Uint8Array to base64 using btoa
-        const binaryString = String.fromCharCode(...signedTxn);
-        return btoa(binaryString);
+        
+        // If it's already a base64 string, return it
+        if (typeof signedTxn === 'string') {
+          return signedTxn;
+        }
+        
+        // If it's a Uint8Array, convert to base64
+        if (signedTxn instanceof Uint8Array) {
+          const binaryString = String.fromCharCode(...signedTxn);
+          return btoa(binaryString);
+        }
+        
+        throw new Error(`Unexpected signed transaction format: ${typeof signedTxn}`);
       });
   
       setReclaimStatus({ appId, status: 'Submitting transactions...' });
@@ -156,6 +142,7 @@ function TransactionsPage() {
       setReclaimStatus({ appId, status: 'Success' });
       const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
       alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
+      
     } catch (error) {
       console.error('Error reclaiming funds:', error);
       setReclaimStatus({ appId, status: 'Failed' });
@@ -163,9 +150,9 @@ function TransactionsPage() {
       let errorMessage = 'Failed to reclaim funds';
       if (error?.message?.includes('rejected')) {
         errorMessage = 'Reclaim rejected - funds may have already been claimed';
-      } else if (error.message.includes('insufficient')) {
+      } else if (error?.message?.includes('insufficient')) {
         errorMessage = 'Insufficient ALGO for transaction fees';
-      } else if (error.message.includes('null')) {
+      } else if (error?.message?.includes('null')) {
         errorMessage = 'Wallet failed to sign multisig transaction';
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
