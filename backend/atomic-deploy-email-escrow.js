@@ -409,8 +409,18 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     const walletTransactions = [
       {
-        txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
+        txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64'),
+        signers: [senderAddress]
       },
+      {
+        txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
+        msig: {
+          version: finalMsigParams.version,
+          threshold: finalMsigParams.threshold,
+          addrs: finalMsigParams.addrs
+        },
+        signers: [senderAddress]
+      }
     ];
 
     console.log("=== WALLET TRANSACTION STRUCTURE ===");
