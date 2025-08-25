@@ -131,7 +131,7 @@ const transactions = [];
 // NEW: Txn 1: Send fee coverage to user (if applicable) - from APP
 if (feeCoverageAmount > 0) {
   const feeCoverageTxn = algosdk.makeApplicationCallTxnFromObject({
-    sender: multisigAddress,
+    sender: tempAddress,
     appIndex: parseInt(appId),
     onComplete: algosdk.OnApplicationComplete.NoOpOC,
     appArgs: [
@@ -146,7 +146,7 @@ if (feeCoverageAmount > 0) {
 
 // Txn 2: App call to claim (unchanged)
 const claimTxn = algosdk.makeApplicationCallTxnFromObject({
-  sender: multisigAddress,
+  sender: tempAddress,
   appIndex: parseInt(appId),
   onComplete: algosdk.OnApplicationComplete.NoOpOC,
   appArgs: [new Uint8Array(Buffer.from("claim"))],
@@ -158,7 +158,7 @@ transactions.push(claimTxn);
 
 // Txn 3: Close multisig account (unchanged)
 const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-  sender: multisigAddress,
+  sender: tempAddress,
   receiver: PLATFORM_ADDRESS,
   amount: 0,
   closeRemainderTo: PLATFORM_ADDRESS,
