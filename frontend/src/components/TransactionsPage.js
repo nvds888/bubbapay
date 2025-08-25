@@ -96,7 +96,7 @@ function TransactionsPage() {
   
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
   
-      // Convert transactions to algosdk format
+      // Convert wallet transactions to algosdk format
       const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
         // Decode base64 transaction to Uint8Array
         const binaryString = atob(walletTxn.txn);
@@ -106,14 +106,15 @@ function TransactionsPage() {
         }
         const txn = algosdk.decodeUnsignedTransaction(txnUint8);
   
-        // Attach msig structure for multisig transaction
+        // Handle multisig metadata if present
         if (walletTxn.msig) {
+          // Convert ARC-1 MultisigMetadata to algosdk format
           txn.msig = {
-            v: walletTxn.msig.v,
-            thr: walletTxn.msig.thr,
-            subsig: walletTxn.msig.subsig.map(sub => ({
-              pk: new Uint8Array(atob(sub.pk).split('').map(char => char.charCodeAt(0))), // Convert base64 to Uint8Array
-            })),
+            v: walletTxn.msig.version,
+            thr: walletTxn.msig.threshold,
+            subsig: walletTxn.msig.addrs.map(addr => ({
+              pk: new Uint8Array(algosdk.decodeAddress(addr).publicKey)
+            }))
           };
         }
   
