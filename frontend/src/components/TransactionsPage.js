@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useWallet } from '@txnlab/use-wallet-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
 import api, { getAssetInfo } from '../services/api';
@@ -7,7 +8,7 @@ import api, { getAssetInfo } from '../services/api';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 function TransactionsPage() {
-  const [activeAddress, setActiveAddress] = useState(null);
+  const { activeAddress, signTransactions } = useWallet();
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -15,35 +16,14 @@ function TransactionsPage() {
   const [reclaimStatus, setReclaimStatus] = useState({ appId: null, status: '' });
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [cleanupStatus, setCleanupStatus] = useState({ appId: null, status: '' });
-
-  // Connect to LUTE wallet
-  const connectLuteWallet = async () => {
-    if (!window.lute) {
-      setError('LUTE wallet not detected. Please install or enable the LUTE wallet extension.');
-      return null;
-    }
-    try {
-      const accounts = await window.lute.connect();
-      if (accounts && accounts.length > 0) {
-        setActiveAddress(accounts[0]);
-        return accounts[0];
-      } else {
-        setError('No accounts found in LUTE wallet.');
-        return null;
-      }
-    } catch (error) {
-      console.error('Error connecting to LUTE wallet:', error);
-      setError('Failed to connect to LUTE wallet.');
-      return null;
-    }
-  };
-
+  
   // Helper function to get asset symbol from transaction
   const getAssetSymbol = (transaction) => {
     if (transaction.assetId) {
       const assetInfo = getAssetInfo(transaction.assetId);
       return assetInfo?.symbol || 'tokens';
     }
+    // Fallback for older transactions without assetId
     return 'USDC';
   };
 
@@ -52,23 +32,23 @@ function TransactionsPage() {
     if (transaction.assetId) {
       return getAssetInfo(transaction.assetId);
     }
+    // Fallback for older transactions
     return { symbol: 'USDC', name: 'USDC' };
   };
-
+  
   // Fetch user transactions when component mounts
   useEffect(() => {
-    const initialize = async () => {
-      const address = await connectLuteWallet();
-      if (!address) {
+    const fetchTransactions = async () => {
+      if (!activeAddress) {
         setIsLoading(false);
         return;
       }
-
+      
       setIsLoading(true);
       setError(null);
-
+      
       try {
-        const response = await axios.get(`${API_URL}/user-escrows/${address}`);
+        const response = await axios.get(`${API_URL}/user-escrows/${activeAddress}`);
         setTransactions(response.data);
         setIsLoading(false);
       } catch (error) {
@@ -77,15 +57,15 @@ function TransactionsPage() {
         setIsLoading(false);
       }
     };
-
-    initialize();
-  }, []);
-
+    
+    fetchTransactions();
+  }, [activeAddress]);
+  
   // Format USDC amount
   const formatAmount = (amount) => {
     return parseFloat(amount).toFixed(2);
   };
-
+  
   // Format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -94,104 +74,90 @@ function TransactionsPage() {
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit',
+      minute: '2-digit'
     }).format(date);
   };
-
+  
   const handleReclaim = async (appId) => {
-    if (!window.confirm('Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.')) {
+    if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
       return;
     }
-
-    if (!window.lute) {
-      alert('LUTE wallet not detected. Please install or enable the LUTE wallet extension.');
-      return;
-    }
-
+  
     setIsReclaiming(true);
     setReclaimStatus({ appId, status: 'Generating transactions...' });
-
+  
     try {
       const txnData = await api.generateReclaimTransaction({
         appId,
         senderAddress: activeAddress,
       });
-
-      // Validate walletTransactions
-      if (!txnData.walletTransactions || !Array.isArray(txnData.walletTransactions)) {
-        throw new Error('Invalid walletTransactions: Expected an array');
-      }
-      txnData.walletTransactions.forEach((txn, index) => {
-        if (!txn.txn || typeof txn.txn !== 'string') {
-          throw new Error(`Invalid transaction at index ${index}: Missing or invalid 'txn' field`);
-        }
-        try {
-          Buffer.from(txn.txn, 'base64');
-        } catch (e) {
-          throw new Error(`Invalid base64 encoding in transaction at index ${index}: ${e.message}`);
-        }
-      });
-
-      console.log('WalletTransactions being sent to LUTE:', JSON.stringify(txnData.walletTransactions, null, 2));
-
+  
+      console.log('WalletTransactions being sent to wallet:', JSON.stringify(txnData.walletTransactions, null, 2));
+  
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
-
-      // Sign transactions directly with LUTE wallet
-      const signedTxns = await window.lute.signTransactions(txnData.walletTransactions);
-
-      // Convert signed transactions to base64
+  
+      // ✅ FIXED: Pass WalletTransaction objects directly to signTransactions (ARC-1 compliant)
+      // DO NOT convert to algosdk Transaction objects - this strips away msig/signers metadata
+      const signedTxns = await signTransactions(txnData.walletTransactions);
+  
+      // Convert signed transactions to base64 if needed
       const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
         if (!signedTxn) {
           throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null.`);
         }
+        
+        // If it's already a base64 string, return it
         if (typeof signedTxn === 'string') {
           return signedTxn;
         }
+        
+        // If it's a Uint8Array, convert to base64
         if (signedTxn instanceof Uint8Array) {
-          return Buffer.from(signedTxn).toString('base64');
+          const binaryString = String.fromCharCode(...signedTxn);
+          return btoa(binaryString);
         }
-        throw new Error(`Unexpected signed transaction format for transaction ${index + 1}`);
+        
+        throw new Error(`Unexpected signed transaction format: ${typeof signedTxn}`);
       });
-
+  
       setReclaimStatus({ appId, status: 'Submitting transactions...' });
-
+  
       // Submit signed transactions
       const result = await api.submitReclaimTransaction({
         signedTxns: signedTxnsBase64,
         appId,
         senderAddress: activeAddress,
       });
-
+  
       // Update local state
-      setTransactions((prev) =>
-        prev.map((tx) => {
+      setTransactions(prev =>
+        prev.map(tx => {
           if (tx.appId === parseInt(appId)) {
             return { ...tx, reclaimed: true, reclaimedAt: new Date() };
           }
           return tx;
-        })
+        }),
       );
-
+  
       setReclaimStatus({ appId, status: 'Success' });
-      const assetSymbol = getAssetSymbol(transactions.find((tx) => tx.appId === parseInt(appId)));
+      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
       alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
+      
     } catch (error) {
       console.error('Error reclaiming funds:', error);
       setReclaimStatus({ appId, status: 'Failed' });
-
+  
       let errorMessage = 'Failed to reclaim funds';
       if (error?.message?.includes('rejected')) {
         errorMessage = 'Reclaim rejected - funds may have already been claimed';
       } else if (error?.message?.includes('insufficient')) {
         errorMessage = 'Insufficient ALGO for transaction fees';
       } else if (error?.message?.includes('null')) {
-        errorMessage = 'Wallet failed to sign transaction';
-      } else if (error?.message?.includes('RangeError')) {
-        errorMessage = 'Invalid transaction data: Unable to decode transaction';
+        errorMessage = 'Wallet failed to sign multisig transaction';
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       }
-
+  
       alert(`${errorMessage}: ${error.message || error}`);
     } finally {
       setIsReclaiming(false);
@@ -200,88 +166,72 @@ function TransactionsPage() {
       }, 3000);
     }
   };
+  
 
   const handleCleanup = async (appId) => {
-    if (!window.confirm('Clean up this contract to recover locked ALGO? This will permanently delete the contract.')) {
+    if (!window.confirm("Clean up this contract to recover locked ALGO? This will permanently delete the contract.")) {
       return;
     }
-
-    if (!window.lute) {
-      alert('LUTE wallet not detected. Please install or enable the LUTE wallet extension.');
-      return;
-    }
-
+    
     setIsCleaningUp(true);
     setCleanupStatus({ appId, status: 'Generating cleanup transactions...' });
-
+    
     try {
+      // Generate the cleanup transactions 
       const txnData = await api.generateCleanupTransaction({
         appId,
-        senderAddress: activeAddress,
+        senderAddress: activeAddress
       });
-
-      // Validate transactions
-      if (!txnData.transactions || !Array.isArray(txnData.transactions)) {
-        throw new Error('Invalid transactions: Expected an array');
-      }
-      txnData.transactions.forEach((txn, index) => {
-        try {
-          Buffer.from(txn, 'base64');
-        } catch (e) {
-          throw new Error(`Invalid base64 encoding in transaction at index ${index}: ${e.message}`);
-        }
-      });
-
+      
       setCleanupStatus({ appId, status: 'Waiting for signature...' });
-
+      
       // Convert base64 transactions to Uint8Array and decode
-      const txns = txnData.transactions.map((txnBase64) => {
+      const txns = txnData.transactions.map(txnBase64 => {
         const txnUint8 = new Uint8Array(Buffer.from(txnBase64, 'base64'));
         return algosdk.decodeUnsignedTransaction(txnUint8);
       });
-
-      // Sign with LUTE wallet
-      const encodedTxns = txns.map((txn) => Buffer.from(algosdk.encodeUnsignedTransaction(txn)).toString('base64'));
-      const signedTxns = await window.lute.signTransactions(encodedTxns);
-
+      
+      // Sign with use-wallet (group of transactions)
+      const signedTxns = await signTransactions(txns);
+      
       // Convert the signed transactions to base64
-      const signedTxnsBase64 = signedTxns.map((signedTxn) =>
+      const signedTxnsBase64 = signedTxns.map(signedTxn => 
         Buffer.from(signedTxn).toString('base64')
       );
-
+      
       setCleanupStatus({ appId, status: 'Submitting transactions...' });
-
-      // Submit the signed transactions
+      
+      // Submit the signed transactions using the API service
       const result = await api.submitCleanupTransaction({
         signedTxns: signedTxnsBase64,
         appId,
-        senderAddress: activeAddress,
+        senderAddress: activeAddress
       });
-
-      // Update local state
-      setTransactions((prev) =>
-        prev.map((tx) => {
-          if (tx.appId === parseInt(appId)) {
-            return { ...tx, cleanedUp: true, cleanedUpAt: new Date() };
-          }
-          return tx;
-        })
-      );
-
+      
+      // Update the local transactions state to reflect the cleanup
+      setTransactions(prev => prev.map(tx => {
+        if (tx.appId === parseInt(appId)) {
+          return { ...tx, cleanedUp: true, cleanedUpAt: new Date() };
+        }
+        return tx;
+      }));
+      
       setCleanupStatus({ appId, status: 'Success' });
       alert(`Successfully cleaned up contract and recovered ${txnData.estimatedRecovery}!`);
+      
     } catch (error) {
       console.error('Error cleaning up contract:', error);
       setCleanupStatus({ appId, status: 'Failed' });
       alert(`Failed to clean up contract: ${error.message || error}`);
     } finally {
       setIsCleaningUp(false);
+      // Reset status after a delay
       setTimeout(() => {
         setCleanupStatus({ appId: null, status: '' });
       }, 3000);
     }
   };
-
+  
   if (!activeAddress) {
     return (
       <div className="w-full max-w-4xl mx-auto">
@@ -294,18 +244,18 @@ function TransactionsPage() {
             </div>
           </div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Wallet Not Connected</h2>
-          <p className="text-gray-600 mb-4 text-sm">Please connect your LUTE wallet to view your transaction history.</p>
-          <button
-            onClick={connectLuteWallet}
+          <p className="text-gray-600 mb-4 text-sm">Please connect your wallet to view your transaction history.</p>
+          <Link 
+            to="/"
             className="btn-primary px-4 py-2 font-medium"
           >
-            Connect LUTE Wallet
-          </button>
+            Go to Home & Connect Wallet
+          </Link>
         </div>
       </div>
     );
   }
-
+  
   if (isLoading) {
     return (
       <div className="w-full max-w-4xl mx-auto">
@@ -319,7 +269,7 @@ function TransactionsPage() {
       </div>
     );
   }
-
+  
   if (error) {
     return (
       <div className="w-full max-w-4xl mx-auto">
@@ -333,14 +283,17 @@ function TransactionsPage() {
           </div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Transactions</h2>
           <p className="text-gray-600 mb-4 text-sm">{error}</p>
-          <Link to="/" className="btn-primary px-4 py-2 font-medium">
+          <Link 
+            to="/"
+            className="btn-primary px-4 py-2 font-medium"
+          >
             Back to Home
           </Link>
         </div>
       </div>
     );
   }
-
+  
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -356,7 +309,7 @@ function TransactionsPage() {
             <p className="text-gray-600 text-sm">View and manage your transfers</p>
           </div>
         </div>
-
+        
         {/* Security notice */}
         <div className="status-warning">
           <div className="flex items-start space-x-3">
@@ -370,7 +323,7 @@ function TransactionsPage() {
           </div>
         </div>
         {/* Cleanup summary section */}
-        {transactions.some((tx) => (tx.claimed || tx.reclaimed) && !tx.cleanedUp) && (
+        {transactions.some(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp) && (
           <div className="status-success">
             <div className="flex items-start space-x-3">
               <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -379,15 +332,14 @@ function TransactionsPage() {
               <div className="text-sm">
                 <p className="font-medium text-green-800">Contracts Ready for Cleanup:</p>
                 <p className="text-green-700 mt-1">
-                  {transactions.filter((tx) => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} Claimed contracts can be cleaned up to recover ~
-                  {(transactions.filter((tx) => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.46).toFixed(2)} ALGO in locked funds.
-                </p>
+  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} Claimed contracts can be cleaned up to recover ~{(transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.46).toFixed(2)} ALGO in locked funds.
+</p>
               </div>
             </div>
           </div>
         )}
       </div>
-
+      
       {/* Transactions list */}
       {transactions.length === 0 ? (
         <div className="card card-normal text-center py-8">
@@ -400,7 +352,10 @@ function TransactionsPage() {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Transactions Yet</h3>
           <p className="text-gray-600 mb-4 text-sm">You haven't created any link yet. Create your first link!</p>
-          <Link to="/" className="btn-primary px-4 py-2 font-medium">
+          <Link 
+            to="/"
+            className="btn-primary px-4 py-2 font-medium"
+          >
             Send Crypto
           </Link>
         </div>
@@ -411,17 +366,29 @@ function TransactionsPage() {
             <table className="min-w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipient</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Recipient
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {transactions.map((transaction) => (
                   <tr key={transaction._id} className="hover:bg-gray-50 transition-colors duration-200">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(transaction.createdAt)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {formatDate(transaction.createdAt)}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-semibold text-gray-900">
                         {formatAmount(transaction.amount)} {getAssetSymbol(transaction)}
@@ -429,52 +396,71 @@ function TransactionsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {transaction.recipientEmail || (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Shareable Link</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          Shareable Link
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {transaction.reclaimed ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Reclaimed</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          Reclaimed
+                        </span>
                       ) : transaction.claimed ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Claimed</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Claimed
+                        </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pending</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          Pending
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {/* Processing status display */}
-                      {reclaimStatus.appId === transaction.appId && <span className="text-xs text-blue-600 mr-3">{reclaimStatus.status}</span>}
-                      {cleanupStatus.appId === transaction.appId && <span className="text-xs text-green-600 mr-3">{cleanupStatus.status}</span>}
-
+                      {reclaimStatus.appId === transaction.appId && (
+                        <span className="text-xs text-blue-600 mr-3">
+                          {reclaimStatus.status}
+                        </span>
+                      )}
+                      {cleanupStatus.appId === transaction.appId && (
+                        <span className="text-xs text-green-600 mr-3">
+                          {cleanupStatus.status}
+                        </span>
+                      )}
+                      
                       {/* Action buttons */}
                       <div className="space-y-1">
-                        {!transaction.funded ? (
-                          <div className="text-sm">
-                            <span className="text-amber-600 font-medium block mb-1">Incomplete Transfer</span>
-                            <Link to="/" className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200">
-                              Navigate to main flow to pick up where you left off
-                            </Link>
-                          </div>
-                        ) : !transaction.claimed && !transaction.reclaimed ? (
-                          <button
-                            onClick={() => handleReclaim(transaction.appId)}
-                            disabled={isReclaiming}
-                            className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-                          >
-                            Reclaim Funds
-                          </button>
-                        ) : transaction.cleanedUp ? (
-                          <span className="text-gray-500 text-sm">Cleaned Up</span>
-                        ) : (
-                          <button
-                            onClick={() => handleCleanup(transaction.appId)}
-                            disabled={isCleaningUp}
-                            className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-                          >
-                            Clean Up (0.46 ALGO)
-                          </button>
-                        )}
-
+                      {!transaction.funded ? (
+  <div className="text-sm">
+    <span className="text-amber-600 font-medium block mb-1">Incomplete Transfer</span>
+    <Link 
+      to="/"
+      className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200"
+    >
+      Navigate to main flow to pick up where you left off
+    </Link>
+  </div>
+) : !transaction.claimed && !transaction.reclaimed ? (
+  <button
+    onClick={() => handleReclaim(transaction.appId)}
+    disabled={isReclaiming}
+    className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+  >
+    Reclaim Funds
+  </button>
+) : transaction.cleanedUp ? (
+  <span className="text-gray-500 text-sm">Cleaned Up</span>
+) : (
+  <button
+    onClick={() => handleCleanup(transaction.appId)}
+    disabled={isCleaningUp}
+    className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+  >
+    Clean Up (0.46 ALGO)
+  </button>
+)}
+                        
                         {/* Explorer link - always show */}
                         <a
                           href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
@@ -494,7 +480,7 @@ function TransactionsPage() {
               </tbody>
             </table>
           </div>
-
+          
           {/* Mobile cards */}
           <div className="lg:hidden divide-y divide-gray-200">
             {transactions.map((transaction) => (
@@ -507,61 +493,76 @@ function TransactionsPage() {
                       </svg>
                     </div>
                     <div>
-                      <div className="text-gray-900 font-semibold">
-                        {formatAmount(transaction.amount)} {getAssetSymbol(transaction)}
-                      </div>
+                      <div className="text-gray-900 font-semibold">{formatAmount(transaction.amount)} {getAssetSymbol(transaction)}</div>
                       <div className="text-gray-500 text-sm">{formatDate(transaction.createdAt)}</div>
                     </div>
                   </div>
-
+                  
                   {transaction.reclaimed ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Reclaimed</span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      Reclaimed
+                    </span>
                   ) : transaction.claimed ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Claimed</span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Claimed
+                    </span>
                   ) : (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pending</span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      Pending
+                    </span>
                   )}
                 </div>
-
+                
                 <div className="text-sm text-gray-600">
                   <span className="text-gray-500">To:</span> {transaction.recipientEmail || 'Shareable Link'}
                 </div>
-
+                
                 {/* Mobile actions */}
                 <div className="flex justify-between items-center pt-2">
                   <div className="space-y-1">
-                    {reclaimStatus.appId === transaction.appId && <span className="text-xs text-blue-600 block">{reclaimStatus.status}</span>}
-                    {cleanupStatus.appId === transaction.appId && <span className="text-xs text-green-600 block">{cleanupStatus.status}</span>}
-                  </div>
-
-                  <div className="space-y-2">
-                    {!transaction.funded ? (
-                      <div className="text-sm">
-                        <span className="text-amber-600 font-medium block mb-1">Incomplete Transfer</span>
-                        <Link to="/" className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200">
-                          Navigate to main flow to pick up where you left off
-                        </Link>
-                      </div>
-                    ) : !transaction.claimed && !transaction.reclaimed ? (
-                      <button
-                        onClick={() => handleReclaim(transaction.appId)}
-                        disabled={isReclaiming}
-                        className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-                      >
-                        Reclaim Funds
-                      </button>
-                    ) : transaction.cleanedUp ? (
-                      <span className="text-gray-500 text-sm">Cleaned Up</span>
-                    ) : (
-                      <button
-                        onClick={() => handleCleanup(transaction.appId)}
-                        disabled={isCleaningUp}
-                        className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-                      >
-                        Clean Up (0.46 ALGO)
-                      </button>
+                    {reclaimStatus.appId === transaction.appId && (
+                      <span className="text-xs text-blue-600 block">
+                        {reclaimStatus.status}
+                      </span>
                     )}
-
+                    {cleanupStatus.appId === transaction.appId && (
+                      <span className="text-xs text-green-600 block">
+                        {cleanupStatus.status}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                  {!transaction.funded ? (
+  <div className="text-sm">
+    <span className="text-amber-600 font-medium block mb-1">Incomplete Transfer</span>
+    <Link 
+      to="/"
+      className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200"
+    >
+      Navigate to main flow to pick up where you left off
+    </Link>
+  </div>
+) : !transaction.claimed && !transaction.reclaimed ? (
+  <button
+    onClick={() => handleReclaim(transaction.appId)}
+    disabled={isReclaiming}
+    className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+  >
+    Reclaim Funds
+  </button>
+) : transaction.cleanedUp ? (
+  <span className="text-gray-500 text-sm">Cleaned Up</span>
+) : (
+  <button
+    onClick={() => handleCleanup(transaction.appId)}
+    disabled={isCleaningUp}
+    className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+  >
+    Clean Up (0.46 ALGO)
+  </button>
+)}
+                    
                     {/* Explorer link - always show */}
                     <a
                       href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
@@ -578,10 +579,13 @@ function TransactionsPage() {
           </div>
         </div>
       )}
-
+      
       {/* Send more button */}
       <div className="text-center">
-        <Link to="/" className="btn-primary px-6 py-3 font-medium inline-flex items-center space-x-2">
+        <Link 
+          to="/"
+          className="btn-primary px-6 py-3 font-medium inline-flex items-center space-x-2"
+        >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
