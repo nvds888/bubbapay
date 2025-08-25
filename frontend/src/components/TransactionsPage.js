@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet } from '@txnlab/use-wallet-react';
 import axios from 'axios';
-import algosdk from 'algosdk';
+import algosdk, { appendSignRawMultisigSignature, createMultisigTransaction, ENCODED_MULTISIG_SCHEMA, encodedMultiSigFromEncodingData, makeMultiSigAccountTransactionSigner, signMultisigTransaction, verifyMultisig } from 'algosdk';
 import api, { getAssetInfo } from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -87,7 +87,6 @@ function TransactionsPage() {
     setReclaimStatus({ appId, status: 'Generating transactions...' });
     
     try {
-      // Generate the reclaim transactions using ARC-1 approach
       const txnData = await api.generateReclaimTransaction({
         appId,
         senderAddress: activeAddress
@@ -97,44 +96,37 @@ function TransactionsPage() {
       
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      // Convert ARC-1 back to unsigned transactions for Lute compatibility
+      // Convert transactions to algosdk format
       const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
-        // Convert base64 to Uint8Array using browser-native methods
         const binaryString = atob(walletTxn.txn);
         const txnUint8 = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
           txnUint8[i] = binaryString.charCodeAt(i);
         }
-        
         const txn = algosdk.decodeUnsignedTransaction(txnUint8);
         
-        // Set authAddr if present (for the multisig transaction)
-        if (walletTxn.authAddr) {
-          txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr);
+        // If msig is present, attach it to the transaction object for wallets that support it
+        if (walletTxn.msig) {
+          txn.msig = {
+            v: walletTxn.msig.v,
+            thr: walletTxn.msig.thr,
+            subsig: walletTxn.msig.subsig.map(sub => ({
+              pk: Buffer.from(sub.pk, 'base64')
+            }))
+          };
         }
         
         return txn;
       });
       
-      console.log('Sending unsigned transactions to Lute wallet:', unsignedTxns.length);
+      // Sign with wallet
       const signedTxns = await signTransactions(unsignedTxns);
-  
-      console.log('Wallet returned:', signedTxns.map((txn, i) => ({
-        index: i,
-        isNull: txn === null,
-        hasData: !!txn,
-        length: txn ? txn.length : 0
-      })));
       
-      setReclaimStatus({ appId, status: 'Submitting transactions...' });
-      
-      // Convert signed transactions to base64 for backend using browser-native methods
+      // Convert signed transactions to base64
       const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
         if (!signedTxn) {
-          throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null for this transaction.`);
+          throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null.`);
         }
-        
-        // Convert Uint8Array to base64 using browser-native methods
         let binaryString = '';
         for (let i = 0; i < signedTxn.length; i++) {
           binaryString += String.fromCharCode(signedTxn[i]);
@@ -142,14 +134,16 @@ function TransactionsPage() {
         return btoa(binaryString);
       });
       
-      // Submit the properly signed transactions
+      setReclaimStatus({ appId, status: 'Submitting transactions...' });
+      
+      // Submit signed transactions
       const result = await api.submitReclaimTransaction({
         signedTxns: signedTxnsBase64,
         appId,
         senderAddress: activeAddress
       });
       
-      // Update the local transactions state to reflect the reclaim
+      // Update local state
       setTransactions(prev => prev.map(tx => {
         if (tx.appId === parseInt(appId)) {
           return { ...tx, reclaimed: true, reclaimedAt: new Date() };
@@ -165,7 +159,6 @@ function TransactionsPage() {
       console.error('Error reclaiming funds:', error);
       setReclaimStatus({ appId, status: 'Failed' });
       
-      // Better error handling
       let errorMessage = 'Failed to reclaim funds';
       if (error.message.includes('rejected')) {
         errorMessage = 'Reclaim rejected - funds may have already been claimed';
@@ -180,15 +173,11 @@ function TransactionsPage() {
       alert(`${errorMessage}: ${error.message || error}`);
     } finally {
       setIsReclaiming(false);
-      // Reset status after a delay
       setTimeout(() => {
         setReclaimStatus({ appId: null, status: '' });
       }, 3000);
     }
   };
-  
-  
-  
   
 
   const handleCleanup = async (appId) => {

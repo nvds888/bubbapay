@@ -313,7 +313,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const appIdInt = Number(appId);
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Reconstruct multisig address from stored params
+    // Reconstruct multisig address
     const cleanAddrs = tempAccount.msigParams.addrs.map(addr => {
       if (typeof addr === 'string') {
         return addr;
@@ -333,7 +333,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
     
-    // Transaction 1: App call to reclaim funds (from creator)
+    // Transaction 1: App call to reclaim funds (from creator) - regular signing
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
@@ -347,7 +347,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Transaction 2: REAL multisig transaction to close the multisig account
+    // Transaction 2: Multisig payment to close the multisig account
     const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: multisigAddress,
       receiver: senderAddress,
@@ -363,23 +363,40 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     // Create transaction group
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
-    
-    // Prepare transactions for ARC-1 signing
+
+    // Create a multisig signer for the closeMultisigTxn
+    const msigAccount = {
+      version: cleanMsigParams.version,
+      threshold: cleanMsigParams.threshold,
+      addrs: cleanMsigParams.addrs
+    };
+    const signer = algosdk.makeMultiSigAccountTransactionSigner(msigAccount, [/* no pre-signatures */], senderAddress);
+
+    // Encode the multisig transaction with partial msig structure
+    const multisigTxnEncoded = algosdk.encodeUnsignedTransaction(closeMultisigTxn);
+    const msigStructure = {
+      v: cleanMsigParams.version,
+      thr: cleanMsigParams.threshold,
+      subsig: cleanMsigParams.addrs.map(addr => ({
+        pk: Buffer.from(algosdk.decodeAddress(addr).publicKey).toString('base64')
+      }))
+    };
+
+    // Prepare wallet transactions
     const walletTransactions = [
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
-        // No additional fields needed - wallet will sign with creator's account normally
       },
       {
-        txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        authAddr: senderAddress,
-        msig: cleanMsigParams
+        txn: Buffer.from(multisigTxnEncoded).toString('base64'),
+        msig: msigStructure
+        // Note: Do NOT include authAddr unless the wallet explicitly supports it
       }
     ];
-    
+
     console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
     return { 
-      walletTransactions: walletTransactions,
+      walletTransactions,
       multisigParams: cleanMsigParams
     };
   } catch (error) {
