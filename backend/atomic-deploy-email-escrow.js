@@ -292,6 +292,7 @@ async function compileProgram(programSource) {
   }
 }
 
+// Fixed generateReclaimTransaction function
 async function generateReclaimTransaction({ appId, senderAddress, assetId = null, tempAccount }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
@@ -364,33 +365,19 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
 
-    // Create a multisig signer for the closeMultisigTxn
-    const msigAccount = {
-      version: cleanMsigParams.version,
-      threshold: cleanMsigParams.threshold,
-      addrs: cleanMsigParams.addrs
-    };
-    const signer = algosdk.makeMultiSigAccountTransactionSigner(msigAccount, [/* no pre-signatures */], senderAddress);
-
-    // Encode the multisig transaction with partial msig structure
-    const multisigTxnEncoded = algosdk.encodeUnsignedTransaction(closeMultisigTxn);
-    const msigStructure = {
-      v: cleanMsigParams.version,
-      thr: cleanMsigParams.threshold,
-      subsig: cleanMsigParams.addrs.map(addr => ({
-        pk: Buffer.from(algosdk.decodeAddress(addr).publicKey).toString('base64')
-      }))
-    };
-
-    // Prepare wallet transactions
+    // FIXED: Prepare wallet transactions with proper msig field
     const walletTransactions = [
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
       },
       {
-        txn: Buffer.from(multisigTxnEncoded).toString('base64'),
-        authAddr: senderAddress
-        // Note: Do NOT include authAddr unless the wallet explicitly supports it
+        txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
+        msig: {
+          version: cleanMsigParams.version,
+          threshold: cleanMsigParams.threshold,
+          addrs: cleanMsigParams.addrs
+        },
+        signers: [senderAddress]  // Specify which address should sign this multisig transaction
       }
     ];
 
