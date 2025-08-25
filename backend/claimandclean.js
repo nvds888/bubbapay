@@ -75,6 +75,11 @@ if (!msigParams) {
   return res.status(500).json({ error: 'Missing multisig parameters in escrow record' });
 }
 
+console.log('Original msigParams.addrs:', msigParams.addrs);
+console.log('Reconstructed addrs:', reconstructedAddrs);
+console.log('Calculated multisig address:', multisigAddress);
+console.log('Expected multisig address: ZKJY7Y2T7X6XOQFJFQEE6D7TSKZQFPU4JJWECAJPBUS7GDOLCQS26UEFSI');
+
 // Convert any object addresses back to string addresses
 const reconstructedAddrs = msigParams.addrs.map(addr => {
   if (typeof addr === 'string') {
