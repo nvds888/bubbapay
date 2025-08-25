@@ -347,10 +347,11 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Transaction 2: Multisig transaction to close the multisig account
+    // Transaction 2: REAL multisig transaction to close the multisig account
     const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: multisigAddress,
       receiver: senderAddress,
+      authAddr: senderAddress,
       amount: 0,
       closeRemainderTo: senderAddress,
       suggestedParams: { 
@@ -360,29 +361,26 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // KEY CHANGE: Set authAddr to treat like rekeyed account
-    closeMultisigTxn.authAddr = algosdk.decodeAddress(senderAddress);
-    console.log('Set authAddr in backend for multisig transaction:', senderAddress);
-
     // Create transaction group
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
     
-    // Prepare transactions for wallet - simple format since authAddr is set
+    // Prepare transactions for ARC-1 signing
     const walletTransactions = [
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
+        // No additional fields needed - wallet will sign with creator's account normally
       },
       {
-        txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64')
+        txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
+        authAddr: senderAddress
       }
     ];
     
-    console.log(`Reclaim transaction group created with authAddr approach`);
-    
+    console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
     return { 
       walletTransactions: walletTransactions,
-      multisigParams: cleanMsigParams // Keep for backend processing if needed
+      multisigParams: cleanMsigParams
     };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
