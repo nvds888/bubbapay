@@ -407,18 +407,17 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
 
     console.log("Final multisig transaction sender:", algosdk.encodeAddress(closeMultisigTxn.sender.publicKey));
 
-    // Wrap the close-out txn in a multisig envelope
-const mtx = algosdk.makeMultisigTransaction(closeMultisigTxn, finalMsigParams);
-
-// Encode properly for ARC-0001
 const walletTransactions = [
   {
     txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
   },
   {
-    txn: Buffer.from(algosdk.encodeUnsignedTransaction(mtx)).toString('base64')
+    txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
+    msig: finalMsigParams,
+    signers: [senderAddress]
   }
 ];
+
 
 
     console.log("=== WALLET TRANSACTION STRUCTURE ===");
