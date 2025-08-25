@@ -97,10 +97,15 @@ function TransactionsPage() {
       
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      // Both Lute and Defly support ARC-1 directly, so send the ARC-1 format
+      // Convert base64 txn to Uint8Array for proper msgpack/ARC-1 handling in wallets
+      const transactionsToSign = txnData.walletTransactions.map(item => ({
+        ...item,
+        txn: new Uint8Array(Buffer.from(item.txn, 'base64'))  // Convert to binary for signing
+      }));
+      
       console.log('Using native ARC-1 multisig support for all wallets');
       
-      const signedTxns = await signTransactions(txnData.walletTransactions);
+      const signedTxns = await signTransactions(transactionsToSign);
       
       console.log('Wallet returned:', signedTxns.map((txn, i) => ({
         index: i,
