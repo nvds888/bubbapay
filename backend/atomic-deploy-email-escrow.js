@@ -445,10 +445,17 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     walletTransactions.forEach((wt, index) => {
       try {
         const decodedTxn = algosdk.decodeUnsignedTransaction(Buffer.from(wt.txn, 'base64'));
-        console.log(`WalletTransaction ${index + 1} decoded successfully:`, JSON.stringify(decodedTxn, null, 2));
+        // Log key transaction fields manually to avoid BigInt serialization issues
+        const txnObj = decodedTxn.txn || decodedTxn;
+        console.log(`WalletTransaction ${index + 1} decoded successfully:`, {
+          type: txnObj.type,
+          sender: txnObj.sender ? algosdk.encodeAddress(txnObj.sender.publicKey) : 'undefined',
+          appIndex: txnObj.appIndex ? String(txnObj.appIndex) : undefined,
+          fee: txnObj.fee ? String(txnObj.fee) : undefined,
+          firstValid: txnObj.firstValid ? String(txnObj.firstValid) : undefined,
+          lastValid: txnObj.lastValid ? String(txnObj.lastValid) : undefined,
+        });
         if (index === 1) {
-          // Handle different possible structures from decodeUnsignedTransaction
-          const txnObj = decodedTxn.txn || decodedTxn;
           if (!txnObj.sender || !txnObj.sender.publicKey) {
             throw new Error("Decoded transaction missing sender or sender.publicKey");
           }
