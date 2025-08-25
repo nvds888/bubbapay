@@ -420,7 +420,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
           addrs: finalMsigParams.addrs
         },
         signers: [senderAddress],
-        authAddr: multisigAddress,
+        authAddr: senderAddress,
       }
     ];
 
