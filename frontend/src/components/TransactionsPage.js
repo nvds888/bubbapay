@@ -95,14 +95,12 @@ function TransactionsPage() {
         throw new Error('Invalid transaction data from backend');
       }
   
-      // 1) Ensure explicit signers for both transactions
       const arc1 = txnData.walletTransactions.map((wtx) => {
         const withSigners = { ...wtx };
         if (!withSigners.signers) withSigners.signers = [activeAddress];
         return withSigners;
       });
   
-      // 2) Validate that each txn base64 decodes to a valid unsigned transaction
       const decodeOk = (b64) => {
         try {
           const bytes = new Uint8Array(Buffer.from(b64, 'base64'));
@@ -120,17 +118,23 @@ function TransactionsPage() {
       });
   
       let signedTxns;
-      try {
-        console.log('Using native ARC-1 multisig support for all wallets');
-        signedTxns = await signTransactions(arc1);
-      } catch (arc1Err) {
-        console.warn('[ARC-1 path failed, retrying legacy bytes path]', arc1Err);
-        // 3) Fallback: use raw bytes array for wallets that choke on ARC-0001 msig (e.g., Lute)
+      const containsMsig = arc1.some(tx => tx.msig);
+  
+      if (containsMsig) {
+        console.warn('[Skipping ARC-1] Wallet does not support msig in ARC-0001. Using raw bytes path.');
         const bytes = arc1.map(wtx => new Uint8Array(Buffer.from(wtx.txn, 'base64')));
         signedTxns = await signTransactions(bytes);
+      } else {
+        try {
+          console.log('Using native ARC-1 support for all wallets');
+          signedTxns = await signTransactions(arc1);
+        } catch (arc1Err) {
+          console.warn('[ARC-1 path failed, retrying legacy bytes path]', arc1Err);
+          const bytes = arc1.map(wtx => new Uint8Array(Buffer.from(wtx.txn, 'base64')));
+          signedTxns = await signTransactions(bytes);
+        }
       }
   
-      // Submit signed transactions to backend
       const submitRes = await fetch('/api/submit-signed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,6 +155,7 @@ function TransactionsPage() {
       alert(errorMessage);
     }
   };
+  
   
   
   
