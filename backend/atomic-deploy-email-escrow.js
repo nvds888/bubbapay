@@ -292,6 +292,8 @@ async function compileProgram(programSource) {
   }
 }
 
+// In atomic-deploy-email-escrow.js, update the generateReclaimTransaction function:
+
 async function generateReclaimTransaction({ appId, senderAddress, assetId = null, tempAccount }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
@@ -360,31 +362,31 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
+    // KEY CHANGE: Set authAddr in the backend
+    closeMultisigTxn.authAddr = algosdk.decodeAddress(senderAddress);
+    console.log('Set authAddr in backend for multisig transaction:', senderAddress);
+
     // Create transaction group
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
     
-    // Prepare transactions for ARC-1 signing WITH PROPER MULTISIG INFO
+    // Prepare transactions for wallet (still include msig info for debugging)
     const walletTransactions = [
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
-        // Regular transaction - no additional fields needed
       },
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        // THIS IS KEY: Include multisig parameters for the wallet
         msig: cleanMsigParams,
-        // Specify which address should sign this multisig transaction
         signers: [senderAddress]
       }
     ];
     
-    console.log(`Reclaim transaction group created with multisig info`);
-    console.log('Multisig params being sent to wallet:', JSON.stringify(cleanMsigParams, null, 2));
+    console.log(`Reclaim transaction group created with authAddr set in backend`);
     
     return { 
       walletTransactions: walletTransactions,
-      multisigParams: cleanMsigParams // Keep this for backend processing
+      multisigParams: cleanMsigParams
     };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
