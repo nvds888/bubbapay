@@ -364,32 +364,27 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
     
-    // Prepare multisig structure to match the provided example
-    const msigStructure = {
-      v: cleanMsigParams.version,
-      thr: cleanMsigParams.threshold,
-      subsig: cleanMsigParams.addrs.map(addr => ({
-        pk: addr,
-        s: addr === senderAddress ? "" : null // Initialize signature slot for sender
-      }))
-    };
-
-    // Prepare transactions for ARC-1 signing
+    // Prepare transactions for ARC-1 signing WITH PROPER MULTISIG INFO
     const walletTransactions = [
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
+        // Regular transaction - no additional fields needed
       },
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        msig: msigStructure,
-        authAddr: senderAddress
+        // THIS IS KEY: Include multisig parameters for the wallet
+        msig: cleanMsigParams,
+        // Specify which address should sign this multisig transaction
+        signers: [senderAddress]
       }
     ];
     
-    console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
+    console.log(`Reclaim transaction group created with multisig info`);
+    console.log('Multisig params being sent to wallet:', JSON.stringify(cleanMsigParams, null, 2));
+    
     return { 
       walletTransactions: walletTransactions,
-      multisigParams: cleanMsigParams
+      multisigParams: cleanMsigParams // Keep this for backend processing
     };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);

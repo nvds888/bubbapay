@@ -78,27 +78,30 @@ function TransactionsPage() {
     }).format(date);
   };
   
-  const handleReclaim = async (appId) => {
-    if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
-      return;
-    }
-    
-    setIsReclaiming(true);
-    setReclaimStatus({ appId, status: 'Generating transactions...' });
-    
-    try {
-      // Generate the reclaim transactions using ARC-1 approach
-      const txnData = await api.generateReclaimTransaction({
-        appId,
-        senderAddress: activeAddress
-      });
+// Updated handleReclaim function for TransactionsPage.js
+const handleReclaim = async (appId) => {
+  if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
+    return;
+  }
   
-      console.log('WalletTransactions being sent to wallet:', JSON.stringify(txnData.walletTransactions, null, 2));
-      
-      setReclaimStatus({ appId, status: 'Waiting for signature...' });
-      
-      // Convert ARC-1 back to unsigned transactions for Lute compatibility
-      const unsignedTxns = txnData.walletTransactions.map(walletTxn => {
+  setIsReclaiming(true);
+  setReclaimStatus({ appId, status: 'Generating transactions...' });
+  
+  try {
+    // Generate the reclaim transactions using ARC-1 approach
+    const txnData = await api.generateReclaimTransaction({
+      appId,
+      senderAddress: activeAddress
+    });
+
+    console.log('WalletTransactions being sent to wallet:', JSON.stringify(txnData.walletTransactions, null, 2));
+    
+    setReclaimStatus({ appId, status: 'Waiting for signature...' });
+    
+    // IMPORTANT: Send the transactions with multisig info to the wallet
+    // The wallet should now see the multisig parameters in the second transaction
+    const signedTxns = await signTransactions(
+      txnData.walletTransactions.map(walletTxn => {
         // Convert base64 to Uint8Array using browser-native methods
         const binaryString = atob(walletTxn.txn);
         const txnUint8 = new Uint8Array(binaryString.length);
@@ -108,125 +111,91 @@ function TransactionsPage() {
         
         const txn = algosdk.decodeUnsignedTransaction(txnUint8);
         
-        // Set authAddr if present
-        if (walletTxn.authAddr) {
-          txn.authAddr = algosdk.decodeAddress(walletTxn.authAddr);
+        // For multisig transactions, pass the msig params to the wallet
+        if (walletTxn.msig) {
+          // Some wallets expect the multisig params to be attached to the transaction
+          // This depends on your wallet implementation
+          console.log('Attaching multisig params to transaction:', walletTxn.msig);
+          
+          // Store multisig info for wallet processing
+          txn._multisigParams = walletTxn.msig;
+          txn._signers = walletTxn.signers;
         }
         
         return txn;
-      });
-      
-      // Prepare multisig metadata for the wallet
-      const signers = txnData.walletTransactions.map(walletTxn => {
-        if (walletTxn.msig) {
-          // Convert multisig structure for wallet using browser-native methods
-          return {
-            msig: {
-              version: walletTxn.msig.v,
-              threshold: walletTxn.msig.thr,
-              subsigs: walletTxn.msig.subsig.map(sub => {
-                // Convert base64 public key to Uint8Array
-                const pkBinary = atob(sub.pk);
-                const pkBytes = new Uint8Array(pkBinary.length);
-                for (let i = 0; i < pkBinary.length; i++) {
-                  pkBytes[i] = pkBinary.charCodeAt(i);
-                }
-                
-                // Convert signature to Uint8Array if present
-                let sBytes = null;
-                if (sub.s) {
-                  const sBinary = atob(sub.s);
-                  sBytes = new Uint8Array(sBinary.length);
-                  for (let i = 0; i < sBinary.length; i++) {
-                    sBytes[i] = sBinary.charCodeAt(i);
-                  }
-                }
-                
-                return {
-                  pk: pkBytes,
-                  s: sBytes
-                };
-              })
-            },
-            authAddr: walletTxn.authAddr
-          };
-        }
-        return null;
-      });
-      
-      console.log('Sending unsigned transactions to Lute wallet:', unsignedTxns.length);
-      // Pass signers metadata to the wallet for multisig transactions
-      const signedTxns = await signTransactions(unsignedTxns, signers);
-      
-      console.log('Wallet returned:', signedTxns.map((txn, i) => ({
-        index: i,
-        isNull: txn === null,
-        hasData: !!txn,
-        length: txn ? txn.length : 0
-      })));
-      
-      setReclaimStatus({ appId, status: 'Submitting transactions...' });
-      
-      // Convert signed transactions to base64 for backend
-      const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
-        if (!signedTxn) {
-          throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null for this transaction.`);
-        }
-        
-        // Convert Uint8Array to base64 using browser-native methods
-        let binaryString = '';
-        for (let i = 0; i < signedTxn.length; i++) {
-          binaryString += String.fromCharCode(signedTxn[i]);
-        }
-        return btoa(binaryString);
-      });
-      
-      // Submit the properly signed transactions
-      const result = await api.submitReclaimTransaction({
-        signedTxns: signedTxnsBase64,
-        appId,
-        senderAddress: activeAddress
-      });
-      
-      // Update the local transactions state to reflect the reclaim
-      setTransactions(prev => prev.map(tx => {
-        if (tx.appId === parseInt(appId)) {
-          return { ...tx, reclaimed: true, reclaimedAt: new Date() };
-        }
-        return tx;
-      }));
-      
-      setReclaimStatus({ appId, status: 'Success' });
-      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
-      
-    } catch (error) {
-      console.error('Error reclaiming funds:', error);
-      setReclaimStatus({ appId, status: 'Failed' });
-      
-      // Improved error handling
-      let errorMessage = 'Failed to reclaim funds';
-      if (error.message.includes('rejected')) {
-        errorMessage = 'Reclaim rejected - funds may have already been claimed';
-      } else if (error.message.includes('insufficient')) {
-        errorMessage = 'Insufficient ALGO for transaction fees';
-      } else if (error.message.includes('null') || error.message.includes('sign')) {
-        errorMessage = 'Wallet failed to sign multisig transaction. Ensure your wallet supports multisig and try again.';
-      } else if (error.message.includes('Buffer')) {
-        errorMessage = 'Internal error: Buffer not supported in browser environment';
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
+      })
+    );
+
+    console.log('Wallet returned:', signedTxns.map((txn, i) => ({
+      index: i,
+      isNull: txn === null,
+      hasData: !!txn,
+      length: txn ? txn.length : 0
+    })));
+    
+    setReclaimStatus({ appId, status: 'Submitting transactions...' });
+    
+    // Convert signed transactions to base64 for backend
+    const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
+      if (!signedTxn) {
+        throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null for this transaction.`);
       }
       
-      alert(`${errorMessage}: ${error.message || error}`);
-    } finally {
-      setIsReclaiming(false);
-      // Reset status after a delay
-      setTimeout(() => {
-        setReclaimStatus({ appId: null, status: '' });
-      }, 3000);
+      // Convert Uint8Array to base64 using browser-native methods
+      let binaryString = '';
+      for (let i = 0; i < signedTxn.length; i++) {
+        binaryString += String.fromCharCode(signedTxn[i]);
+      }
+      return btoa(binaryString);
+    });
+    
+    // Submit the properly signed transactions
+    const result = await api.submitReclaimTransaction({
+      signedTxns: signedTxnsBase64,
+      appId,
+      senderAddress: activeAddress
+    });
+    
+    // Update the local transactions state to reflect the reclaim
+    setTransactions(prev => prev.map(tx => {
+      if (tx.appId === parseInt(appId)) {
+        return { ...tx, reclaimed: true, reclaimedAt: new Date() };
+      }
+      return tx;
+    }));
+    
+    setReclaimStatus({ appId, status: 'Success' });
+    const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
+    alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
+    
+  } catch (error) {
+    console.error('Error reclaiming funds:', error);
+    setReclaimStatus({ appId, status: 'Failed' });
+    
+    // Better error handling
+    let errorMessage = 'Failed to reclaim funds';
+    if (error.message.includes('rejected')) {
+      errorMessage = 'Reclaim rejected - funds may have already been claimed';
+    } else if (error.message.includes('insufficient')) {
+      errorMessage = 'Insufficient ALGO for transaction fees';
+    } else if (error.message.includes('null')) {
+      errorMessage = 'Wallet failed to sign multisig transaction - ensure you have the proper signing permissions';
+    } else if (error.message.includes('multisig')) {
+      errorMessage = 'Multisig transaction signing failed - check wallet compatibility';
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
     }
-  };
+    
+    alert(`${errorMessage}: ${error.message || error}`);
+  } finally {
+    setIsReclaiming(false);
+    // Reset status after a delay
+    setTimeout(() => {
+      setReclaimStatus({ appId: null, status: '' });
+    }, 3000);
+  }
+};
+  
 
   const handleCleanup = async (appId) => {
     if (!window.confirm("Clean up this contract to recover locked ALGO? This will permanently delete the contract.")) {
