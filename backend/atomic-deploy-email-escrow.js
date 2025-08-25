@@ -445,9 +445,14 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     walletTransactions.forEach((wt, index) => {
       try {
         const decodedTxn = algosdk.decodeUnsignedTransaction(Buffer.from(wt.txn, 'base64'));
-        console.log(`WalletTransaction ${index + 1} decoded successfully:`, decodedTxn);
+        console.log(`WalletTransaction ${index + 1} decoded successfully:`, JSON.stringify(decodedTxn, null, 2));
         if (index === 1) {
-          const expectedSender = algosdk.encodeAddress(decodedTxn.txn.sender.publicKey);
+          // Handle different possible structures from decodeUnsignedTransaction
+          const txnObj = decodedTxn.txn || decodedTxn;
+          if (!txnObj.sender || !txnObj.sender.publicKey) {
+            throw new Error("Decoded transaction missing sender or sender.publicKey");
+          }
+          const expectedSender = algosdk.encodeAddress(txnObj.sender.publicKey);
           if (expectedSender !== multisigAddressStr) {
             throw new Error(
               `WalletTransaction ${index + 1} sender ${expectedSender} does not match multisig address ${multisigAddressStr}`
