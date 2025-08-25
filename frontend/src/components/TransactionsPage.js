@@ -98,11 +98,11 @@ const handleReclaim = async (appId) => {
     
     setReclaimStatus({ appId, status: 'Waiting for signature...' });
     
-    // IMPORTANT: Send the transactions with multisig info to the wallet
-    // The wallet should now see the multisig parameters in the second transaction
+    // IMPORTANT: Send the ARC-1 wallet transactions WITH multisig info
+    // Don't convert them back to plain transactions - that strips the msig data!
     const signedTxns = await signTransactions(
       txnData.walletTransactions.map(walletTxn => {
-        // Convert base64 to Uint8Array using browser-native methods
+        // Convert base64 to Uint8Array 
         const binaryString = atob(walletTxn.txn);
         const txnUint8 = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
@@ -111,15 +111,14 @@ const handleReclaim = async (appId) => {
         
         const txn = algosdk.decodeUnsignedTransaction(txnUint8);
         
-        // For multisig transactions, pass the msig params to the wallet
+        // PRESERVE the multisig data from the ARC-1 wallet transaction
         if (walletTxn.msig) {
-          // Some wallets expect the multisig params to be attached to the transaction
-          // This depends on your wallet implementation
-          console.log('Attaching multisig params to transaction:', walletTxn.msig);
-          
-          // Store multisig info for wallet processing
-          txn._multisigParams = walletTxn.msig;
-          txn._signers = walletTxn.signers;
+          console.log('Including multisig params for wallet:', walletTxn.msig);
+          // Attach multisig params directly to the transaction object
+          txn.msig = walletTxn.msig;
+          if (walletTxn.signers) {
+            txn.signers = walletTxn.signers;  
+          }
         }
         
         return txn;
