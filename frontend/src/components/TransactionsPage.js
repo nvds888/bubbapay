@@ -161,7 +161,7 @@ function TransactionsPage() {
       setReclaimStatus({ appId, status: 'Failed' });
   
       let errorMessage = 'Failed to reclaim funds';
-      if (error.message.includes('rejected')) {
+      if (error?.message?.includes('rejected')) {
         errorMessage = 'Reclaim rejected - funds may have already been claimed';
       } else if (error.message.includes('insufficient')) {
         errorMessage = 'Insufficient ALGO for transaction fees';

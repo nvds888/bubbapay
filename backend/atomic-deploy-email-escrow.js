@@ -405,7 +405,7 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
 
-    console.log("Final multisig transaction sender:", closeMultisigTxn.from.toString());
+    console.log("Final multisig transaction sender:", algosdk.encodeAddress(closeMultisigTxn.sender.publicKey));
 
     const walletTransactions = [
       {
