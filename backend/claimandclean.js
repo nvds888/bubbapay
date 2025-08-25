@@ -76,11 +76,8 @@ if (!msigParams) {
 }
 
 console.log('Original msigParams.addrs:', msigParams.addrs);
-console.log('Reconstructed addrs:', reconstructedAddrs);
-console.log('Calculated multisig address:', multisigAddress);
-console.log('Expected multisig address: ZKJY7Y2T7X6XOQFJFQEE6D7TSKZQFPU4JJWECAJPBUS7GDOLCQS26UEFSI');
 
-// Convert any object addresses back to string addresses
+// Convert any object addresses back to string addresses  
 const reconstructedAddrs = msigParams.addrs.map(addr => {
   if (typeof addr === 'string') {
     return addr;
@@ -93,6 +90,8 @@ const reconstructedAddrs = msigParams.addrs.map(addr => {
   }
 });
 
+console.log('Reconstructed addrs:', reconstructedAddrs);
+
 // Reconstruct multisig params with proper string addresses
 const cleanMsigParams = {
   ...msigParams,
@@ -101,6 +100,7 @@ const cleanMsigParams = {
 
 // Derive the multisig address using clean params
 const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
+console.log('Calculated multisig address:', multisigAddress);
 
     
     console.log("Generating optimized claim for user already opted in");
@@ -228,33 +228,38 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     const tempAccountObj = { addr: tempAddress, sk: secretKeyUint8 };
 
     // Pull multisig params from DB record
-    const msigParams = escrow?.tempAccount?.msigParams;
+const msigParams = escrow?.tempAccount?.msigParams;
 
-    if (!msigParams) {
-      return res.status(500).json({ error: 'Missing multisig parameters in escrow record' });
-    }
+if (!msigParams) {
+  return res.status(500).json({ error: 'Missing multisig parameters in escrow record' });
+}
 
-    // Convert any object addresses back to string addresses
-    const reconstructedAddrs = msigParams.addrs.map(addr => {
-      if (typeof addr === 'string') {
-        return addr;
-      } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
-        // Convert object with publicKey back to string address
-        const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
-        return algosdk.encodeAddress(publicKeyArray);
-      } else {
-        throw new Error('Invalid address format in multisig params');
-      }
-    });
+console.log('Original msigParams.addrs:', msigParams.addrs);
 
-    // Reconstruct multisig params with proper string addresses
-    const cleanMsigParams = {
-      ...msigParams,
-      addrs: reconstructedAddrs
-    };
+// Convert any object addresses back to string addresses  
+const reconstructedAddrs = msigParams.addrs.map(addr => {
+  if (typeof addr === 'string') {
+    return addr;
+  } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
+    // Convert object with publicKey back to string address
+    const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
+    return algosdk.encodeAddress(publicKeyArray);
+  } else {
+    throw new Error('Invalid address format in multisig params');
+  }
+});
 
-    // Derive the multisig address using clean params
-    const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
+console.log('Reconstructed addrs:', reconstructedAddrs);
+
+// Reconstruct multisig params with proper string addresses
+const cleanMsigParams = {
+  ...msigParams,
+  addrs: reconstructedAddrs
+};
+
+// Derive the multisig address using clean params
+const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
+console.log('Calculated multisig address:', multisigAddress);
     
     console.log("Generating opt-in and claim group transaction with multisig");
     
