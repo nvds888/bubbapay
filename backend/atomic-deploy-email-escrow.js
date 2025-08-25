@@ -292,37 +292,29 @@ async function compileProgram(programSource) {
   }
 }
 
-// Fixed generateReclaimTransaction function
+// Add this debugging code to your generateReclaimTransaction function
+
 async function generateReclaimTransaction({ appId, senderAddress, assetId = null, tempAccount }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
   try {
-    console.log("Generating reclaim transaction group for app:", appId);
+    console.log("=== DEBUGGING MULTISIG ADDRESS CALCULATION ===");
+    console.log("Raw tempAccount.msigParams:", JSON.stringify(tempAccount.msigParams, null, 2));
     
-    if (!appId || isNaN(parseInt(appId))) {
-      throw new Error("Invalid app ID");
-    }
-    
-    if (!algosdk.isValidAddress(senderAddress)) {
-      throw new Error("Invalid sender address");
-    }
-
-    if (!tempAccount || !tempAccount.msigParams) {
-      throw new Error("Missing multisig parameters for reclaim");
-    }
-    
-    const appIdInt = Number(appId);
-    const suggestedParams = await algodClient.getTransactionParams().do();
-    
-    // Reconstruct multisig address
-    const cleanAddrs = tempAccount.msigParams.addrs.map(addr => {
+    // Clean up the addresses
+    const cleanAddrs = tempAccount.msigParams.addrs.map((addr, index) => {
+      console.log(`Processing address ${index}:`, addr);
+      
       if (typeof addr === 'string') {
+        console.log(`  → Already a string: ${addr}`);
         return addr;
       } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
         const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
-        return algosdk.encodeAddress(publicKeyArray);
+        const address = algosdk.encodeAddress(publicKeyArray);
+        console.log(`  → Converted from publicKey: ${address}`);
+        return address;
       } else {
-        throw new Error('Invalid address format in multisig params');
+        throw new Error(`Invalid address format at index ${index}`);
       }
     });
 
@@ -332,9 +324,38 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       addrs: cleanAddrs
     };
 
+    console.log("Clean multisig params:", cleanMsigParams);
+    
+    const calculatedMultisigAddress = algosdk.multisigAddress(cleanMsigParams);
+    console.log("Calculated multisig address:", calculatedMultisigAddress);
+    console.log("Expected from wallet display: 442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE");
+    console.log("Addresses match:", calculatedMultisigAddress === "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE");
+    
+    // If addresses don't match, try different order
+    if (calculatedMultisigAddress !== "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE") {
+      console.log("=== TRYING REVERSED ADDRESS ORDER ===");
+      const reversedMsigParams = {
+        version: tempAccount.msigParams.version,
+        threshold: tempAccount.msigParams.threshold,
+        addrs: [...cleanAddrs].reverse() // Try reversed order
+      };
+      
+      const reversedMultisigAddress = algosdk.multisigAddress(reversedMsigParams);
+      console.log("Reversed order multisig address:", reversedMultisigAddress);
+      console.log("Reversed matches:", reversedMultisigAddress === "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE");
+      
+      if (reversedMultisigAddress === "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE") {
+        // Use the reversed order
+        cleanMsigParams.addrs = reversedMsigParams.addrs;
+      }
+    }
+    
     const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
     
-    // Transaction 1: App call to reclaim funds (from creator) - regular signing
+    // Continue with rest of function...
+    const appIdInt = Number(appId);
+    const suggestedParams = await algodClient.getTransactionParams().do();
+    
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
@@ -348,7 +369,6 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Transaction 2: Multisig payment to close the multisig account
     const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: multisigAddress,
       receiver: senderAddress,
@@ -361,11 +381,11 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       }
     });
 
-    // Create transaction group
     const txnGroup = [reclaimTxn, closeMultisigTxn];
     algosdk.assignGroupID(txnGroup);
 
-    // FIXED: Prepare wallet transactions with proper msig field
+    console.log("Final multisig transaction sender:", closeMultisigTxn.from.toString());
+
     const walletTransactions = [
       {
         txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
@@ -377,11 +397,14 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
           threshold: cleanMsigParams.threshold,
           addrs: cleanMsigParams.addrs
         },
-        signers: [senderAddress]  // Specify which address should sign this multisig transaction
+        signers: [senderAddress]
       }
     ];
 
-    console.log(`Reclaim transaction group created with total fee: ${3000 / 1e6} ALGO`);
+    console.log("=== WALLET TRANSACTION STRUCTURE ===");
+    console.log("Transaction 2 msig field:", walletTransactions[1].msig);
+    console.log("Transaction 2 signers:", walletTransactions[1].signers);
+    
     return { 
       walletTransactions,
       multisigParams: cleanMsigParams

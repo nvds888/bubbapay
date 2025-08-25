@@ -19,6 +19,7 @@ const getAssetInfo = (assetId) => {
     2494786278: { id: 2494786278, name: 'Monko', symbol: 'MONKO', decimals: 6 },
     2726252423: { id: 2726252423, name: 'Alpha', symbol: 'ALPHA', decimals: 6 },
     523683256: { id: 523683256, name: 'Akita', symbol: 'AKITA', decimals: 6},
+    2656692124: { id: 2656692124, name: 'BallSack', symbol: 'BALLSACK', decimals: 10}
   };
 
   return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
