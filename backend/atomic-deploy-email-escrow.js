@@ -419,7 +419,8 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
           threshold: finalMsigParams.threshold,
           addrs: finalMsigParams.addrs
         },
-        signers: [senderAddress]
+        signers: [senderAddress],
+        authAddr: multisigAddress,
       }
     ];
 
