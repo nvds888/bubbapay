@@ -46,17 +46,6 @@ function Navbar({ hideWalletConnection = false }) {
                 </svg>
                 <span>How it works?</span>
               </button>
-              {/* Campaigns Link */}
-              <Link 
-  to="/widget" 
-  className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium text-sm flex items-center space-x-1 px-3 py-2 rounded-lg hover:bg-gray-50"
->
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-  </svg>
-  <span>Referrals</span>
-</Link>
-
 
               {/* Technical Docs Link */}
               <Link 
@@ -125,17 +114,6 @@ function Navbar({ hideWalletConnection = false }) {
                 </svg>
                 <span>How it works?</span>
               </button>
-              {/* Campaigns Link - Mobile */}
-              <Link 
-  to="/widget" 
-  className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors duration-200 font-medium py-2 px-3 rounded-lg"
-  onClick={() => setIsMobileMenuOpen(false)}
->
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-  </svg>
-  <span>Referrals</span>
-</Link>
 
               {/* Technical Docs Link */}
               <Link 
