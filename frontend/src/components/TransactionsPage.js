@@ -78,116 +78,114 @@ function TransactionsPage() {
     }).format(date);
   };
   
-  // In TransactionsPage.js, update the handleReclaim function:
-
-const handleReclaim = async (appId) => {
-  if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
-    return;
-  }
-  
-  setIsReclaiming(true);
-  setReclaimStatus({ appId, status: 'Generating transactions...' });
-  
-  try {
-    // Generate the reclaim transactions
-    const txnData = await api.generateReclaimTransaction({
-      appId,
-      senderAddress: activeAddress
-    });
-
-    console.log('Using authAddr approach with backend-set authAddr:', txnData.walletTransactions);
-    
-    setReclaimStatus({ appId, status: 'Waiting for signature...' });
-    
-    // Convert to algosdk transactions - authAddr is already set in backend
-    const unsignedTxns = txnData.walletTransactions.map((walletTxn, index) => {
-      const binaryString = atob(walletTxn.txn);
-      const txnUint8 = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        txnUint8[i] = binaryString.charCodeAt(i);
-      }
-      
-      const txn = algosdk.decodeUnsignedTransaction(txnUint8);
-      
-      // Log transaction details for debugging
-      console.log(`Transaction ${index + 1}:`, {
-        sender: algosdk.encodeAddress(txn.from),
-        hasAuthAddr: !!txn.authAddr,
-        authAddr: txn.authAddr ? algosdk.encodeAddress(txn.authAddr) : 'none'
-      });
-      
-      return txn;
-    });
-    
-    // Sign with regular use-wallet approach
-    const signedTxns = await signTransactions(unsignedTxns);
-
-    console.log('Wallet returned:', signedTxns.map((txn, i) => ({
-      index: i,
-      isNull: txn === null,
-      hasData: !!txn,
-      length: txn ? txn.length : 0
-    })));
-    
-    setReclaimStatus({ appId, status: 'Submitting transactions...' });
-    
-    // Convert signed transactions to base64 for backend
-    const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
-      if (!signedTxn) {
-        throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null for this transaction.`);
-      }
-      
-      let binaryString = '';
-      for (let i = 0; i < signedTxn.length; i++) {
-        binaryString += String.fromCharCode(signedTxn[i]);
-      }
-      return btoa(binaryString);
-    });
-    
-    // Submit the signed transactions
-    const result = await api.submitReclaimTransaction({
-      signedTxns: signedTxnsBase64,
-      appId,
-      senderAddress: activeAddress
-    });
-    
-    // Update the local transactions state to reflect the reclaim
-    setTransactions(prev => prev.map(tx => {
-      if (tx.appId === parseInt(appId)) {
-        return { ...tx, reclaimed: true, reclaimedAt: new Date() };
-      }
-      return tx;
-    }));
-    
-    setReclaimStatus({ appId, status: 'Success' });
-    const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
-    alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
-    
-  } catch (error) {
-    console.error('Error reclaiming funds:', error);
-    setReclaimStatus({ appId, status: 'Failed' });
-    
-    let errorMessage = 'Failed to reclaim funds';
-    if (error.message.includes('rejected')) {
-      errorMessage = 'Reclaim rejected - transaction may have been rejected by network';
-    } else if (error.message.includes('insufficient')) {
-      errorMessage = 'Insufficient ALGO for transaction fees';
-    } else if (error.message.includes('null')) {
-      errorMessage = 'Wallet failed to sign transaction - authAddr approach may not work';
-    } else if (error.message.includes('invalid signature')) {
-      errorMessage = 'Invalid signature - wallet created wrong signature format for multisig';
-    } else if (error.response?.data?.error) {
-      errorMessage = error.response.data.error;
+  const handleReclaim = async (appId) => {
+    if (!window.confirm("Are you sure you want to reclaim these funds? The recipient will no longer be able to claim them.")) {
+      return;
     }
     
-    alert(`${errorMessage}: ${error.message || error}`);
-  } finally {
-    setIsReclaiming(false);
-    setTimeout(() => {
-      setReclaimStatus({ appId: null, status: '' });
-    }, 3000);
-  }
-};
+    setIsReclaiming(true);
+    setReclaimStatus({ appId, status: 'Generating transactions...' });
+    
+    try {
+      // Generate the reclaim transactions
+      const txnData = await api.generateReclaimTransaction({
+        appId,
+        senderAddress: activeAddress
+      });
+  
+      console.log('Using authAddr approach with backend-set authAddr:', txnData.walletTransactions);
+      
+      setReclaimStatus({ appId, status: 'Waiting for signature...' });
+      
+      // Convert to algosdk transactions - authAddr is already set in backend
+      const unsignedTxns = txnData.walletTransactions.map((walletTxn, index) => {
+        const binaryString = atob(walletTxn.txn);
+        const txnUint8 = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          txnUint8[i] = binaryString.charCodeAt(i);
+        }
+        
+        const txn = algosdk.decodeUnsignedTransaction(txnUint8);
+        
+        // Log transaction details for debugging
+        console.log(`Transaction ${index + 1}:`, {
+          sender: algosdk.encodeAddress(txn.from),
+          hasAuthAddr: !!txn.authAddr,
+          authAddr: txn.authAddr ? algosdk.encodeAddress(txn.authAddr) : 'none'
+        });
+        
+        return txn;
+      });
+      
+      // Sign with regular use-wallet approach
+      const signedTxns = await signTransactions(unsignedTxns);
+  
+      console.log('Wallet returned:', signedTxns.map((txn, i) => ({
+        index: i,
+        isNull: txn === null,
+        hasData: !!txn,
+        length: txn ? txn.length : 0
+      })));
+      
+      setReclaimStatus({ appId, status: 'Submitting transactions...' });
+      
+      // Convert signed transactions to base64 for backend
+      const signedTxnsBase64 = signedTxns.map((signedTxn, index) => {
+        if (!signedTxn) {
+          throw new Error(`Failed to sign transaction ${index + 1}. Wallet returned null for this transaction.`);
+        }
+        
+        let binaryString = '';
+        for (let i = 0; i < signedTxn.length; i++) {
+          binaryString += String.fromCharCode(signedTxn[i]);
+        }
+        return btoa(binaryString);
+      });
+      
+      // Submit the signed transactions
+      const result = await api.submitReclaimTransaction({
+        signedTxns: signedTxnsBase64,
+        appId,
+        senderAddress: activeAddress
+      });
+      
+      // Update the local transactions state to reflect the reclaim
+      setTransactions(prev => prev.map(tx => {
+        if (tx.appId === parseInt(appId)) {
+          return { ...tx, reclaimed: true, reclaimedAt: new Date() };
+        }
+        return tx;
+      }));
+      
+      setReclaimStatus({ appId, status: 'Success' });
+      const assetSymbol = getAssetSymbol(transactions.find(tx => tx.appId === parseInt(appId)));
+      alert(`Successfully reclaimed ${result.amount} ${assetSymbol}!`);
+      
+    } catch (error) {
+      console.error('Error reclaiming funds:', error);
+      setReclaimStatus({ appId, status: 'Failed' });
+      
+      let errorMessage = 'Failed to reclaim funds';
+      if (error.message.includes('rejected')) {
+        errorMessage = 'Reclaim rejected - transaction may have been rejected by network';
+      } else if (error.message.includes('insufficient')) {
+        errorMessage = 'Insufficient ALGO for transaction fees';
+      } else if (error.message.includes('null')) {
+        errorMessage = 'Wallet failed to sign transaction - check if wallet recognizes authAddr';
+      } else if (error.message.includes('invalid signature')) {
+        errorMessage = 'Invalid signature - network may have rejected the authAddr approach for multisig';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      alert(`${errorMessage}: ${error.message || error}`);
+    } finally {
+      setIsReclaiming(false);
+      setTimeout(() => {
+        setReclaimStatus({ appId: null, status: '' });
+      }, 3000);
+    }
+  };
   
 
   const handleCleanup = async (appId) => {
