@@ -357,13 +357,6 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
     console.log("Calculated multisig address:", multisigAddress);
 
-    // Get suggested parameters
-    const suggestedParams = await algodClient.getTransactionParams().do();
-    console.log("Retrieved suggested params:", {
-      fee: suggestedParams.fee,
-      firstValid: suggestedParams.firstRound,
-      lastValid: suggestedParams.lastRound
-    });
 
     // Create reclaim application call transaction
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
