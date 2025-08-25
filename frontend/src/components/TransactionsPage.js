@@ -97,15 +97,8 @@ function TransactionsPage() {
       
       setReclaimStatus({ appId, status: 'Waiting for signature...' });
       
-      // Convert base64 txn to Uint8Array for proper msgpack/ARC-1 handling in wallets
-      const transactionsToSign = txnData.walletTransactions.map(item => ({
-        ...item,
-        txn: Uint8Array.from(
-          atob(item.txn)
-            .split('')
-            .map(char => char.charCodeAt(0))
-        ) // Convert base64 to Uint8Array using browser-native atob
-      }));
+      // Keep txn as base64 string instead of converting to Uint8Array
+      const transactionsToSign = txnData.walletTransactions;
       
       console.log('Using native ARC-1 multisig support for all wallets');
       
