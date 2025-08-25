@@ -159,14 +159,11 @@ const getTransactionStatus = () => {
     <div className="max-w-md mx-auto">
       {/* Compact header */}
 <div className="text-center mb-6">
-  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3" 
-       style={{background: 'linear-gradient(135deg, #a855f7 0%, #c084fc 100%)'}}>
     <img
                   src="/bubbapay.jpg"
                   alt="Bubbapay Logo"
-                  className="w-7 h-7 rounded-lg object-cover group-hover:scale-110 transition-transform duration-200"
+                  className="w-9 h-9 rounded-lg object-cover group-hover:scale-110 transition-transform duration-200"
                 />
-  </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
     Create Claim Link
   </h2>
