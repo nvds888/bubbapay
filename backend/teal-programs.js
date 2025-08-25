@@ -1,26 +1,13 @@
-// teal-programs
-
-// pragma version 8
-// AlgoSend Escrow Smart Contract 
-//
-// SECURITY FEATURES:
-// - Immutable authorized claimer
-// - Single-use claim mechanism  
-// - Creator-only reclaim before claim
-// - Safe asset opt-out on deletion
-// - No reentrancy vulnerabilities
+// teal-programs.js - Updated with fee coverage functionality
 
 const { getDefaultAssetId } = require('./assetConfig');
-
-const USDC_ASSET_ID = 31566704; // Mainnet
-
 
 function createApprovalProgram(senderAddress, authorizedClaimerAddress, assetId = null) {
   const targetAssetId = assetId || getDefaultAssetId();
   return `#pragma version 8
 // Global state variables
 byte "creator"           // Creator address
-byte "amount"           // USDC amount to transfer
+byte "amount"           // Asset amount to transfer
 byte "claimed"          // Whether funds have been claimed (0 or 1)
 byte "authorized_claimer" // Address that can claim funds
 
@@ -68,13 +55,13 @@ return
 
 // Handle app calls
 handle_app_call:
-// CHANGE: Check OnComplete action FIRST before trying to access ApplicationArgs
+// Check OnComplete action FIRST before trying to access ApplicationArgs
 txn OnCompletion
 int 5 // DeleteApplication
 ==
 bnz handle_delete
 
-// CHANGE: Check if we have application arguments before accessing them
+// Check if we have application arguments before accessing them
 txn NumAppArgs
 int 0
 >
@@ -86,24 +73,29 @@ byte "opt_in_asset"
 ==
 bnz handle_opt_in_asset
 
-// Check if claiming USDC
+// Check if claiming asset
 txn ApplicationArgs 0
 byte "claim"
 ==
 bnz handle_claim
 
-// Check if setting USDC amount
+// Check if setting asset amount
 txn ApplicationArgs 0
 byte "set_amount"
 ==
 bnz handle_set_amount
 
-// Check if creator is reclaiming USDC
+// Check if creator is reclaiming asset
 txn ApplicationArgs 0
 byte "reclaim"
 ==
 bnz handle_reclaim
 
+// Check if sending fee coverage to user
+txn ApplicationArgs 0
+byte "send_fee_coverage"
+==
+bnz handle_send_fee_coverage
 
 // Reject unknown app calls
 err
@@ -230,7 +222,7 @@ itxn_submit
 int 1
 return
 
-// Handle USDC claim - SIMPLIFIED VERSION
+// Handle asset claim
 handle_claim:
 // Verify the claim hasn't already been processed
 byte "claimed"
@@ -262,7 +254,7 @@ byte "amount"
 app_global_get
 store 0 // Store amount in register 0
 
-// Begin inner transaction to transfer USDC
+// Begin inner transaction to transfer asset
 itxn_begin
 int 4 // AssetTransfer
 itxn_field TypeEnum
@@ -281,7 +273,7 @@ itxn_submit
 int 1
 return
 
-// Set USDC amount (called after depositing USDC)
+// Set asset amount (called after depositing asset)
 handle_set_amount:
 // Only creator can set amount
 txn Sender
@@ -329,7 +321,7 @@ app_global_put
 
 // Get asset balance
 global CurrentApplicationAddress
-txn Assets 0 // USDC asset ID
+txn Assets 0 // Asset ID
 asset_holding_get AssetBalance
 store 1 // Store asset balance flag in register 1
 store 0 // Store asset balance in register 0
@@ -342,7 +334,7 @@ int 0
 &&
 bz reject_no_balance
 
-// Begin inner transaction to transfer all USDC back to creator
+// Begin inner transaction to transfer all assets back to creator
 itxn_begin
 int 4 // AssetTransfer
 itxn_field TypeEnum
@@ -362,6 +354,45 @@ itxn_submit
 int 1
 return
 
+// Handle sending fee coverage to user
+handle_send_fee_coverage:
+// Only the authorized claimer can trigger this
+txn Sender
+byte "authorized_claimer"
+app_global_get
+==
+bz reject
+
+// Verify we have a recipient address in accounts
+txn NumAccounts
+int 1
+>=
+bz reject_no_recipient
+
+// Verify we have the fee amount parameter
+txn ApplicationArgs 1
+len
+int 8
+==
+bz reject
+
+// Send fee coverage amount (from app args)
+itxn_begin
+int 1 // Payment
+itxn_field TypeEnum
+txn ApplicationArgs 1
+btoi
+itxn_field Amount
+global CurrentApplicationAddress
+itxn_field Sender
+txn Accounts 1  // Recipient address
+itxn_field Receiver
+int 0
+itxn_field Fee
+itxn_submit
+
+int 1
+return
 
 // Handle asset transfers
 handle_transfer:
@@ -415,6 +446,8 @@ return`;
 
 function createClearProgram() {
   return `#pragma version 8
+// Clear program - always allows clearing local state
+// This is a simple program that always returns success
 int 1
 return`;
 }

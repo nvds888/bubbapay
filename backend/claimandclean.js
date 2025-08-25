@@ -102,28 +102,42 @@ const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
     const suggestedParams = await algodClient.getTransactionParams().do();
     const targetAssetId = assetId || escrow.assetId || getDefaultAssetId();
     
-    // Calculate fee coverage amount to return to creator (if applicable)
-    let feeCoverageAmount = 0;
-    if (escrow.payRecipientFees) {
-      // Check temp account balance
-      const multisigAccountInfo = await algodClient.accountInformation(multisigAddress).do();
-const multisigBalance = safeToNumber(multisigAccountInfo.amount);
-      
-      // Reserve amounts for the transactions in this group
-      const claimTxnFee = 2000; // App call with inner txn
-      const returnFeeTxnFee = 1000; // Payment to creator
-      const closeTxnFee = 1000; // Payment to close account
-      const minimumBalance = 100000; // Keep some minimum for closure
-      
-      const totalReserved = claimTxnFee + returnFeeTxnFee + closeTxnFee + minimumBalance;
-      feeCoverageAmount = Math.max(0, multisigBalance - totalReserved);
-      
-      console.log(`Fee coverage amount to return to creator: ${feeCoverageAmount / 1e6} ALGO`);
-    }
-    
-    const transactions = [];
-    
-    // Txn 1: App call (multisig is the sender)
+    // Calculate fee coverage from APP balance instead of temp account
+let feeCoverageAmount = 0;
+if (escrow.payRecipientFees) {
+  // Check APP account balance instead of multisig
+  const appAddress = algosdk.getApplicationAddress(parseInt(appId));
+  const appAccountInfo = await algodClient.accountInformation(appAddress).do();
+  const appBalance = safeToNumber(appAccountInfo.amount);
+  
+  // Reserve for app operations (no temp account closure needed)
+  const claimTxnFee = 2000;
+  const feeCoverageTxnFee = 2000; // App call fee
+  const minimumAppBalance = 100000;
+  
+  const totalReserved = claimTxnFee + feeCoverageTxnFee + minimumAppBalance;
+  feeCoverageAmount = Math.max(0, appBalance - totalReserved);
+}
+
+const transactions = [];
+
+// NEW: Txn 1: Send fee coverage to user (if applicable) - from APP
+if (feeCoverageAmount > 0) {
+  const feeCoverageTxn = algosdk.makeApplicationCallTxnFromObject({
+    sender: multisigAddress,
+    appIndex: parseInt(appId),
+    onComplete: algosdk.OnApplicationComplete.NoOpOC,
+    appArgs: [
+      new Uint8Array(Buffer.from("send_fee_coverage")),
+      algosdk.encodeUint64(feeCoverageAmount)
+    ],
+    accounts: [recipientAddress],
+    suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
+  });
+  transactions.push(feeCoverageTxn);
+}
+
+// Txn 2: App call to claim (unchanged)
 const claimTxn = algosdk.makeApplicationCallTxnFromObject({
   sender: multisigAddress,
   appIndex: parseInt(appId),
@@ -135,20 +149,7 @@ const claimTxn = algosdk.makeApplicationCallTxnFromObject({
 });
 transactions.push(claimTxn);
 
-// Txn 2: return fee coverage (if any) — also from msig
-if (feeCoverageAmount > 0) {
-  const returnFeeTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: multisigAddress,
-    receiver: escrow.senderAddress,
-    amount: feeCoverageAmount,
-    note: new Uint8Array(Buffer.from('AlgoSend fee coverage returned to creator')),
-    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-  });
-  transactions.push(returnFeeTxn);
-}
-
-// Txn 3: close msig account remainder to PLATFORM
-const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
+// Txn 3: Close multisig account (unchanged)
 const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
   sender: multisigAddress,
   receiver: PLATFORM_ADDRESS,
@@ -254,77 +255,74 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     const suggestedParams = await algodClient.getTransactionParams().do();
     const targetAssetId = assetId || escrow.assetId || getDefaultAssetId();
     
-    // Calculate fee coverage amount (if escrow includes fee coverage)
-    let feeCoverageAmount = 0;
-    if (escrow.payRecipientFees) {
-      // Check multisig account balance
-      const multisigAccountInfo = await algodClient.accountInformation(multisigAddress).do();
-      const multisigBalance = safeToNumber(multisigAccountInfo.amount);
-      
-      // Reserve amounts for the transactions in this group
-      const claimTxnFee = 2000; // App call with inner txn
-      const optInTxnFee = 1000; // Asset opt-in (user pays this)
-      const feeCoverageTxnFee = 1000; // Payment txn to user
-      const closeTxnFee = 1000; // Payment to close account
-      const minimumBalance = 100000; // Keep some minimum for closure
-      
-      const totalReserved = claimTxnFee + feeCoverageTxnFee + closeTxnFee + minimumBalance;
-      // Note: We don't include optInTxnFee because user pays for their own opt-in
-      feeCoverageAmount = Math.max(0, multisigBalance - totalReserved);
-      
-      console.log(`Fee coverage amount: ${feeCoverageAmount / 1e6} ALGO`);
-    }
-    
-    // Build transaction group
-    const transactions = [];
-    
-    // Transaction 1: Fee coverage from multisig account to user (if applicable)
-    if (feeCoverageAmount > 0) {
-      const feeCoverageTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        sender: multisigAddress,
-        receiver: recipientAddress,
-        amount: feeCoverageAmount,
-        note: new Uint8Array(Buffer.from('AlgoSend fee coverage')),
-        suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-      });
-      transactions.push(feeCoverageTxn);
-    }
-    
-    // Transaction 2: User opts into asset
-    const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      sender: recipientAddress,
-      receiver: recipientAddress,
-      closeRemainderTo: undefined,
-      revocationTarget: undefined,
-      amount: 0,
-      assetIndex: targetAssetId,
-      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-    });
-    transactions.push(optInTxn);
-    
-    // Transaction 3: App call to claim funds (sends asset to user) - from multisig
-    const claimTxn = algosdk.makeApplicationCallTxnFromObject({
-      sender: multisigAddress,
-      appIndex: parseInt(appId),
-      onComplete: algosdk.OnApplicationComplete.NoOpOC,
-      appArgs: [new Uint8Array(Buffer.from("claim"))],
-      accounts: [recipientAddress],
-      foreignAssets: [targetAssetId],
-      suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
-    });
-    transactions.push(claimTxn);
-    
-    // Transaction 4: Close multisig account and send remaining balance to platform
-    const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
-    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: multisigAddress,
-      receiver: PLATFORM_ADDRESS,
-      amount: 0, // All remaining balance goes to closeRemainderTo
-      closeRemainderTo: PLATFORM_ADDRESS,
-      note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
-      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-    });
-    transactions.push(closeAccountTxn);
+    // Calculate fee coverage from APP balance
+let feeCoverageAmount = 0;
+if (escrow.payRecipientFees) {
+  const appAddress = algosdk.getApplicationAddress(parseInt(appId));
+  const appAccountInfo = await algodClient.accountInformation(appAddress).do();
+  const appBalance = safeToNumber(appAccountInfo.amount);
+  
+  const claimTxnFee = 2000;
+  const feeCoverageTxnFee = 2000;
+  const closeTxnFee = 1000;
+  const minimumBalance = 100000;
+  
+  const totalReserved = claimTxnFee + feeCoverageTxnFee + closeTxnFee + minimumBalance;
+  feeCoverageAmount = Math.max(0, appBalance - totalReserved);
+}
+
+const transactions = [];
+
+// Transaction 1: Fee coverage from APP to user (if applicable)
+if (feeCoverageAmount > 0) {
+  const feeCoverageTxn = algosdk.makeApplicationCallTxnFromObject({
+    sender: multisigAddress,
+    appIndex: parseInt(appId),
+    onComplete: algosdk.OnApplicationComplete.NoOpOC,
+    appArgs: [
+      new Uint8Array(Buffer.from("send_fee_coverage")),
+      algosdk.encodeUint64(feeCoverageAmount)
+    ],
+    accounts: [recipientAddress],
+    suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
+  });
+  transactions.push(feeCoverageTxn);
+}
+
+// Transaction 2: User opts into asset (unchanged)
+const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+  sender: recipientAddress,
+  receiver: recipientAddress,
+  closeRemainderTo: undefined,
+  revocationTarget: undefined,
+  amount: 0,
+  assetIndex: targetAssetId,
+  suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+});
+transactions.push(optInTxn);
+
+// Transaction 3: App call to claim funds (unchanged)
+const claimTxn = algosdk.makeApplicationCallTxnFromObject({
+  sender: multisigAddress,
+  appIndex: parseInt(appId),
+  onComplete: algosdk.OnApplicationComplete.NoOpOC,
+  appArgs: [new Uint8Array(Buffer.from("claim"))],
+  accounts: [recipientAddress],
+  foreignAssets: [targetAssetId],
+  suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
+});
+transactions.push(claimTxn);
+
+// Transaction 4: Close multisig account (unchanged)
+const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  sender: multisigAddress,
+  receiver: PLATFORM_ADDRESS,
+  amount: 0,
+  closeRemainderTo: PLATFORM_ADDRESS,
+  note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
+  suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+});
+transactions.push(closeAccountTxn);
     
     // Group all transactions
     algosdk.assignGroupID(transactions);

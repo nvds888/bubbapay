@@ -207,7 +207,7 @@ const appAddress = appAddressObj.toString();
     if (payRecipientFees) {
       recipientFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
         sender: senderAddress,
-        receiver: tempAccountAddress,
+        receiver: appAddress,
         amount: 210000,
         note: new Uint8Array(Buffer.from('Recipient fee funding to temp account')),
         suggestedParams: { ...suggestedParams, fee: EXACT_FEES.RECIPIENT_FUNDING, flatFee: true }
@@ -292,17 +292,12 @@ async function compileProgram(programSource) {
   }
 }
 
-// Add this debugging code to your generateReclaimTransaction function
-
 async function generateReclaimTransaction({ appId, senderAddress, assetId = null, tempAccount }) {
   const targetAssetId = assetId || getDefaultAssetId();
 
   try {
-    console.log("=== Generating Reclaim Transaction ===");
-    console.log("Input appId:", appId);
-    console.log("Input senderAddress:", senderAddress);
-    console.log("Input tempAccount:", JSON.stringify(tempAccount, null, 2));
-
+    console.log("=== Generating Simplified Reclaim Transaction ===");
+    
     // Validate inputs
     if (!appId || isNaN(parseInt(appId))) {
       throw new Error("Invalid app ID");
@@ -310,80 +305,11 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
     if (!algosdk.isValidAddress(senderAddress)) {
       throw new Error("Invalid sender address");
     }
-    if (!tempAccount || !tempAccount.msigParams) {
-      throw new Error("Invalid temporary account or missing msigParams");
-    }
-
-    // Validate msigParams
-    if (!Number.isInteger(tempAccount.msigParams.version) || tempAccount.msigParams.version !== 1) {
-      throw new Error("Invalid msigParams.version: must be 1");
-    }
-    if (!Number.isInteger(tempAccount.msigParams.threshold) || tempAccount.msigParams.threshold < 1) {
-      throw new Error("Invalid msigParams.threshold: must be a positive integer");
-    }
-    if (tempAccount.msigParams.addrs.length < 2) {
-      throw new Error("msigParams.addrs must contain at least two addresses");
-    }
-
-    // Clean up msigParams addresses
-    const cleanAddrs = tempAccount.msigParams.addrs.map((addr, index) => {
-      console.log(`Processing address ${index}:`, addr);
-      if (typeof addr === 'string' && algosdk.isValidAddress(addr)) {
-        return addr;
-      } else if (addr && addr.publicKey && typeof addr.publicKey === 'object') {
-        const publicKeyArray = new Uint8Array(Object.values(addr.publicKey));
-        const address = algosdk.encodeAddress(publicKeyArray);
-        console.log(`  → Converted from publicKey: ${address}`);
-        return address;
-      }
-      throw new Error(`Invalid address format at index ${index}`);
-    });
-
-    // Ensure senderAddress is in cleanAddrs
-    if (!cleanAddrs.includes(senderAddress)) {
-      throw new Error("senderAddress must be included in msigParams.addrs");
-    }
-
-    const cleanMsigParams = {
-      version: tempAccount.msigParams.version,
-      threshold: tempAccount.msigParams.threshold,
-      addrs: cleanAddrs,
-    };
-
-    // Calculate multisig address
-    const multisigAddress = algosdk.multisigAddress(cleanMsigParams);
-    const multisigAddressStr = typeof multisigAddress === 'string' ? multisigAddress : algosdk.encodeAddress(multisigAddress.publicKey);
-    console.log("Calculated multisig address:", multisigAddressStr);
-
-    // Validate multisig address
-    const expectedMultisigAddress = "442B3WRL6RWLGGPSITQFE5VFLX5VLTSF2RUH3WWZ3WVYNFNODTSDSH77RE";
-    if (multisigAddressStr !== expectedMultisigAddress) {
-      throw new Error(
-        `Calculated multisig address ${multisigAddressStr} does not match expected address ${expectedMultisigAddress}. Check stored msigParams.`
-      );
-    }
-
-    // Validate tempAccount.address
-    let tempAccountAddress;
-    if (typeof tempAccount.address === 'string' && algosdk.isValidAddress(tempAccount.address)) {
-      tempAccountAddress = tempAccount.address;
-    } else if (tempAccount.address && tempAccount.address.publicKey && typeof tempAccount.address.publicKey === 'object') {
-      const publicKeyArray = new Uint8Array(Object.values(tempAccount.address.publicKey));
-      tempAccountAddress = algosdk.encodeAddress(publicKeyArray);
-      console.log(`Converted tempAccount.address from publicKey: ${tempAccountAddress}`);
-    } else {
-      throw new Error("Invalid tempAccount.address format");
-    }
-    if (tempAccountAddress !== multisigAddressStr) {
-      throw new Error(
-        `tempAccount.address ${tempAccountAddress} does not match calculated multisig address ${multisigAddressStr}`
-      );
-    }
 
     const appIdInt = Number(appId);
     const suggestedParams = await algodClient.getTransactionParams().do();
 
-    // Create reclaim transaction
+    // Single transaction: reclaim assets only (fee coverage stays in app)
     const reclaimTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
       appIndex: appIdInt,
@@ -397,89 +323,9 @@ async function generateReclaimTransaction({ appId, senderAddress, assetId = null
       },
     });
 
-    // Create multisig close transaction
-    const closeMultisigTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: multisigAddressStr,
-      receiver: senderAddress,
-      amount: 0,
-      closeRemainderTo: senderAddress,
-      suggestedParams: {
-        ...suggestedParams,
-        fee: 1000,
-        flatFee: true,
-      },
-    });
-
-    // Validate transaction objects
-    [reclaimTxn, closeMultisigTxn].forEach((txn, index) => {
-      try {
-        const encoded = algosdk.encodeUnsignedTransaction(txn);
-        algosdk.decodeUnsignedTransaction(encoded); // Verify decoding
-        console.log(`Transaction ${index + 1} validated successfully`);
-      } catch (err) {
-        throw new Error(`Invalid transaction ${index + 1}: ${err.message}`);
-      }
-    });
-
-    // Assign group ID
-    const txnGroup = [reclaimTxn, closeMultisigTxn];
-    algosdk.assignGroupID(txnGroup);
-
-    // Create WalletTransaction objects
-    const walletTransactions = [
-      {
-        txn: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64'),
-        signers: [senderAddress],
-      },
-      {
-        txn: Buffer.from(algosdk.encodeUnsignedTransaction(closeMultisigTxn)).toString('base64'),
-        msig: cleanMsigParams,
-        signers: [senderAddress],
-      },
-    ];
-
-    console.log("=== Wallet Transactions ===");
-    console.log(JSON.stringify(walletTransactions, null, 2));
-
-    // Validate encoded transactions
-    walletTransactions.forEach((wt, index) => {
-      try {
-        const decodedTxn = algosdk.decodeUnsignedTransaction(Buffer.from(wt.txn, 'base64'));
-        // Log key transaction fields manually to avoid BigInt serialization issues
-        const txnObj = decodedTxn.txn || decodedTxn;
-        console.log(`WalletTransaction ${index + 1} decoded successfully:`, {
-          type: txnObj.type,
-          sender: txnObj.sender ? algosdk.encodeAddress(txnObj.sender.publicKey) : 'undefined',
-          appIndex: txnObj.appIndex ? String(txnObj.appIndex) : undefined,
-          fee: txnObj.fee ? String(txnObj.fee) : undefined,
-          firstValid: txnObj.firstValid ? String(txnObj.firstValid) : undefined,
-          lastValid: txnObj.lastValid ? String(txnObj.lastValid) : undefined,
-        });
-        if (index === 1) {
-          if (!txnObj.sender || !txnObj.sender.publicKey) {
-            throw new Error("Decoded transaction missing sender or sender.publicKey");
-          }
-          const expectedSender = algosdk.encodeAddress(txnObj.sender.publicKey);
-          if (expectedSender !== multisigAddressStr) {
-            throw new Error(
-              `WalletTransaction ${index + 1} sender ${expectedSender} does not match multisig address ${multisigAddressStr}`
-            );
-          }
-        }
-      } catch (err) {
-        throw new Error(`Failed to decode WalletTransaction ${index + 1}: ${err.message}`);
-      }
-    });
-
-    // Log transaction bytes for debugging
-    walletTransactions.forEach((wt, index) => {
-      const bytes = Buffer.from(wt.txn, 'base64');
-      console.log(`Transaction ${index + 1} raw bytes:`, bytes);
-    });
-
+    // Return single transaction (no multisig needed)
     return {
-      walletTransactions,
-      multisigParams: cleanMsigParams,
+      transaction: Buffer.from(algosdk.encodeUnsignedTransaction(reclaimTxn)).toString('base64')
     };
   } catch (error) {
     console.error("Error in generateReclaimTransaction:", error);
