@@ -125,7 +125,7 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
       
       // Real costs (not recoverable)
       realCosts: {
-        platformFee: microAlgoToAlgo(TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING), // 0.102 ALGO
+        platformFee: microAlgoToAlgo(TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING), // 0.105 ALGO
         transactionFees: microAlgoToAlgo(totalFees), // ~0.007 ALGO
         recipientFees: microAlgoToAlgo(payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0), // 0.21 ALGO if enabled
         total: microAlgoToAlgo(

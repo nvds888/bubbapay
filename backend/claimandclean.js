@@ -353,7 +353,7 @@ router.post('/submit-optimized-claim', async (req, res) => {
     }
   } catch (error) {
     console.error('Error processing optimized claim:', error);
-    res.status(500).json({ error: 'Failed to process optimized claim', details: error.message });
+    res.status(500).json({ error: 'Insufficient Algo to opt-in to asset', details: error.message });
   }
 });
 

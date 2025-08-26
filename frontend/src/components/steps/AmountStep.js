@@ -347,7 +347,7 @@ if (assetBalance !== null) {
                       <div className="text-xs text-gray-500 space-y-1 ml-4">
                         <div className="flex justify-between">
                           <span>• Platform fee:</span>
-                          <span>0.102000 ALGO</span>
+                          <span>0.105000 ALGO</span>
                         </div>
                         <div className="flex justify-between">
                           <span>• Network transaction fees:</span>
