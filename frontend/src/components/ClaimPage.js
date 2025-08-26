@@ -17,8 +17,11 @@ const getAssetInfo = (assetId) => {
     31566704: { id: 31566704, name: 'USDC', symbol: 'USDC', decimals: 6 },
     760037151: { id: 760037151, name: 'xUSD', symbol: 'xUSD', decimals: 6 },
     2494786278: { id: 2494786278, name: 'Monko', symbol: 'MONKO', decimals: 6 },
-    2726252423: { id: 2726252423, name: 'Alpha', symbol: 'ALPHA', decimals: 6 }
+    2726252423: { id: 2726252423, name: 'Alpha', symbol: 'ALPHA', decimals: 6 },
+    523683256: { id: 523683256, name: 'Akita', symbol: 'AKITA', decimals: 6},
+    2656692124: { id: 2656692124, name: 'BallSack', symbol: 'BALLSACK', decimals: 10}
   };
+
   return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
 };
 
@@ -177,7 +180,7 @@ function ClaimPage() {
             <div className="w-8 h-8 spinner"></div>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Transfer Details</h3>
-          <p className="text-gray-600 text-sm">Please wait while we fetch your transfer information...</p>
+          <p className="text-gray-600 text-sm">Please wait while we fetch your transfer details...</p>
         </div>
       );
     }
@@ -238,7 +241,7 @@ function ClaimPage() {
       <div className="text-center">
         <div className="flex justify-center mb-6">
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
             </svg>
           </div>
@@ -247,11 +250,11 @@ function ClaimPage() {
         {escrowDetails && (
           <div className="mb-6">
             {/* Main display section */}
-            <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">
               You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
             </h2>
             <p className="text-gray-600">
-              Connect your wallet to claim the funds
+              Connect your wallet to claim crypto
             </p>
             {escrowDetails.payRecipientFees && (
               <div className="mt-2 text-xs text-gray-500">
@@ -263,7 +266,7 @@ function ClaimPage() {
         
         <button
           onClick={enableWallet}
-          className="btn-primary px-6 py-3 font-medium"
+          className="btn-primary px-4 py-2 font-medium"
         >
           Connect Wallet
         </button>
@@ -288,7 +291,7 @@ function ClaimPage() {
                 alt="Bubbapay Logo"
                 className="w-12 h-12 rounded-lg object-cover mb-3 mx-auto"
               />
-              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your internet money</h1>
+              <h1 className="text-xl font-semibold text-gray-900 mb-1">Claim your crypto</h1>
               <p className="text-gray-600 text-sm">Secure and instant on Algorand</p>
             </div>
             
@@ -458,7 +461,7 @@ const handleOptInAndClaim = async () => {
   setClaimStatus('claiming');
   
   try {
-    console.log("Generating opt-in and claim group transaction...");
+    console.log("Generating opt-in and claim group txn...");
     
     const response = await axios.post(`${API_URL}/generate-optin-and-claim`, {
       tempPrivateKey,
@@ -486,7 +489,7 @@ const userSignedTxn = signedUserTxns[userTxnIndex];
 const finalSignedTxns = [...response.data.partiallySignedTransactions];
 finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
     
-    console.log("Submitting complete group transaction...");
+    console.log("Submitting complete group txn...");
     
     const submitData = {
       signedTransactions: finalSignedTxns,
@@ -520,7 +523,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
   const formatAmount = (amount) => parseFloat(amount).toFixed(2);
   const formatAddress = (address) => {
     if (!address) return '';
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+    return `${address.substring(0, 4)}...${address.substring(address.length - 3)}`;
   };
   
   // Render wallet-connected content
@@ -530,7 +533,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
         <div className="text-center">
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
             </div>
@@ -539,11 +542,11 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           {escrowDetails && (
             <div className="mb-6">
               {/* CHANGE 7e: Another "You've received" message in wallet content */}
-              <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">
                 You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
               </h2>
               <p className="text-gray-600">
-                Connect your wallet to claim the funds
+                Connect your wallet to claim crypto
               </p>
               {escrowDetails.payRecipientFees && (
                 <div className="mt-2 text-xs text-gray-500">
@@ -574,7 +577,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
 </h3>
 <p className="text-gray-600 text-sm">
   {claimStatus === 'claiming' 
-    ? `Processing your transaction...` 
+    ? `Processing your txn...` 
     : `Checking your wallet setup...`}
 </p>
           
@@ -601,7 +604,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
               </svg>
             </div>
@@ -609,14 +612,14 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Ready to Opt-in & Claim!</h2>
           <p className="text-gray-600 mb-2">
-            Get your <span className="text-blue-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> in one transaction
+            Get your <span className="text-blue-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> in one txn
           </p>
           <p className="text-gray-500 text-sm mb-6">
-            This will opt your wallet into {assetInfo?.name || 'the asset'} and claim your funds
+            This will opt you into {assetInfo?.name || 'the asset'} and claim your crypto
           </p>
           
           {escrowDetails?.payRecipientFees && (
-            <div className="mb-4 card card-compact inline-block">
+  <div className="mb-4 card card-compact">
               <div className="flex items-center space-x-2 text-green-600">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -661,7 +664,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
             </div>
@@ -673,15 +676,15 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           </p>
           
           {escrowDetails?.payRecipientFees && (
-            <div className="mb-4 card card-compact inline-block">
-              <div className="flex items-center space-x-2 text-green-600">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-sm">Fee coverage will be returned to creator</span>
-              </div>
-            </div>
-          )}
+  <div className="mb-4 card card-compact">
+    <div className="flex items-center space-x-2 text-green-600">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+      <span className="text-sm">Fee cov will be returned to sender</span>
+    </div>
+  </div>
+)}
           
           <button
             onClick={handleOptimizedClaim}
@@ -718,7 +721,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-                <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -726,21 +729,18 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
             
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">Successfully Claimed! 🎉</h2>
 <p className="text-gray-600 mb-2">
-  <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been transferred to your wallet
+  <span className="text-green-600 font-normal">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been send to {formatAddress(accountAddress)}
 </p>
-{isOptedIn ? (
+{isOptedIn && escrowDetails?.payRecipientFees ? (
   <p className="text-gray-500 text-xs mb-2">
-    Fee coverage returned to creator - you were already opted in!
+    Fee cov returned to sender - you were already opted in!
   </p>
-) : (
+) : !isOptedIn ? (
   <p className="text-gray-500 text-xs mb-2">
-    Opted in and claimed in one atomic transaction
+    Opted in and claimed 
     {escrowDetails?.payRecipientFees && " - fees covered by sender"}
   </p>
-)}
-            <p className="text-gray-500 text-sm">
-              Wallet: <span className="font-mono">{formatAddress(accountAddress)}</span>
-            </p>
+) : null}
           </div>
           
           <div className="space-y-4">
@@ -797,7 +797,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   {/* CHANGE 7n: Bottom button text */}
-                  <span>Send Your Own $$</span>
+                  <span>Create Claim Link</span>
                 </span>
               </button>
             </div>

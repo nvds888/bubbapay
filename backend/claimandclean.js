@@ -420,7 +420,7 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
     const suggestedParams = await algodClient.getTransactionParams().do();
     
     // Shouldfix this to only pass relevant asset
-    const commonAssets = [31566704, 760037151, 2494786278, 2726252423]; // USDC, xUSD, MONKO, ALPHA
+    const commonAssets = [31566704, 760037151, 2494786278, 2726252423, 523683256, 2656692124 ]; // USDC, xUSD, MONKO, ALPHA, AKITA, BALLSACK
     
     const deleteAppTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: senderAddress,
