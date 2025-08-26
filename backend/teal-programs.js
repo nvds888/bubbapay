@@ -86,6 +86,12 @@ byte "opt_in_asset"
 ==
 bnz handle_opt_in_asset
 
+// Check if claiming fee coverage
+txn ApplicationArgs 0
+byte "claim_fee_coverage"
+==
+bnz handle_claim_fee_coverage
+
 // Check if claiming USDC
 txn ApplicationArgs 0
 byte "claim"
@@ -362,6 +368,53 @@ itxn_submit
 int 1
 return
 
+handle_claim_fee_coverage:
+// Only authorized claimer can claim fee coverage
+txn Sender
+byte "authorized_claimer"
+app_global_get
+==
+bz reject
+
+// Verify we have a recipient address in accounts
+txn NumAccounts
+int 1
+>=
+bz reject_no_recipient
+
+// Get current app ALGO balance
+global CurrentApplicationAddress
+balance
+store 0 // Store balance in register 0
+
+// Calculate available fee coverage 
+load 0
+int 210000  // Keep 0.21 ALGO for app operations
+-
+store 1 // Store available amount in register 1
+
+// Check if we have any fee coverage to send
+load 1
+int 1000    // Must have at least 0.001 ALGO to be worth sending
+>=
+bz reject_no_balance
+
+// Send available fee coverage to recipient
+itxn_begin
+int 1 // Payment
+itxn_field TypeEnum
+load 1
+itxn_field Amount
+global CurrentApplicationAddress
+itxn_field Sender
+txn Accounts 1  // Recipient address from foreign accounts
+itxn_field Receiver
+int 0
+itxn_field Fee
+itxn_submit
+
+int 1
+return
 
 // Handle asset transfers
 handle_transfer:

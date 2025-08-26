@@ -76,52 +76,22 @@ router.post('/generate-optimized-claim', async (req, res) => {
     const suggestedParams = await algodClient.getTransactionParams().do();
     const targetAssetId = assetId || escrow.assetId || getDefaultAssetId();
     
-    // Calculate fee coverage amount to return to creator (if applicable)
-    let feeCoverageAmount = 0;
-    if (escrow.payRecipientFees) {
-      // Check temp account balance
-      const tempAccountInfo = await algodClient.accountInformation(tempAddress).do();
-      const tempBalance = safeToNumber(tempAccountInfo.amount);
-      
-      // Reserve amounts for the transactions in this group
-      const claimTxnFee = 2000; // App call with inner txn
-      const returnFeeTxnFee = 1000; // Payment to creator
-      const closeTxnFee = 1000; // Payment to close account
-      const minimumBalance = 100000; // Keep some minimum for closure
-      
-      const totalReserved = claimTxnFee + returnFeeTxnFee + closeTxnFee + minimumBalance;
-      feeCoverageAmount = Math.max(0, tempBalance - totalReserved);
-      
-      console.log(`Fee coverage amount to return to creator: ${feeCoverageAmount / 1e6} ALGO`);
-    }
-    
     const transactions = [];
-    
-    // Transaction 1: App call to claim funds (sends asset to user)
-    const claimTxn = algosdk.makeApplicationCallTxnFromObject({
-      sender: tempAccountObj.addr,
-      appIndex: parseInt(appId),
-      onComplete: algosdk.OnApplicationComplete.NoOpOC,
-      appArgs: [new Uint8Array(Buffer.from("claim"))],
-      accounts: [recipientAddress],
-      foreignAssets: [targetAssetId],
-      suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
-    });
-    transactions.push(claimTxn);
-    
-    // Transaction 2: Return fee coverage to creator (if applicable)
-    if (feeCoverageAmount > 0) {
-      const returnFeeTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        sender: tempAccountObj.addr,
-        receiver: escrow.senderAddress,
-        amount: feeCoverageAmount,
-        note: new Uint8Array(Buffer.from('AlgoSend fee coverage returned to creator')),
-        suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-      });
-      transactions.push(returnFeeTxn);
-    }
 
-    // Transaction 3: Close temp account and send remaining balance to platform
+// Transaction 1: App call to claim funds (sends asset to user)
+const claimTxn = algosdk.makeApplicationCallTxnFromObject({
+  sender: tempAccountObj.addr,
+  appIndex: parseInt(appId),
+  onComplete: algosdk.OnApplicationComplete.NoOpOC,
+  appArgs: [new Uint8Array(Buffer.from("claim"))],
+  accounts: [recipientAddress],
+  foreignAssets: [targetAssetId],
+  suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
+});
+transactions.push(claimTxn);
+
+
+    // Transaction 2: Close temp account and send remaining balance to platform
     const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
     const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: tempAccountObj.addr,
@@ -202,41 +172,21 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     const suggestedParams = await algodClient.getTransactionParams().do();
     const targetAssetId = assetId || escrow.assetId || getDefaultAssetId();
     
-    // Calculate fee coverage amount (if escrow includes fee coverage)
-    let feeCoverageAmount = 0;
-    if (escrow.payRecipientFees) {
-      // Check temp account balance
-      const tempAccountInfo = await algodClient.accountInformation(tempAddress).do();
-      const tempBalance = safeToNumber(tempAccountInfo.amount);
-      
-      // Reserve amounts for the transactions in this group
-      const claimTxnFee = 2000; // App call with inner txn
-      const optInTxnFee = 1000; // Asset opt-in (user pays this)
-      const feeCoverageTxnFee = 1000; // Payment txn to user
-      const closeTxnFee = 1000; // Payment to close account
-      const minimumBalance = 100000; // Keep some minimum for closure
-      
-      const totalReserved = claimTxnFee + feeCoverageTxnFee + closeTxnFee + minimumBalance;
-      // Note: We don't include optInTxnFee because user pays for their own opt-in
-      feeCoverageAmount = Math.max(0, tempBalance - totalReserved);
-      
-      console.log(`Fee coverage amount: ${feeCoverageAmount / 1e6} ALGO`);
-    }
-    
     // Build transaction group
-    const transactions = [];
-    
-    // Transaction 1: Fee coverage from temp account to user (if applicable)
-    if (feeCoverageAmount > 0) {
-      const feeCoverageTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        sender: tempAccountObj.addr,
-        receiver: recipientAddress,
-        amount: feeCoverageAmount,
-        note: new Uint8Array(Buffer.from('AlgoSend fee coverage')),
-        suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-      });
-      transactions.push(feeCoverageTxn);
-    }
+const transactions = [];
+
+// Transaction 1: Claim fee coverage from app (if applicable)
+if (escrow.payRecipientFees) {
+  const claimFeeCoverageTxn = algosdk.makeApplicationCallTxnFromObject({
+    sender: tempAccountObj.addr,
+    appIndex: parseInt(appId),
+    onComplete: algosdk.OnApplicationComplete.NoOpOC,
+    appArgs: [new Uint8Array(Buffer.from("claim_fee_coverage"))],
+    accounts: [recipientAddress],
+    suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
+  });
+  transactions.push(claimFeeCoverageTxn);
+}
     
     // Transaction 2: User opts into asset
     const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
@@ -283,17 +233,17 @@ router.post('/generate-optin-and-claim', async (req, res) => {
 
     let currentIndex = 0;
 
-    // Transaction 1: Fee coverage (temp account) - if applicable
-    if (feeCoverageAmount > 0) {
-      const signedTxn = algosdk.signTransaction(transactions[currentIndex], tempAccountObj.sk);
-      signedTransactions.push(Buffer.from(signedTxn.blob).toString('base64'));
-      currentIndex++;
-    }
+// Transaction 1: Claim fee coverage (temp account) - if applicable
+if (escrow.payRecipientFees) {
+  const signedTxn = algosdk.signTransaction(transactions[currentIndex], tempAccountObj.sk);
+  signedTransactions.push(Buffer.from(signedTxn.blob).toString('base64'));
+  currentIndex++;
+}
 
-    // Transaction 2: User opt-in (user account) 
-    signedTransactions.push(null); // User must sign this
-    userTxnIndex = currentIndex;
-    currentIndex++;
+// Transaction 2: User opt-in (user account) 
+signedTransactions.push(null); // User must sign this
+userTxnIndex = currentIndex;
+currentIndex++;
 
     // Transaction 3: App call claim (temp account)
     const signedClaimTxn = algosdk.signTransaction(transactions[currentIndex], tempAccountObj.sk);
