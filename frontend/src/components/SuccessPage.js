@@ -24,6 +24,10 @@ function SuccessPage() {
   // Get the claim URL from location state if available
   const claimUrl = location.state?.claimUrl;
   const isShareable = location.state?.isShareable;
+
+  const hasClaimError = location.state?.hasClaimError || 
+                      (claimUrl && claimUrl.includes('undefined')) || 
+                      !claimUrl;
   
   // SECURITY: Browser History Protection - Clear sensitive data from history
   useEffect(() => {
@@ -83,6 +87,13 @@ function SuccessPage() {
     
     fetchEscrowDetails();
   }, [escrowId, claimUrl, isShareable]);
+
+  useEffect(() => {
+    if (hasClaimError && !error) {
+      alert("Couldn't generate claim link. Due to security reasons claim link is directly lost if issues arise in the App deployment. You can reclaim and delete App on the 'Manage Links' page, and please for next attempt make sure to do this on desktop or if on mobile, make sure to not lose session between switching to the wallet app and back.");
+    }
+  }, [hasClaimError, error]);
+  
   
   // SECURITY: URL Obfuscation function
   const obfuscateUrl = (url) => {
@@ -182,14 +193,19 @@ function SuccessPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Claim Link is Ready!</h1>
-        <p className="text-gray-600 text-sm">
-          You can share directly via WhatsApp or Telegram
-        </p>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+  {hasClaimError ? 'Transfer Created' : 'Claim Link is Ready!'}
+</h1>
+<p className="text-gray-600 text-sm">
+  {hasClaimError 
+    ? 'Your transfer was created, but there was an issue with claim link generation.'
+    : 'You can share directly via WhatsApp or Telegram'
+  }
+</p>
       </div>
 
       {/* Claim URL section with security */}
-      {escrowDetails?.claimUrl && (escrowDetails.isShareable !== false) && (
+      {!hasClaimError && escrowDetails?.claimUrl && (escrowDetails.isShareable !== false) && (
         <div className="card card-normal">
           <h3 className="font-medium text-gray-900 mb-3">Share Claim Link</h3>
           <p className="text-gray-600 text-sm mb-4">

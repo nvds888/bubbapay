@@ -378,69 +378,87 @@ function TransactionsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {transaction.reclaimed ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          Reclaimed
-                        </span>
-                      ) : transaction.claimed ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Claimed
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {/* Processing status display */}
-                      {reclaimStatus.appId === transaction.appId && (
-                        <span className="text-xs text-blue-600 mr-3">
-                          {reclaimStatus.status}
-                        </span>
-                      )}
-                      {cleanupStatus.appId === transaction.appId && (
-                        <span className="text-xs text-green-600 mr-3">
-                          {cleanupStatus.status}
-                        </span>
-                      )}
-                      
-                      {/* Action buttons */}
-                      <div className="space-y-1">
-                        {!transaction.claimed && !transaction.reclaimed ? (
-                          <button
-                            onClick={() => handleReclaim(transaction.appId)}
-                            disabled={isReclaiming}
-                            className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-                          >
-                            Reclaim Funds
-                          </button>
-                        ) : transaction.cleanedUp ? (
-                          <span className="text-gray-500 text-sm">Cleaned Up</span>
-                        ) : (
-                          <button
-                            onClick={() => handleCleanup(transaction.appId)}
-                            disabled={isCleaningUp}
-                            className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-                          >
-                            Clean Up (0.46 ALGO)
-                          </button>
-                        )}
-                        
-                        {/* Explorer link - always show */}
-                        <a
-                          href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1 text-sm"
-                        >
-                          <span>View Explorer</span>
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                      </div>
-                    </td>
+  {transaction.reclaimed ? (
+    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+      Reclaimed
+    </span>
+  ) : transaction.claimed ? (
+    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+      Claimed
+    </span>
+  ) : !transaction.funded && transaction.status === 'APP_CREATED_AWAITING_FUNDING' ? (
+    <div className="space-y-1">
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        App Created - Unfunded
+      </span>
+      <p className="text-xs text-blue-600">Navigate to home to fund App</p>
+    </div>
+  ) : (
+    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+      Pending
+    </span>
+  )}
+</td>
+<td className="px-6 py-4 whitespace-nowrap text-sm">
+  {/* Processing status display */}
+  {reclaimStatus.appId === transaction.appId && (
+    <span className="text-xs text-blue-600 mr-3">
+      {reclaimStatus.status}
+    </span>
+  )}
+  {cleanupStatus.appId === transaction.appId && (
+    <span className="text-xs text-green-600 mr-3">
+      {cleanupStatus.status}
+    </span>
+  )}
+  
+  {/* Action buttons */}
+  <div className="space-y-1">
+    {!transaction.funded && transaction.status === 'APP_CREATED_AWAITING_FUNDING' ? (
+      // Unfunded app - only show explorer link
+      <>
+        <span className="text-gray-500 text-sm block">App awaiting funding</span>
+        <Link 
+          to="/"
+          className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm block"
+        >
+          Go to Home to Fund
+        </Link>
+      </>
+    ) : !transaction.claimed && !transaction.reclaimed ? (
+      <button
+        onClick={() => handleReclaim(transaction.appId)}
+        disabled={isReclaiming}
+        className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+      >
+        Reclaim Funds
+      </button>
+    ) : transaction.cleanedUp ? (
+      <span className="text-gray-500 text-sm">Cleaned Up</span>
+    ) : (
+      <button
+        onClick={() => handleCleanup(transaction.appId)}
+        disabled={isCleaningUp}
+        className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+      >
+        Clean Up (~0.46 ALGO)
+      </button>
+    )}
+    
+    {/* Explorer link - always show */}
+    <a
+      href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 flex items-center space-x-1 text-sm"
+    >
+      <span>View Explorer</span>
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+      </svg>
+    </a>
+  </div>
+</td>
                   </tr>
                 ))}
               </tbody>
@@ -452,32 +470,39 @@ function TransactionsPage() {
             {transactions.map((transaction) => (
               <div key={transaction._id} className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-gray-900 font-semibold">{formatAmount(transaction.amount)} {getAssetSymbol(transaction)}</div>
-                      <div className="text-gray-500 text-sm">{formatDate(transaction.createdAt)}</div>
-                    </div>
-                  </div>
-                  
-                  {transaction.reclaimed ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      Reclaimed
-                    </span>
-                  ) : transaction.claimed ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Claimed
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  )}
-                </div>
+  <div className="flex items-center space-x-3">
+    <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+      <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+      </svg>
+    </div>
+    <div>
+      <div className="text-gray-900 font-semibold">{formatAmount(transaction.amount)} {getAssetSymbol(transaction)}</div>
+      <div className="text-gray-500 text-sm">{formatDate(transaction.createdAt)}</div>
+    </div>
+  </div>
+  
+  {transaction.reclaimed ? (
+    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+      Reclaimed
+    </span>
+  ) : transaction.claimed ? (
+    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+      Claimed
+    </span>
+  ) : !transaction.funded && transaction.status === 'APP_CREATED_AWAITING_FUNDING' ? (
+    <div className="text-center">
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-1">
+        App Created - Unfunded
+      </span>
+      <p className="text-xs text-blue-600">Navigate to home to fund App</p>
+    </div>
+  ) : (
+    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+      Pending
+    </span>
+  )}
+</div>
                 
                 <div className="text-sm text-gray-600">
                   <span className="text-gray-500">To:</span> {transaction.recipientEmail || 'Shareable Link'}
@@ -485,51 +510,59 @@ function TransactionsPage() {
                 
                 {/* Mobile actions */}
                 <div className="flex justify-between items-center pt-2">
-                  <div className="space-y-1">
-                    {reclaimStatus.appId === transaction.appId && (
-                      <span className="text-xs text-blue-600 block">
-                        {reclaimStatus.status}
-                      </span>
-                    )}
-                    {cleanupStatus.appId === transaction.appId && (
-                      <span className="text-xs text-green-600 block">
-                        {cleanupStatus.status}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    {!transaction.claimed && !transaction.reclaimed ? (
-                      <button
-                        onClick={() => handleReclaim(transaction.appId)}
-                        disabled={isReclaiming}
-                        className="btn-secondary px-3 py-1.5 text-sm font-medium w-full"
-                      >
-                        Reclaim Funds
-                      </button>
-                    ) : transaction.cleanedUp ? (
-                      <span className="text-gray-500 text-sm">Cleaned Up</span>
-                    ) : (
-                      <button
-                        onClick={() => handleCleanup(transaction.appId)}
-                        disabled={isCleaningUp}
-                        className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
-                      >
-                        Clean Up (~0.46 ALGO)
-                      </button>
-                    )}
-                    
-                    {/* Explorer link - always show */}
-                    <a
-                      href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-secondary px-3 py-1.5 text-sm font-medium w-full text-center block"
-                    >
-                      View Explorer
-                    </a>
-                  </div>
-                </div>
+  <div className="space-y-1">
+    {reclaimStatus.appId === transaction.appId && (
+      <span className="text-xs text-blue-600 block">
+        {reclaimStatus.status}
+      </span>
+    )}
+    {cleanupStatus.appId === transaction.appId && (
+      <span className="text-xs text-green-600 block">
+        {cleanupStatus.status}
+      </span>
+    )}
+  </div>
+  
+  <div className="space-y-2">
+    {!transaction.funded && transaction.status === 'APP_CREATED_AWAITING_FUNDING' ? (
+      // Unfunded app - show link to home
+      <Link
+        to="/"
+        className="btn-primary px-3 py-1.5 text-sm font-medium w-full text-center block"
+      >
+        Go to Home to Fund
+      </Link>
+    ) : !transaction.claimed && !transaction.reclaimed ? (
+      <button
+        onClick={() => handleReclaim(transaction.appId)}
+        disabled={isReclaiming}
+        className="btn-secondary px-3 py-1.5 text-sm font-medium w-full"
+      >
+        Reclaim Funds
+      </button>
+    ) : transaction.cleanedUp ? (
+      <span className="text-gray-500 text-sm">Cleaned Up</span>
+    ) : (
+      <button
+        onClick={() => handleCleanup(transaction.appId)}
+        disabled={isCleaningUp}
+        className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
+      >
+        Clean Up (~0.46 ALGO)
+      </button>
+    )}
+    
+    {/* Explorer link - always show */}
+    <a
+      href={`https://lora.algokit.io/mainnet/application/${transaction.appId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="btn-secondary px-3 py-1.5 text-sm font-medium w-full text-center block"
+    >
+      View Explorer
+    </a>
+  </div>
+</div>
               </div>
             ))}
           </div>

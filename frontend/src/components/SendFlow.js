@@ -416,13 +416,16 @@ function SendFlow() {
       // Generate claim URL ourselves to match the backend version
       const generatedClaimUrl = `${window.location.origin}/claim?app=${txnData.appId}#key=${txnData.tempAccount.privateKey}`;
       
+      const validClaimUrl = generatedClaimUrl.includes('undefined') ? null : generatedClaimUrl;
+
       // Navigate to success page with both the escrow ID and claim URL
       navigate(`/success/${response.data.escrowId}`, { 
-        state: { 
-          claimUrl: response.data.claimUrl || generatedClaimUrl,
-          isShareable: response.data.isShareable 
-        } 
-      });
+  state: { 
+    claimUrl: response.data.claimUrl || validClaimUrl,
+    isShareable: response.data.isShareable,
+    hasClaimError: !validClaimUrl 
+  } 
+});
     } catch (error) {
       console.error('Error signing group transactions:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit group transactions');
