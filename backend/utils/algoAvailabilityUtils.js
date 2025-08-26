@@ -39,7 +39,7 @@ function calculateAlgoAvailability(accountInfo, payRecipientFees = false) {
     RECIPIENT_FUNDING_FEE: 1000,        // 0.001 ALGO - Payment (recipient fee funding)
     
    // ALGO Transfers (actual ALGO sent out, not fees)
-TEMP_ACCOUNT_FUNDING: 102000,        // 0.102 ALGO - fund temp account
+TEMP_ACCOUNT_FUNDING: 105000,        // 0.105 ALGO - fund temp account
 CONTRACT_FUNDING: 210000,           // 0.21 ALGO - fund smart contract
 RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if enabled)
   };
@@ -103,7 +103,7 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
   
   // Total required (for UI display) - add 10% buffer to be extra safe
   const totalRequired = totalFees + totalAlgoSentOut + TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE;
-  const totalRequiredWithBuffer = Math.ceil(totalRequired * 1.10);
+  const totalRequiredWithBuffer = Math.ceil(totalRequired * 1.05);
   
   return {
     address: accountInfo.address,
