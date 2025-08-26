@@ -189,7 +189,7 @@ const SUPPORTED_ASSETS = {
     id: 2656692124,
     name: 'BallSack',
     symbol: 'BALLSACK',
-    decimals: 10,
+    decimals: 6,
     description: 'BallSack is a meme token'
   }
 };

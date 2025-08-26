@@ -51,7 +51,7 @@ const SUPPORTED_ASSETS = {
       name: 'BallSack',
       unitName: 'BALLSACK',
       symbol: 'BallSack',
-      decimals: 10,
+      decimals: 6,
       isDefault: false,
       description: 'BallSack is a meme token'
     }
