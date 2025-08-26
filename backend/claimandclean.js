@@ -365,20 +365,20 @@ async function generateCleanupTransaction({ appId, senderAddress, assetId = null
     const appIdInt = parseInt(appId);
     const suggestedParams = await algodClient.getTransactionParams().do();
     
-    // Shouldfix this to only pass relevant asset
-    const commonAssets = [31566704, 760037151, 2494786278, 2726252423, 523683256, 2656692124 ]; // USDC, xUSD, MONKO, ALPHA, AKITA, BALLSACK
-    
-    const deleteAppTxn = algosdk.makeApplicationCallTxnFromObject({
-      sender: senderAddress,
-      appIndex: appIdInt,
-      onComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
-      foreignAssets: commonAssets,
-      suggestedParams: {
-        ...suggestedParams,
-        fee: 3000,
-        flatFee: true
-      }
-    });
+    // Use only the specific asset ID for this contract
+const foreignAssets = assetId ? [assetId] : [];
+
+const deleteAppTxn = algosdk.makeApplicationCallTxnFromObject({
+  sender: senderAddress,
+  appIndex: appIdInt,
+  onComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
+  foreignAssets: foreignAssets,
+  suggestedParams: {
+    ...suggestedParams,
+    fee: 3000,
+    flatFee: true
+  }
+});
     
     const encodedTxns = [Buffer.from(algosdk.encodeUnsignedTransaction(deleteAppTxn)).toString('base64')];
     
@@ -482,10 +482,17 @@ router.post('/cleanup-contract', async (req, res) => {
       });
     }
 
-    const cleanupTxns = await generateCleanupTransaction({
-      appId: appIdInt,
-      senderAddress
-    });
+    
+const db = req.app.locals.db;
+const escrowCollection = db.collection('escrows');
+const escrow = await escrowCollection.findOne({ appId: appIdInt, senderAddress });
+const contractAssetId = escrow ? escrow.assetId : null;
+
+const cleanupTxns = await generateCleanupTransaction({
+  appId: appIdInt,
+  senderAddress,
+  assetId: contractAssetId 
+});
     
     res.json({
       success: true,
