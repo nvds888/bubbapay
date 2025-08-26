@@ -545,9 +545,18 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
     const assets = accountInfo.assets || [];
 
     for (const asset of assets) {
-      if (Number(asset.assetId) === targetAssetId) {
+      // Check both possible property names for asset ID
+      const assetId = Number(asset.assetId) || Number(asset['asset-id']);
+      if (assetId === targetAssetId) {
         const microBalance = safeToNumber(asset.amount);
-        assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
+        const decimals = assetInfo?.decimals || 6;
+        const rawBalance = fromMicroUnits(microBalance, targetAssetId);
+// Show up to the asset's decimal places, but remove trailing zeros
+assetBalance = rawBalance.toLocaleString('en-US', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: decimals,
+  useGrouping: false
+});
         break;
       }
     }
@@ -589,9 +598,17 @@ router.get('/asset-balance/:address', async (req, res) => {
     const assets = accountInfo.assets || [];
 
     for (const asset of assets) {
-      if (asset['asset-id'] === targetAssetId) {
+      const assetId = Number(asset.assetId) || Number(asset['asset-id']);
+  if (assetId === targetAssetId) {
         const microBalance = safeToNumber(asset.amount);
-        assetBalance = fromMicroUnits(microBalance, targetAssetId).toFixed(assetInfo?.decimals || 2);
+        const decimals = assetInfo?.decimals || 6;
+        const rawBalance = fromMicroUnits(microBalance, targetAssetId);
+// Show up to the asset's decimal places, but remove trailing zeros
+assetBalance = rawBalance.toLocaleString('en-US', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: decimals,
+  useGrouping: false
+});
         break;
       }
     }

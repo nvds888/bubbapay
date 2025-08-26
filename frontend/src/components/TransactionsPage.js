@@ -281,8 +281,8 @@ function TransactionsPage() {
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">My Transactions</h2>
-            <p className="text-gray-600 text-sm">View and manage your transfers</p>
+            <h2 className="text-xl font-semibold text-gray-900">Manage Links</h2>
+            <p className="text-gray-600 text-sm">View and manage your created links</p>
           </div>
         </div>
         
@@ -294,7 +294,7 @@ function TransactionsPage() {
             </svg>
             <div className="text-sm">
               <p className="font-medium text-amber-800">Important Security Note:</p>
-              <p className="text-amber-700 mt-1">Claim links are only displayed once during creation for security. If a link was lost, the creator can always reclaim unclaimed funds below.</p>
+              <p className="text-amber-700 mt-1">Claim links are only displayed during creation. The creator can always reclaim unclaimed funds below.</p>
             </div>
           </div>
         </div>
@@ -545,7 +545,7 @@ function TransactionsPage() {
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span>Send More $$</span>
+          <span>Create New Link</span>
         </Link>
       </div>
     </div>

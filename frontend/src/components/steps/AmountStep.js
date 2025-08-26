@@ -135,16 +135,21 @@ const getTransactionStatus = () => {
     return { type: 'warning', message: `Need ${algoAvailability.groupTxnShortfall} more ALGO after app creation` };
   }
   
-  // Check asset balance - minimum 0.01 required
-  if (assetBalance !== null) {
-    const balance = parseFloat(assetBalance);
-    if (balance < 0.01) {
-      return { 
-        type: 'warning', 
-        message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
-      };
-    }
+  // Check asset balance - minimum based on asset decimals
+if (assetBalance !== null) {
+  const balance = parseFloat(assetBalance);
+  const decimals = selectedAssetInfo?.decimals || 6;
+  
+  // Require minimum of 100 micro-units (0.0001 for 6 decimals, 0.00000001 for 10 decimals)
+  const minimumBalance = 100 / Math.pow(10, decimals);
+  
+  if (balance < minimumBalance) {
+    return { 
+      type: 'warning', 
+      message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
+    };
   }
+}
   
   if (algoAvailability && algoAvailability.hasSufficientAlgo && algoAvailability.canCompleteGroupTxns) {
     return { type: 'success', message: 'Transaction ready' };
