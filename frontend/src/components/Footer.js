@@ -43,7 +43,7 @@ function Footer() {
               <h3 className="text-gray-900 font-medium mb-3 text-sm">Product</h3>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Create Link</Link></li>
-                <li><Link to="/transactions" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Transaction History</Link></li>
+                <li><Link to="/transactions" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Manage Links</Link></li>
                 <li><Link to="/docs" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Docs</Link></li>
               </ul>
             </div>
