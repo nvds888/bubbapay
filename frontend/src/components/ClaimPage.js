@@ -204,7 +204,7 @@ function ClaimPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Already Claimed</h3>
           <p className="text-red-600 mb-4 text-sm">These funds have already been claimed or reclaimed by the creator</p>
           {escrowDetails && (
-            // CHANGE 15a: Already claimed section
+            
             <p className="text-gray-500 text-sm mb-4">
               Amount: {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}
             </p>

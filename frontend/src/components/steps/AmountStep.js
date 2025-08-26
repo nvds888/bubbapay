@@ -403,7 +403,7 @@ if (assetBalance !== null) {
           
           {showAdvanced && (
             <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
-              <p>Pay ~0.21 ALGO to cover the recipient's opt-in & txn fees. This will be returned if the recipient is already opted-in to the asset!</p>
+              <p>Pay ~0.21 ALGO to cover the recipient's opt-in & txn fees. You get this back if the recipient is already opted-in.</p>
             </div>
           )}
         </div>
