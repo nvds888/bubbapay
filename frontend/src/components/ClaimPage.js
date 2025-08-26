@@ -10,6 +10,7 @@ import {
 } from '@txnlab/use-wallet-react';
 import { WalletUIProvider } from '@txnlab/use-wallet-ui-react';
 import axios from 'axios';
+import { Buffer } from 'buffer';
 import algosdk from 'algosdk';
 
 const getAssetInfo = (assetId) => {
