@@ -118,8 +118,6 @@ transactions.push(claimTxn);
       signedTransactions,
       txnId: claimTxn.txID(),
       type: 'optimized-claim',
-      feeCoverageReturned: feeCoverageAmount > 0,
-      feeCoverageAmount: feeCoverageAmount / 1e6
     });
   } catch (error) {
     console.error('Error generating optimized claim transaction:', error);
@@ -267,8 +265,6 @@ currentIndex++;
       userTxnIndex,
       txnId: claimTxn.txID(),
       type: 'optin-and-claim',
-      feeCoverageProvided: feeCoverageAmount > 0,
-      feeCoverageAmount: feeCoverageAmount / 1e6
     });
   } catch (error) {
     console.error('Error generating opt-in and claim transaction:', error);
