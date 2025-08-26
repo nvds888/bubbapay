@@ -220,7 +220,7 @@ function TransactionsPage() {
             </div>
           </div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Wallet Not Connected</h2>
-          <p className="text-gray-600 mb-4 text-sm">Please connect your wallet to view your transaction history.</p>
+          <p className="text-gray-600 mb-4 text-sm">Please connect your wallet to view and manage your links.</p>
           <Link 
             to="/"
             className="btn-primary px-4 py-2 font-medium"

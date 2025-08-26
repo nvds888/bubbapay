@@ -54,9 +54,19 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       isDefault: false,
       description: 'BallSack is a meme token'
+    },
+    386192725: {
+      id: 386192725,
+      name: 'goBTC',
+      unitName: 'goBTC',
+      symbol: 'goBTC',
+      decimals: 6,
+      isDefault: false,
+      description: 'BTC on Algorand by Algomint'
     }
-    // Add more assets here 
+    // more assets here 
   };
+
   
   // default asset ID (USDC)
   function getDefaultAssetId() {

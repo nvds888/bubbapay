@@ -191,6 +191,13 @@ const SUPPORTED_ASSETS = {
     symbol: 'BALLSACK',
     decimals: 6,
     description: 'BallSack is a meme token'
+  },
+  386192725: {
+    id: 386192725,
+    name: 'goBTC',
+    symbol: 'goBTC',
+    decimals: 6,
+    description: 'Send BTC on Algorand by Algomint'
   }
 };
 
