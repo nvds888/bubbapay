@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWallet } from '@txnlab/use-wallet-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
+import { Buffer } from 'buffer';
 import StepIndicator from './StepIndicator';
 import AmountStep from './steps/AmountStep';
 import ConfirmStep from './steps/ConfirmStep';
