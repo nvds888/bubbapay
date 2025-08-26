@@ -204,7 +204,7 @@ const SUPPORTED_ASSETS = {
     name: 'Haystack',
     symbol: 'HAY',
     decimals: 6,
-    descirption: 'The token of Haystack: Trading made easy'
+    description: 'The token of Haystack: Trading made easy'
   }
 };
 
