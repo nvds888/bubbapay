@@ -188,7 +188,7 @@ const appAddress = appAddressObj.toString();
     const tempFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: senderAddress,
       receiver: tempAccountAddress,
-      amount: 102000,
+      amount: 105000,
       suggestedParams: { ...suggestedParams, fee: EXACT_FEES.TEMP_FUNDING, flatFee: true }
     });
     

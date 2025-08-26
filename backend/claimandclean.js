@@ -181,7 +181,7 @@ if (escrow.payRecipientFees) {
     onComplete: algosdk.OnApplicationComplete.NoOpOC,
     appArgs: [new Uint8Array(Buffer.from("claim_fee_coverage"))],
     accounts: [recipientAddress],
-    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+    suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
   });
   transactions.push(claimFeeCoverageTxn);
 }
@@ -206,7 +206,7 @@ if (escrow.payRecipientFees) {
       appArgs: [new Uint8Array(Buffer.from("claim"))],
       accounts: [recipientAddress],
       foreignAssets: [targetAssetId],
-      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+      suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
     });
     transactions.push(claimTxn);
     
