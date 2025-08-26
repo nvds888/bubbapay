@@ -105,8 +105,11 @@ function ClaimPage() {
         const escrowAssetInfo = getAssetInfo(response.data.assetId);
         setAssetInfo(escrowAssetInfo);
         
-        if (response.data.claimed) {
-          setError('These funds have already been claimed');
+        if (response.data.claimed || response.data.reclaimed) {
+          setError(response.data.reclaimed 
+            ? 'These funds have been reclaimed by the creator'
+            : 'These funds have already been claimed'
+          );
         }
         
         setIsLoading(false);
@@ -188,7 +191,7 @@ function ClaimPage() {
       );
     }
     
-    if (escrowDetails?.claimed || (error && error.includes('already been claimed'))) {
+    if (escrowDetails?.claimed || escrowDetails?.reclaimed || (error && error.includes('already been claimed'))) {
       return (
         <div className="text-center">
           <div className="flex justify-center mb-4">
