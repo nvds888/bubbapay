@@ -63,6 +63,15 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       isDefault: false,
       description: 'BTC on Algorand by Algomint'
+    },
+    3160000000: {
+      id: 3160000000,
+      name: 'Haystack',
+      unitName: 'HAY',
+      symbol: 'HAY',
+      decimals: 6,
+      isDefault: false,
+      description: 'The token of Haystack: Trading made easy'
     }
     // more assets here 
   };

@@ -198,6 +198,13 @@ const SUPPORTED_ASSETS = {
     symbol: 'goBTC',
     decimals: 6,
     description: 'Send BTC on Algorand by Algomint'
+  },
+  3160000000: {
+    id: 3160000000,
+    name: 'Haystack',
+    symbol: 'HAY',
+    decimals: 6,
+    descirption: 'The token of Haystack: Trading made easy'
   }
 };
 
