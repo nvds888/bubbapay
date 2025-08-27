@@ -135,12 +135,13 @@ const getTransactionStatus = () => {
     return { type: 'warning', message: `Need ${algoAvailability.groupTxnShortfall} more ALGO after app creation` };
   }
   
-// Check if entered amount exceeds available balance
-if (assetBalance !== null && safeFormData.amount) {
+// Check minimum balance requirement first
+if (assetBalance !== null) {
   const balance = parseFloat(assetBalance);
-  const enteredAmount = parseFloat(safeFormData.amount);
+  const decimals = selectedAssetInfo?.decimals || 6;
+  const minimumBalance = 100 / Math.pow(10, decimals);
   
-  if (enteredAmount > balance) {
+  if (balance < minimumBalance) {
     return { 
       type: 'warning', 
       message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
@@ -148,13 +149,18 @@ if (assetBalance !== null && safeFormData.amount) {
   }
 }
 
-// Check minimum balance requirement
+// Check if valid amount is entered and doesn't exceed balance
 if (assetBalance !== null) {
   const balance = parseFloat(assetBalance);
-  const decimals = selectedAssetInfo?.decimals || 6;
-  const minimumBalance = 100 / Math.pow(10, decimals);
+  const enteredAmount = parseFloat(safeFormData.amount || '0');
   
-  if (balance < minimumBalance) {
+  // If no amount entered or amount is 0, don't show "ready"
+  if (!safeFormData.amount || enteredAmount <= 0) {
+    return { type: 'info', message: 'Enter amount to continue' };
+  }
+  
+  // If amount exceeds balance
+  if (enteredAmount > balance) {
     return { 
       type: 'warning', 
       message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
