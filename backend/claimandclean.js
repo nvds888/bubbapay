@@ -24,6 +24,21 @@ function safeToNumber(value) {
   return value; 
 }
 
+async function getTransactionCreatorReferrer(db, transactionCreatorAddress) {
+  const referralLinksCollection = db.collection('referralLinks');
+  
+  try {
+    const referralLink = await referralLinksCollection.findOne({ 
+      referralAddress: transactionCreatorAddress 
+    });
+    
+    return referralLink ? referralLink.referrerAddress : null;
+  } catch (error) {
+    console.error('Error getting transaction creator referrer:', error);
+    return null;
+  }
+}
+
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
   const hash = crypto.createHash('sha256');
@@ -92,15 +107,17 @@ transactions.push(claimTxn);
 
 
     // Transaction 2: Close temp account and send remaining balance to platform
-    const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
-    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: tempAccountObj.addr,
-      receiver: PLATFORM_ADDRESS,
-      amount: 0, // All remaining balance goes to closeRemainderTo
-      closeRemainderTo: PLATFORM_ADDRESS,
-      note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
-      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-    });
+    const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
+const closeToAddress = referrerAddress || (process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS');
+
+const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  sender: tempAccountObj.addr,
+  receiver: closeToAddress,
+  amount: 0,
+  closeRemainderTo: closeToAddress,
+  note: new Uint8Array(Buffer.from(referrerAddress ? 'AlgoSend referral reward' : 'AlgoSend platform fee')),
+  suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+});
     transactions.push(closeAccountTxn);
 
     // Group the transactions
@@ -211,15 +228,17 @@ if (escrow.payRecipientFees) {
     transactions.push(claimTxn);
     
     // Transaction 4: Close temp account and send remaining balance to platform
-    const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
-    const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-      sender: tempAccountObj.addr,
-      receiver: PLATFORM_ADDRESS,
-      amount: 0, // All remaining balance goes to closeRemainderTo
-      closeRemainderTo: PLATFORM_ADDRESS,
-      note: new Uint8Array(Buffer.from('AlgoSend platform fee')),
-      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-    });
+    const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
+const closeToAddress = referrerAddress || (process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS');
+
+const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  sender: tempAccountObj.addr,
+  receiver: closeToAddress,
+  amount: 0,
+  closeRemainderTo: closeToAddress,
+  note: new Uint8Array(Buffer.from(referrerAddress ? 'AlgoSend referral reward' : 'AlgoSend platform fee')),
+  suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+});
     transactions.push(closeAccountTxn);
     
     // Group all transactions
@@ -322,6 +341,24 @@ router.post('/submit-optimized-claim', async (req, res) => {
           } 
         }
       );
+
+      const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
+      if (referrerAddress) {
+        const referralEarning = 0.105; // Full platform fee goes to referrer
+        
+        try {
+          const referralsCollection = db.collection('referrals');
+          await referralsCollection.updateOne(
+            { referrerAddress: referrerAddress },
+            { $inc: { totalEarnings: referralEarning } }
+          );
+          
+          console.log(`Recorded ${referralEarning} ALGO referral earning for ${referrerAddress} from transaction by ${escrow.senderAddress}`);
+        } catch (earningError) {
+          console.error('Error recording referral earnings:', earningError);
+          // Continue processing even if earnings recording fails
+        }
+      }
       
       const assetInfo = getAssetInfo(escrow.assetId);
       let message = `Successfully claimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}`;

@@ -6,8 +6,10 @@ const { MongoClient } = require('mongodb');
 const sgMail = require('@sendgrid/mail');
 const rateLimit = require('express-rate-limit');
 const apiRoutes = require('./routes/api');
-const claimAndCleanRoutes = require('./claimandclean'); // ✅ Correct import
+const claimAndCleanRoutes = require('./claimandclean'); 
 const mcpRoutes = require('./routes/mcpapi');
+const referralRoutes = require('./routes/referrals');
+
 const fs = require('fs');
 const path = require('path');
 
@@ -226,6 +228,8 @@ const startServer = async () => {
     app.use('/api', apiRoutes);
     app.use('/api', claimAndCleanRoutes);
     app.use('/api/mcp', mcpRoutes);
+
+    app.use('/api/referrals', referralRoutes);
     
     // Start listening
     app.listen(PORT, () => {

@@ -5,6 +5,7 @@ import axios from 'axios';
 import algosdk from 'algosdk';
 import { Buffer } from 'buffer';
 import api, { getAssetInfo } from '../services/api';
+import { generateReferralLink, getReferralStats } from '../services/referralService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -17,6 +18,10 @@ function TransactionsPage() {
   const [reclaimStatus, setReclaimStatus] = useState({ appId: null, status: '' });
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [cleanupStatus, setCleanupStatus] = useState({ appId: null, status: '' });
+  const [referralLink, setReferralLink] = useState(null);
+  const [referralStats, setReferralStats] = useState(null);
+  const [isGeneratingReferral, setIsGeneratingReferral] = useState(false);
+  const [showReferralSection, setShowReferralSection] = useState(false);
   
   // Helper function to get asset symbol from transaction
   const getAssetSymbol = (transaction) => {
@@ -60,6 +65,30 @@ function TransactionsPage() {
     };
     
     fetchTransactions();
+  }, [activeAddress]);
+  
+  useEffect(() => {
+    const fetchReferralStats = async () => {
+      if (!activeAddress) {
+        setReferralStats(null);
+        setReferralLink(null);
+        return;
+      }
+      
+      try {
+        const stats = await getReferralStats(activeAddress);
+        setReferralStats(stats);
+        if (stats.referralCode) {
+          setReferralLink(`${window.location.origin}/?ref=${stats.referralCode}`);
+        }
+      } catch (error) {
+        console.error('Error fetching referral stats:', error);
+      }
+    };
+    
+    if (activeAddress) {
+      fetchReferralStats();
+    }
   }, [activeAddress]);
   
   // Format USDC amount
@@ -208,6 +237,40 @@ function TransactionsPage() {
     }
   };
   
+  const handleGenerateReferralLink = async () => {
+    setIsGeneratingReferral(true);
+    
+    try {
+      const result = await generateReferralLink(activeAddress);
+      setReferralLink(result.referralUrl);
+      setReferralStats(prev => ({
+        ...prev,
+        referralCode: result.referralCode
+      }));
+    } catch (error) {
+      console.error('Error generating referral link:', error);
+      alert('Failed to generate referral link. Please try again.');
+    } finally {
+      setIsGeneratingReferral(false);
+    }
+  };
+
+  const handleCopyReferralLink = async () => {
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      alert('Referral link copied to clipboard!');
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      const textArea = document.createElement('textarea');
+      textArea.value = referralLink;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('Referral link copied to clipboard!');
+    }
+  };
+  
   if (!activeAddress) {
     return (
       <div className="w-full max-w-4xl mx-auto">
@@ -285,6 +348,7 @@ function TransactionsPage() {
             <p className="text-gray-600 text-sm">View and manage your created links</p>
           </div>
         </div>
+
         
         {/* Security notice */}
         <div className="status-warning">
@@ -314,7 +378,107 @@ function TransactionsPage() {
             </div>
           </div>
         )}
-      </div>
+            </div>
+      
+      {/* Referral Section */}
+      {activeAddress && (
+        <div className="card card-normal">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Referral Program</h3>
+                <p className="text-gray-600 text-sm">Earn 100% of platform fees from your referrals' transactions</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowReferralSection(!showReferralSection)}
+              className="btn-ghost text-sm px-3 py-1"
+            >
+              {showReferralSection ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          
+          {showReferralSection && (
+            <div className="space-y-4">
+              {referralStats && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{referralStats.totalReferrals}</div>
+                    <div className="text-sm text-gray-600">Active Referrals</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{referralStats.totalEarnings.toFixed(3)}</div>
+                    <div className="text-sm text-gray-600">ALGO Earned</div>
+                  </div>
+                  <div className="text-center sm:block hidden">
+                    <div className="text-2xl font-bold text-purple-600">100%</div>
+                    <div className="text-sm text-gray-600">Fee Share</div>
+                  </div>
+                </div>
+              )}
+              
+              {!referralLink ? (
+                <div className="text-center py-4">
+                  <p className="text-gray-600 mb-4 text-sm">
+                    Generate your unique referral link to start earning from your referrals' transactions
+                  </p>
+                  <button
+                    onClick={handleGenerateReferralLink}
+                    disabled={isGeneratingReferral}
+                    className="btn-primary px-4 py-2 font-medium"
+                  >
+                    {isGeneratingReferral ? (
+                      <span className="flex items-center space-x-2">
+                        <div className="w-4 h-4 spinner"></div>
+                        <span>Generating...</span>
+                      </span>
+                    ) : (
+                      'Get Referral Link'
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">Your Referral Link</label>
+                    <button
+                      onClick={handleCopyReferralLink}
+                      className="btn-secondary text-xs px-3 py-1"
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg border">
+                    <code className="text-sm text-gray-800 break-all">
+                      {referralLink}
+                    </code>
+                  </div>
+                  <div className="status-success">
+                    <div className="flex items-start space-x-3">
+                      <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <div className="text-sm">
+                        <p className="font-medium text-green-800">How it works:</p>
+                        <p className="text-green-700 mt-1">
+                          When people you refer create claim links and others claim them, you earn 0.105 ALGO per claim (100% of platform fees).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      
       
       {/* Transactions list */}
       {transactions.length === 0 ? (
