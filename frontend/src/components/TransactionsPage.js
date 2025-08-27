@@ -326,14 +326,8 @@ function TransactionsPage() {
               </svg>
             </div>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Transactions Yet</h3>
-          <p className="text-gray-600 mb-4 text-sm">You haven't sent any $$ yet. Create your first transfer!</p>
-          <Link 
-            to="/"
-            className="btn-primary px-4 py-2 font-medium"
-          >
-            Send Crypto
-          </Link>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Links Yet</h3>
+          <p className="text-gray-600 mb-4 text-sm">You haven't created any links yet. Create your first!</p>
         </div>
       ) : (
         <div className="card overflow-hidden">
