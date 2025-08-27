@@ -244,7 +244,10 @@ if (assetBalance !== null) {
     onClick={setMaxAmount}
     className="btn-ghost text-xs mt-2 w-full"
   >
-    Use max balance ({parseFloat(assetBalance).toFixed(2)} {selectedAssetInfo?.symbol || 'tokens'})
+    Use max balance ({(() => {
+  const balance = parseFloat(assetBalance);
+  return balance < 0.01 ? parseFloat(balance.toFixed(6)).toString() : balance.toFixed(2);
+})()} {selectedAssetInfo?.symbol || 'tokens'})
   </button>
 )}
         </div>
@@ -295,7 +298,12 @@ if (assetBalance !== null) {
             {assetBalance !== null && (
               <div className="flex justify-between">
                 <span className="text-gray-600">{selectedAssetInfo?.symbol || 'Asset'} Balance:</span>
-                <span className="font-medium">{parseFloat(assetBalance).toFixed(2)} {selectedAssetInfo?.symbol || 'tokens'}</span>
+                <span className="font-medium">
+  {(() => {
+    const balance = parseFloat(assetBalance);
+    return balance < 0.01 ? parseFloat(balance.toFixed(6)).toString() : balance.toFixed(2);
+  })()} {selectedAssetInfo?.symbol || 'tokens'}
+</span>
               </div>
             )}
             
