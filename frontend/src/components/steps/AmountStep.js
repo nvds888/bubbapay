@@ -135,12 +135,23 @@ const getTransactionStatus = () => {
     return { type: 'warning', message: `Need ${algoAvailability.groupTxnShortfall} more ALGO after app creation` };
   }
   
-  // Check asset balance - minimum based on asset decimals
+// Check if entered amount exceeds available balance
+if (assetBalance !== null && safeFormData.amount) {
+  const balance = parseFloat(assetBalance);
+  const enteredAmount = parseFloat(safeFormData.amount);
+  
+  if (enteredAmount > balance) {
+    return { 
+      type: 'warning', 
+      message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
+    };
+  }
+}
+
+// Check minimum balance requirement
 if (assetBalance !== null) {
   const balance = parseFloat(assetBalance);
   const decimals = selectedAssetInfo?.decimals || 6;
-  
-  // Require minimum of 100 micro-units (0.0001 for 6 decimals, 0.00000001 for 10 decimals)
   const minimumBalance = 100 / Math.pow(10, decimals);
   
   if (balance < minimumBalance) {
