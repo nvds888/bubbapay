@@ -422,7 +422,7 @@ function TransactionsPage() {
               <div className="text-xs sm:text-sm text-gray-600">Total Claims</div>
             </div>
             <div className="text-center">
-              <div className="text-xl sm:text-2xl font-bold text-purple-600">~50%</div>
+              <div className="text-xl sm:text-2xl font-bold text-purple-600">100%</div>
               <div className="text-xs sm:text-sm text-gray-600">Fee Share</div>
             </div>
           </div>
@@ -473,7 +473,7 @@ function TransactionsPage() {
                 <div className="text-sm">
                   <p className="font-medium text-green-800">How it works:</p>
                   <p className="text-green-700 mt-1">
-                    When people you refer create claim links and others claim them, you earn ~50% of the platform fees - paid instantly to your address.
+                    When people you refer create claim links and others claim them, you earn 100% of the platform fees - paid instantly to your address.
                   </p>
                 </div>
               </div>

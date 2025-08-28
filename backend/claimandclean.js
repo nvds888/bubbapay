@@ -107,43 +107,18 @@ transactions.push(claimTxn);
 
 
     // Transaction 2: Close temp account and send remaining balance to platform
-    const platformAddress = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
-const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
+    const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
+const closeToAddress = referrerAddress || (process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS');
 
-if (referrerAddress) {
-  // Transaction to send fixed referral amount (e.g., 0.05 ALGO)
-  const referralTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: tempAccountObj.addr,
-    receiver: referrerAddress,
-    amount: algosdk.algosToMicroalgos(0.05),
-    note: new Uint8Array(Buffer.from('BubbaPay referral fee')),
-    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-  });
-  transactions.push(referralTxn);
-
-  // Then close remaining balance to platform
-  const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: tempAccountObj.addr,
-    receiver: platformAddress,
-    amount: 0,
-    closeRemainderTo: platformAddress,
-    note: new Uint8Array(Buffer.from('BubbaPay platform fee after referral')),
-    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-  });
-  transactions.push(closeAccountTxn);
-} else {
-  // No referrer → Close entire remainder to platform
-  const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: tempAccountObj.addr,
-    receiver: platformAddress,
-    amount: 0,
-    closeRemainderTo: platformAddress,
-    note: new Uint8Array(Buffer.from('BubbaPay platform fee')),
-    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-  });
-  transactions.push(closeAccountTxn);
-}
-
+const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  sender: tempAccountObj.addr,
+  receiver: closeToAddress,
+  amount: 0,
+  closeRemainderTo: closeToAddress,
+  note: new Uint8Array(Buffer.from(referrerAddress ? 'AlgoSend referral reward' : 'AlgoSend platform fee')),
+  suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+});
+    transactions.push(closeAccountTxn);
 
     // Group the transactions
     algosdk.assignGroupID(transactions);
@@ -253,43 +228,18 @@ if (escrow.payRecipientFees) {
     transactions.push(claimTxn);
     
     // Transaction 4: Close temp account and send remaining balance to platform
-    const platformAddress = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
-const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
+    const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
+const closeToAddress = referrerAddress || (process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS');
 
-if (referrerAddress) {
-  // Transaction to send fixed referral amount (e.g., 0.05 ALGO)
-  const referralTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: tempAccountObj.addr,
-    receiver: referrerAddress,
-    amount: algosdk.algosToMicroalgos(0.05),
-    note: new Uint8Array(Buffer.from('BubbaPay referral fee')),
-    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-  });
-  transactions.push(referralTxn);
-
-  // Then close remaining balance to platform
-  const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: tempAccountObj.addr,
-    receiver: platformAddress,
-    amount: 0,
-    closeRemainderTo: platformAddress,
-    note: new Uint8Array(Buffer.from('BubbaPay platform fee after referral')),
-    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-  });
-  transactions.push(closeAccountTxn);
-} else {
-  // No referrer → Close entire remainder to platform
-  const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-    sender: tempAccountObj.addr,
-    receiver: platformAddress,
-    amount: 0,
-    closeRemainderTo: platformAddress,
-    note: new Uint8Array(Buffer.from('BubbaPay platform fee')),
-    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-  });
-  transactions.push(closeAccountTxn);
-}
-
+const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+  sender: tempAccountObj.addr,
+  receiver: closeToAddress,
+  amount: 0,
+  closeRemainderTo: closeToAddress,
+  note: new Uint8Array(Buffer.from(referrerAddress ? 'AlgoSend referral reward' : 'AlgoSend platform fee')),
+  suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+});
+    transactions.push(closeAccountTxn);
     
     // Group all transactions
     algosdk.assignGroupID(transactions);
@@ -395,7 +345,7 @@ router.post('/submit-optimized-claim', async (req, res) => {
       // Record referral earnings if there's a referrer
 const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
 if (referrerAddress) {
-  const referralEarning = 0.05; // 
+  const referralEarning = 0.105; // Full platform fee goes to referrer
   
   try {
     // Record the earning and claim count directly in database
