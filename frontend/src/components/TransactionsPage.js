@@ -108,6 +108,12 @@ function TransactionsPage() {
       minute: '2-digit'
     }).format(date);
   };
+
+    // Estimate ALGO recovery for cleanup
+    const getCleanupEstimateValue = (tx) => {
+      return 0.46 + (tx && tx.payRecipientFees && tx.claimType === 'optimized-claim' ? 0.21 : 0);
+    };
+    const getCleanupEstimateLabel = (tx) => `${getCleanupEstimateValue(tx).toFixed(2)} ALGO`;
   
   // Handle reclaiming funds
   const handleReclaim = async (appId) => {
@@ -223,7 +229,8 @@ function TransactionsPage() {
       }));
       
       setCleanupStatus({ appId, status: 'Success' });
-      alert(`Successfully cleaned up contract and recovered ${txnData.estimatedRecovery}!`);
+      const txForEstimate = transactions.find(tx => tx.appId === parseInt(appId));
+      alert(`Successfully cleaned up contract and recovered ~${getCleanupEstimateLabel(txForEstimate)}!`);
       
     } catch (error) {
       console.error('Error cleaning up contract:', error);
@@ -371,9 +378,12 @@ function TransactionsPage() {
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               <div className="text-sm">
-                <p className="font-medium text-green-800">Contracts Ready for Cleanup:</p>
+              <p className="font-medium text-green-800">Contracts Ready for Cleanup:</p>
                 <p className="text-green-700 mt-1">
-  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} Claimed contracts can be cleaned up to recover ~{(transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length * 0.46).toFixed(2)} ALGO in locked funds.
+  {transactions.filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp).length} Claimed contracts can be cleaned up to recover ~{transactions
+    .filter(tx => (tx.claimed || tx.reclaimed) && !tx.cleanedUp)
+    .reduce((sum, tx) => sum + getCleanupEstimateValue(tx), 0)
+    .toFixed(2)} ALGO in locked funds.
 </p>
               </div>
             </div>
@@ -683,12 +693,12 @@ function TransactionsPage() {
       <span className="text-gray-500 text-sm">Cleaned Up</span>
     ) : (
       <button
-        onClick={() => handleCleanup(transaction.appId)}
-        disabled={isCleaningUp}
-        className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
-      >
-        Clean Up (~0.46 ALGO)
-      </button>
+      onClick={() => handleCleanup(transaction.appId)}
+      disabled={isCleaningUp}
+      className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+    >
+      Clean Up (~{getCleanupEstimateLabel(transaction)})
+    </button>
     )}
     
     {/* Explorer link - always show */}
@@ -790,12 +800,12 @@ function TransactionsPage() {
       <span className="text-gray-500 text-sm">Cleaned Up</span>
     ) : (
       <button
-        onClick={() => handleCleanup(transaction.appId)}
-        disabled={isCleaningUp}
-        className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
-      >
-        Clean Up (~0.46 ALGO)
-      </button>
+      onClick={() => handleCleanup(transaction.appId)}
+      disabled={isCleaningUp}
+      className="btn-primary px-3 py-1.5 text-sm font-medium w-full"
+    >
+      Clean Up (~{getCleanupEstimateLabel(transaction)})
+    </button>
     )}
     
     {/* Explorer link - always show */}
