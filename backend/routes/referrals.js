@@ -159,6 +159,7 @@ router.get('/stats/:walletAddress', async (req, res) => {
       referralCode: referrerStats?.referralCode || null,
       totalReferrals: referrerStats?.totalReferrals || 0,
       totalEarnings: referrerStats?.totalEarnings || 0,
+      totalClaims: referrerStats?.totalClaims || 0, 
       referrals: referrals.map(r => ({
         address: r.referralAddress,
         linkedAt: r.linkedAt,
