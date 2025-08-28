@@ -39,66 +39,6 @@ async function getTransactionCreatorReferrer(db, transactionCreatorAddress) {
   }
 }
 
-// Helper function to auto-link claimer as referral to creator if not already linked
-async function autoLinkClaimerToCreator(db, claimerAddress, creatorAddress) {
-  try {
-    const referralLinksCollection = db.collection('referralLinks');
-    const referralsCollection = db.collection('referrals');
-    
-    // Check if claimer is already linked to someone
-    const existingLink = await referralLinksCollection.findOne({ referralAddress: claimerAddress });
-    if (existingLink) {
-      console.log(`Claimer ${claimerAddress} already has referrer: ${existingLink.referrerAddress}`);
-      return false; // Already linked
-    }
-    
-    // Prevent self-referral
-    if (creatorAddress === claimerAddress) {
-      console.log('Preventing self-referral');
-      return false;
-    }
-    
-    // Check if creator has a referral schema, if not create one
-    let referrerRecord = await referralsCollection.findOne({ referrerAddress: creatorAddress });
-    if (!referrerRecord) {
-      // Create referral schema for creator
-      const referralCode = crypto.randomBytes(6).toString('hex').toUpperCase();
-      await referralsCollection.insertOne({
-        referrerAddress: creatorAddress,
-        referralCode: referralCode,
-        createdAt: new Date(),
-        totalReferrals: 0,
-        totalEarnings: 0
-      });
-      console.log(`Created referral schema for creator: ${creatorAddress} with code: ${referralCode}`);
-      referrerRecord = { referrerAddress: creatorAddress, referralCode };
-    }
-    
-    // Create referral link
-    await referralLinksCollection.insertOne({
-      referrerAddress: creatorAddress,
-      referralAddress: claimerAddress,
-      referralCode: referrerRecord.referralCode,
-      linkedAt: new Date(),
-      totalEarningsGenerated: 0,
-      totalClaims: 0,
-      autoLinked: true // Mark as auto-linked from claim
-    });
-    
-    // Update referrer stats
-    await referralsCollection.updateOne(
-      { referrerAddress: creatorAddress },
-      { $inc: { totalReferrals: 1 } }
-    );
-    
-    console.log(`Auto-linked claimer ${claimerAddress} to creator ${creatorAddress}`);
-    return true;
-  } catch (error) {
-    console.error('Error auto-linking claimer to creator:', error);
-    return false;
-  }
-}
-
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
   const hash = crypto.createHash('sha256');
@@ -167,18 +107,43 @@ transactions.push(claimTxn);
 
 
     // Transaction 2: Close temp account and send remaining balance to platform
-    const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
-const closeToAddress = referrerAddress || (process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS');
+    const platformAddress = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
+const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
 
-const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-  sender: tempAccountObj.addr,
-  receiver: closeToAddress,
-  amount: 0,
-  closeRemainderTo: closeToAddress,
-  note: new Uint8Array(Buffer.from(referrerAddress ? 'AlgoSend referral reward' : 'AlgoSend platform fee')),
-  suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-});
-    transactions.push(closeAccountTxn);
+if (referrerAddress) {
+  // Transaction to send fixed referral amount (e.g., 0.05 ALGO)
+  const referralTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    sender: tempAccountObj.addr,
+    receiver: referrerAddress,
+    amount: algosdk.algosToMicroalgos(0.05),
+    note: new Uint8Array(Buffer.from('BubbaPay referral fee')),
+    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+  });
+  transactions.push(referralTxn);
+
+  // Then close remaining balance to platform
+  const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    sender: tempAccountObj.addr,
+    receiver: platformAddress,
+    amount: 0,
+    closeRemainderTo: platformAddress,
+    note: new Uint8Array(Buffer.from('BubbaPay platform fee after referral')),
+    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+  });
+  transactions.push(closeAccountTxn);
+} else {
+  // No referrer → Close entire remainder to platform
+  const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    sender: tempAccountObj.addr,
+    receiver: platformAddress,
+    amount: 0,
+    closeRemainderTo: platformAddress,
+    note: new Uint8Array(Buffer.from('BubbaPay platform fee')),
+    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+  });
+  transactions.push(closeAccountTxn);
+}
+
 
     // Group the transactions
     algosdk.assignGroupID(transactions);
@@ -230,9 +195,6 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     if (escrow.claimed) {
       return res.status(400).json({ error: 'Funds have already been claimed' });
     }
-
-     // AUTO-LINK: Check if claimer should become referral of creator
-     await autoLinkClaimerToCreator(db, recipientAddress, escrow.senderAddress);
     
     // Reconstruct temporary account from private key
     const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
@@ -291,18 +253,43 @@ if (escrow.payRecipientFees) {
     transactions.push(claimTxn);
     
     // Transaction 4: Close temp account and send remaining balance to platform
-    const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
-const closeToAddress = referrerAddress || (process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS');
+    const platformAddress = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
+const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
 
-const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-  sender: tempAccountObj.addr,
-  receiver: closeToAddress,
-  amount: 0,
-  closeRemainderTo: closeToAddress,
-  note: new Uint8Array(Buffer.from(referrerAddress ? 'AlgoSend referral reward' : 'AlgoSend platform fee')),
-  suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
-});
-    transactions.push(closeAccountTxn);
+if (referrerAddress) {
+  // Transaction to send fixed referral amount (e.g., 0.05 ALGO)
+  const referralTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    sender: tempAccountObj.addr,
+    receiver: referrerAddress,
+    amount: algosdk.algosToMicroalgos(0.05),
+    note: new Uint8Array(Buffer.from('BubbaPay referral fee')),
+    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+  });
+  transactions.push(referralTxn);
+
+  // Then close remaining balance to platform
+  const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    sender: tempAccountObj.addr,
+    receiver: platformAddress,
+    amount: 0,
+    closeRemainderTo: platformAddress,
+    note: new Uint8Array(Buffer.from('BubbaPay platform fee after referral')),
+    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+  });
+  transactions.push(closeAccountTxn);
+} else {
+  // No referrer → Close entire remainder to platform
+  const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    sender: tempAccountObj.addr,
+    receiver: platformAddress,
+    amount: 0,
+    closeRemainderTo: platformAddress,
+    note: new Uint8Array(Buffer.from('BubbaPay platform fee')),
+    suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+  });
+  transactions.push(closeAccountTxn);
+}
+
     
     // Group all transactions
     algosdk.assignGroupID(transactions);
@@ -383,9 +370,6 @@ router.post('/submit-optimized-claim', async (req, res) => {
       return res.status(400).json({ error: 'Funds have already been claimed' });
     }
     
-    // AUTO-LINK: Check if claimer should become referral of creator
-    await autoLinkClaimerToCreator(db, recipientAddress, escrow.senderAddress);
-    
     // Submit the signed transaction group
     try {
       const { txid } = await algodClient.sendRawTransaction(
@@ -411,7 +395,7 @@ router.post('/submit-optimized-claim', async (req, res) => {
       // Record referral earnings if there's a referrer
 const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
 if (referrerAddress) {
-  const referralEarning = 0.105; // Full platform fee goes to referrer
+  const referralEarning = 0.05; // 
   
   try {
     // Record the earning and claim count directly in database
