@@ -22,7 +22,6 @@ function TransactionsPage() {
   const [referralStats, setReferralStats] = useState(null);
   const [isGeneratingReferral, setIsGeneratingReferral] = useState(false);
   const [showReferralSection, setShowReferralSection] = useState(false);
-  const [showReferralLink, setShowReferralLink] = useState(false);
   
   // Helper function to get asset symbol from transaction
   const getAssetSymbol = (transaction) => {
@@ -454,28 +453,18 @@ function TransactionsPage() {
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Your Referral Link</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowReferralLink(!showReferralLink)}
-                  className="btn-secondary text-xs px-3 py-1 w-full sm:w-auto"
-                >
-                  {showReferralLink ? 'Hide Link' : 'Show Link'}
-                </button>
-                <button
-                  onClick={handleCopyReferralLink}
-                  className="btn-secondary text-xs px-3 py-1 w-full sm:w-auto"
-                >
-                  Copy Link
-                  </button>
-              </div>
+              <button
+                onClick={handleCopyReferralLink}
+                className="btn-secondary text-xs px-3 py-1 w-full sm:w-auto"
+              >
+                Copy Link
+              </button>
             </div>
-            {showReferralLink && (
-              <div className="p-3 bg-gray-50 rounded-lg border overflow-hidden">
-                <code className="text-xs sm:text-sm text-gray-800 break-all word-break-all">
-                  {referralLink}
-                </code>
-              </div>
-            )}
+            <div className="p-3 bg-gray-50 rounded-lg border overflow-hidden">
+              <code className="text-xs sm:text-sm text-gray-800 break-all word-break-all">
+                {referralLink}
+              </code>
+            </div>
             <div className="status-success">
               <div className="flex items-start space-x-3">
                 <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -484,7 +473,7 @@ function TransactionsPage() {
                 <div className="text-sm">
                   <p className="font-medium text-green-800">How it works:</p>
                   <p className="text-green-700 mt-1">
-    Share this link with anyone! If they connect their wallet through your link and aren't already referred, you'll become their referrer and receive 100% of the platform fees — instantly paid to your address.
+    Share this link with anyone! If they connect their wallet through your link and aren’t already referred, you’ll become their referrer and receive 100% of the platform fees — instantly paid to your address.
 </p>
 
                 </div>
