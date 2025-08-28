@@ -310,8 +310,8 @@ function TransactionsPage() {
           <div className="flex justify-center mb-4">
             <div className="w-8 h-8 spinner"></div>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Loading Transactions</h2>
-          <p className="text-gray-600 text-sm">Fetching your transaction history...</p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Loading Your Links</h2>
+          <p className="text-gray-600 text-sm">Fetching your Bubba history...</p>
         </div>
       </div>
     );
@@ -328,7 +328,7 @@ function TransactionsPage() {
               </svg>
             </div>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Transactions</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Links</h2>
           <p className="text-gray-600 mb-4 text-sm">{error}</p>
           <Link 
             to="/"
@@ -462,23 +462,18 @@ function TransactionsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <label className="text-sm font-medium text-gray-700">Your Referral Link</label>
-              <button
-                onClick={handleCopyReferralLink}
-                className="btn-secondary text-xs px-3 py-1 w-full sm:w-auto"
-              >
-                Copy Link
-              </button>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg border overflow-hidden relative">
-              <code className="text-xs sm:text-sm text-gray-800 break-all word-break-all">
-                {showReferralLink ? referralLink : '••••••••••••••••••••••••'}
-              </code>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <label className="text-sm font-medium text-gray-700">Your Referral Link</label>
+          </div>
+          <div className="p-3 bg-gray-50 rounded-lg border overflow-hidden relative">
+            <code className="text-xs sm:text-sm text-gray-800 break-all word-break-all">
+              {showReferralLink ? referralLink : '••••••••••••••••••••••••'}
+            </code>
+            <div className="absolute right-2 top-2 flex items-center space-x-2">
               <button
                 type="button"
                 onClick={() => setShowReferralLink(!showReferralLink)}
-                className="absolute right-2 top-2 text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700"
                 aria-label={showReferralLink ? 'Hide referral link' : 'Show referral link'}
                 title={showReferralLink ? 'Hide referral link' : 'Show referral link'}
               >
@@ -493,7 +488,20 @@ function TransactionsPage() {
                   </svg>
                 )}
               </button>
+              <button
+                type="button"
+                onClick={handleCopyReferralLink}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Copy referral link"
+                title="Copy referral link"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="9" y="9" width="11" height="11" rx="2" ry="2" strokeWidth="2"></rect>
+                  <rect x="4" y="4" width="11" height="11" rx="2" ry="2" strokeWidth="2"></rect>
+                </svg>
+              </button>
             </div>
+          </div>
             <div className="status-success">
               <div className="flex items-start space-x-3">
                 <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -502,7 +510,7 @@ function TransactionsPage() {
                 <div className="text-sm">
                   <p className="font-medium text-green-800">How it works:</p>
                   <p className="text-green-700 mt-1">
-    Share this link with anyone! If they connect their wallet through your link and aren’t already referred, you’ll become their referrer and receive 100% of the platform fees — instantly paid to your address.
+    Share this link with anyone! If someone connects their wallet and isn't already referred, you’ll become their referrer and receive x% of their platform fees. Instantly paid to your address in $algo.
 </p>
 
                 </div>
