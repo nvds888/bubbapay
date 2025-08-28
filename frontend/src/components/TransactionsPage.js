@@ -473,7 +473,7 @@ function TransactionsPage() {
                 <div className="text-sm">
                   <p className="font-medium text-green-800">How it works:</p>
                   <p className="text-green-700 mt-1">
-                    When people you refer create claim links and others claim them, you earn 0.105 ALGO per claim directly paid to your account.
+                    When people you refer create claim links and others claim them, you earn 0.105 ALGO per claim directly paid to your address.
                   </p>
                 </div>
               </div>

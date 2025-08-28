@@ -39,6 +39,66 @@ async function getTransactionCreatorReferrer(db, transactionCreatorAddress) {
   }
 }
 
+// Helper function to auto-link claimer as referral to creator if not already linked
+async function autoLinkClaimerToCreator(db, claimerAddress, creatorAddress) {
+  try {
+    const referralLinksCollection = db.collection('referralLinks');
+    const referralsCollection = db.collection('referrals');
+    
+    // Check if claimer is already linked to someone
+    const existingLink = await referralLinksCollection.findOne({ referralAddress: claimerAddress });
+    if (existingLink) {
+      console.log(`Claimer ${claimerAddress} already has referrer: ${existingLink.referrerAddress}`);
+      return false; // Already linked
+    }
+    
+    // Prevent self-referral
+    if (creatorAddress === claimerAddress) {
+      console.log('Preventing self-referral');
+      return false;
+    }
+    
+    // Check if creator has a referral schema, if not create one
+    let referrerRecord = await referralsCollection.findOne({ referrerAddress: creatorAddress });
+    if (!referrerRecord) {
+      // Create referral schema for creator
+      const referralCode = crypto.randomBytes(6).toString('hex').toUpperCase();
+      await referralsCollection.insertOne({
+        referrerAddress: creatorAddress,
+        referralCode: referralCode,
+        createdAt: new Date(),
+        totalReferrals: 0,
+        totalEarnings: 0
+      });
+      console.log(`Created referral schema for creator: ${creatorAddress} with code: ${referralCode}`);
+      referrerRecord = { referrerAddress: creatorAddress, referralCode };
+    }
+    
+    // Create referral link
+    await referralLinksCollection.insertOne({
+      referrerAddress: creatorAddress,
+      referralAddress: claimerAddress,
+      referralCode: referrerRecord.referralCode,
+      linkedAt: new Date(),
+      totalEarningsGenerated: 0,
+      totalClaims: 0,
+      autoLinked: true // Mark as auto-linked from claim
+    });
+    
+    // Update referrer stats
+    await referralsCollection.updateOne(
+      { referrerAddress: creatorAddress },
+      { $inc: { totalReferrals: 1 } }
+    );
+    
+    console.log(`Auto-linked claimer ${claimerAddress} to creator ${creatorAddress}`);
+    return true;
+  } catch (error) {
+    console.error('Error auto-linking claimer to creator:', error);
+    return false;
+  }
+}
+
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
   const hash = crypto.createHash('sha256');
@@ -170,6 +230,9 @@ router.post('/generate-optin-and-claim', async (req, res) => {
     if (escrow.claimed) {
       return res.status(400).json({ error: 'Funds have already been claimed' });
     }
+
+     // AUTO-LINK: Check if claimer should become referral of creator
+     await autoLinkClaimerToCreator(db, recipientAddress, escrow.senderAddress);
     
     // Reconstruct temporary account from private key
     const secretKeyUint8 = new Uint8Array(Buffer.from(tempPrivateKey, 'hex'));
@@ -319,6 +382,9 @@ router.post('/submit-optimized-claim', async (req, res) => {
     if (escrow.claimed) {
       return res.status(400).json({ error: 'Funds have already been claimed' });
     }
+    
+    // AUTO-LINK: Check if claimer should become referral of creator
+    await autoLinkClaimerToCreator(db, recipientAddress, escrow.senderAddress);
     
     // Submit the signed transaction group
     try {
