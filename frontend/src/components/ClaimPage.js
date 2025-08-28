@@ -22,7 +22,9 @@ const getAssetInfo = (assetId) => {
     523683256: { id: 523683256, name: 'Akita', symbol: 'AKITA', decimals: 6},
     2656692124: { id: 2656692124, name: 'BallSack', symbol: 'BALLSACK', decimals: 6},
     386192725: { id: 386192725, name: 'goBTC', symbol: 'goBTC', decimals: 6},
-    3160000000: { id: 3160000000, name: 'Haystack', symbol: 'HAY', decimals: 6}
+    3160000000: { id: 3160000000, name: 'Haystack', symbol: 'HAY', decimals: 6},
+    2582294183: { id: 2582294183, name: 'GONNA', symbol: 'GONNA', decimals: 6},
+    1284444444: { id: 1284444444, name: 'Orange', symbol: 'ORA', decimals: 8}
   };
 
   return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
