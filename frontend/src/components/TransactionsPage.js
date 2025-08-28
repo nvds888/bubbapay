@@ -381,103 +381,182 @@ function TransactionsPage() {
             </div>
       
       {/* Referral Section */}
-      {activeAddress && (
-        <div className="card card-normal">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Referral Program</h3>
-                <p className="text-gray-600 text-sm">Earn 100% of platform fees from your referrals' transactions</p>
-              </div>
+{activeAddress && (
+  <div className="card card-normal">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-lg font-semibold text-gray-900">Referral Program</h3>
+          <p className="text-gray-600 text-sm hidden sm:block">Earn fees from your referrals' links</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setShowReferralSection(!showReferralSection)}
+        className="btn-ghost text-sm px-3 py-1 shrink-0"
+      >
+        {showReferralSection ? 'Hide' : 'Show'}
+      </button>
+    </div>
+    
+    {showReferralSection && (
+      <div className="space-y-4">
+        {/* Stats Grid - Mobile Responsive */}
+        {referralStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="text-center">
+              <div className="text-xl sm:text-2xl font-bold text-green-600">{referralStats.totalReferrals}</div>
+              <div className="text-xs sm:text-sm text-gray-600">Active Referrals</div>
             </div>
+            <div className="text-center">
+              <div className="text-xl sm:text-2xl font-bold text-green-600">{referralStats.totalEarnings.toFixed(3)}</div>
+              <div className="text-xs sm:text-sm text-gray-600">ALGO Earned</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">{referralStats.totalClaims || 0}</div>
+              <div className="text-xs sm:text-sm text-gray-600">Total Claims</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl sm:text-2xl font-bold text-purple-600">100%</div>
+              <div className="text-xs sm:text-sm text-gray-600">Fee Share</div>
+            </div>
+          </div>
+        )}
+        
+        {/* Referral Link Generation */}
+        {!referralLink ? (
+          <div className="text-center py-4">
+            <p className="text-gray-600 mb-4 text-sm">
+              Generate your referral link
+            </p>
             <button
-              type="button"
-              onClick={() => setShowReferralSection(!showReferralSection)}
-              className="btn-ghost text-sm px-3 py-1"
+              onClick={handleGenerateReferralLink}
+              disabled={isGeneratingReferral}
+              className="btn-primary px-4 py-2 font-medium w-full sm:w-auto"
             >
-              {showReferralSection ? 'Hide' : 'Show'}
+              {isGeneratingReferral ? (
+                <span className="flex items-center justify-center space-x-2">
+                  <div className="w-4 h-4 spinner"></div>
+                  <span>Generating...</span>
+                </span>
+              ) : (
+                'Get Referral Link'
+              )}
             </button>
           </div>
-          
-          {showReferralSection && (
-            <div className="space-y-4">
-              {referralStats && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{referralStats.totalReferrals}</div>
-                    <div className="text-sm text-gray-600">Active Referrals</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{referralStats.totalEarnings.toFixed(3)}</div>
-                    <div className="text-sm text-gray-600">ALGO Earned</div>
-                  </div>
-                  <div className="text-center sm:block hidden">
-                    <div className="text-2xl font-bold text-purple-600">100%</div>
-                    <div className="text-sm text-gray-600">Fee Share</div>
-                  </div>
-                </div>
-              )}
-              
-              {!referralLink ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-600 mb-4 text-sm">
-                    Generate your unique referral link to start earning from your referrals' transactions
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <label className="text-sm font-medium text-gray-700">Your Referral Link</label>
+              <button
+                onClick={handleCopyReferralLink}
+                className="btn-secondary text-xs px-3 py-1 w-full sm:w-auto"
+              >
+                Copy Link
+              </button>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg border overflow-hidden">
+              <code className="text-xs sm:text-sm text-gray-800 break-all word-break-all">
+                {referralLink}
+              </code>
+            </div>
+            <div className="status-success">
+              <div className="flex items-start space-x-3">
+                <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <div className="text-sm">
+                  <p className="font-medium text-green-800">How it works:</p>
+                  <p className="text-green-700 mt-1">
+                    When people you refer create claim links and others claim them, you earn 0.105 ALGO per claim directly paid to your account.
                   </p>
-                  <button
-                    onClick={handleGenerateReferralLink}
-                    disabled={isGeneratingReferral}
-                    className="btn-primary px-4 py-2 font-medium"
-                  >
-                    {isGeneratingReferral ? (
-                      <span className="flex items-center space-x-2">
-                        <div className="w-4 h-4 spinner"></div>
-                        <span>Generating...</span>
-                      </span>
-                    ) : (
-                      'Get Referral Link'
-                    )}
-                  </button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-gray-700">Your Referral Link</label>
-                    <button
-                      onClick={handleCopyReferralLink}
-                      className="btn-secondary text-xs px-3 py-1"
-                    >
-                      Copy Link
-                    </button>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-lg border">
-                    <code className="text-sm text-gray-800 break-all">
-                      {referralLink}
-                    </code>
-                  </div>
-                  <div className="status-success">
-                    <div className="flex items-start space-x-3">
-                      <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <div className="text-sm">
-                        <p className="font-medium text-green-800">How it works:</p>
-                        <p className="text-green-700 mt-1">
-                          When people you refer create claim links and others claim them, you earn 0.105 ALGO per claim (100% of platform fees).
-                        </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Individual Referrals List */}
+        {referralStats && referralStats.referrals && referralStats.referrals.length > 0 && (
+          <div className="border-t border-gray-200 pt-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Your Referrals ({referralStats.referrals.length})</h4>
+            <div className="space-y-3">
+              {referralStats.referrals.map((referral, index) => (
+                <div key={referral.address} className="card card-compact hover:shadow-sm transition-shadow">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    {/* Left side - Address and date */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-medium text-purple-600">{index + 1}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-mono text-xs sm:text-sm text-gray-900 truncate" title={referral.address}>
+                            <span className="sm:hidden">
+                              {referral.address.substring(0, 8)}...{referral.address.substring(referral.address.length - 6)}
+                            </span>
+                            <span className="hidden sm:inline">
+                              {referral.address.substring(0, 12)}...{referral.address.substring(referral.address.length - 8)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 ml-8">
+                        Joined {new Date(referral.linkedAt).toLocaleDateString()}
+                      </div>
+                    </div>
+
+                    {/* Right side - Stats */}
+                    <div className="flex items-center justify-between sm:justify-end sm:space-x-6 pl-8 sm:pl-0">
+                      <div className="text-center">
+                        <div className="text-sm font-semibold text-green-600">
+                          {(referral.totalEarningsGenerated || 0).toFixed(3)}
+                        </div>
+                        <div className="text-xs text-gray-500">ALGO earned</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-semibold text-blue-600">
+                          {referral.totalClaims || 0}
+                        </div>
+                        <div className="text-xs text-gray-500">Claims</div>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+
+        {/* Empty State for No Referrals */}
+        {referralStats && referralStats.referrals && referralStats.referrals.length === 0 && referralLink && (
+          <div className="border-t border-gray-200 pt-4">
+            <div className="text-center py-6">
+              <div className="w-12 h-12 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h4 className="text-sm font-medium text-gray-900 mb-1">No referrals yet</h4>
+              <p className="text-xs text-gray-500 mb-3">Share your referral link to start earning</p>
+              <button
+                onClick={handleCopyReferralLink}
+                className="btn-secondary text-xs px-3 py-1"
+              >
+                Copy Referral Link
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
       
       
       {/* Transactions list */}

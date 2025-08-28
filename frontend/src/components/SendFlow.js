@@ -410,7 +410,7 @@ function SendFlow() {
         senderAddress: effectiveAccountAddress,
         payRecipientFees: formData.payRecipientFees,
         assetId: selectedAssetId,
-        escrowId: txnData.escrowId || (currentEscrow?._id) // NEW: Pass escrow ID
+        escrowId: txnData.escrowId || (currentEscrow?._id) //  Pass escrow ID
       });
       
       // Generate claim URL ourselves to match the backend version

@@ -162,7 +162,8 @@ router.get('/stats/:walletAddress', async (req, res) => {
       referrals: referrals.map(r => ({
         address: r.referralAddress,
         linkedAt: r.linkedAt,
-        totalEarningsGenerated: r.totalEarningsGenerated || 0
+        totalEarningsGenerated: r.totalEarningsGenerated || 0,
+        totalClaims: r.totalClaims || 0
       }))
     });
     
@@ -172,37 +173,5 @@ router.get('/stats/:walletAddress', async (req, res) => {
   }
 });
 
-// Record referral earnings (called after successful claim)
-router.post('/record-earning', async (req, res) => {
-  try {
-    const { referrerAddress, transactionCreator, amount } = req.body;
-    
-    if (!referrerAddress || !transactionCreator || !amount) {
-      return res.status(400).json({ error: 'Missing required parameters' });
-    }
-    
-    const db = req.app.locals.db;
-    const referralsCollection = db.collection('referrals');
-    const referralLinksCollection = db.collection('referralLinks');
-    
-    // Update referrer total earnings
-    await referralsCollection.updateOne(
-      { referrerAddress: referrerAddress },
-      { $inc: { totalEarnings: parseFloat(amount) } }
-    );
-    
-    // Update specific referral link earnings
-    await referralLinksCollection.updateOne(
-      { referrerAddress: referrerAddress, referralAddress: transactionCreator },
-      { $inc: { totalEarningsGenerated: parseFloat(amount) } }
-    );
-    
-    res.json({ success: true });
-    
-  } catch (error) {
-    console.error('Error recording referral earning:', error);
-    res.status(500).json({ error: 'Failed to record earning', details: error.message });
-  }
-});
 
 module.exports = router;

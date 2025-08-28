@@ -342,23 +342,43 @@ router.post('/submit-optimized-claim', async (req, res) => {
         }
       );
 
-      const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
-      if (referrerAddress) {
-        const referralEarning = 0.105; // Full platform fee goes to referrer
-        
-        try {
-          const referralsCollection = db.collection('referrals');
-          await referralsCollection.updateOne(
-            { referrerAddress: referrerAddress },
-            { $inc: { totalEarnings: referralEarning } }
-          );
-          
-          console.log(`Recorded ${referralEarning} ALGO referral earning for ${referrerAddress} from transaction by ${escrow.senderAddress}`);
-        } catch (earningError) {
-          console.error('Error recording referral earnings:', earningError);
-          // Continue processing even if earnings recording fails
-        }
+      // Record referral earnings if there's a referrer
+const referrerAddress = await getTransactionCreatorReferrer(db, escrow.senderAddress);
+if (referrerAddress) {
+  const referralEarning = 0.105; // Full platform fee goes to referrer
+  
+  try {
+    // Record the earning and claim count directly in database
+    const referralsCollection = db.collection('referrals');
+    const referralLinksCollection = db.collection('referralLinks');
+    
+    await referralsCollection.updateOne(
+      { referrerAddress: referrerAddress },
+      { 
+        $inc: { 
+          totalEarnings: referralEarning,
+          totalClaims: 1 
+        } 
       }
+    );
+    
+    // Update specific referral link earnings and claims
+    await referralLinksCollection.updateOne(
+      { referrerAddress: referrerAddress, referralAddress: escrow.senderAddress },
+      { 
+        $inc: { 
+          totalEarningsGenerated: referralEarning,
+          totalClaims: 1
+        } 
+      }
+    );
+    
+    console.log(`Recorded ${referralEarning} ALGO referral earning and 1 claim for ${referrerAddress} from transaction by ${escrow.senderAddress}`);
+  } catch (earningError) {
+    console.error('Error recording referral earnings:', earningError);
+    // Continue processing even if earnings recording fails
+  }
+}
       
       const assetInfo = getAssetInfo(escrow.assetId);
       let message = `Successfully claimed ${escrow.amount} ${assetInfo?.symbol || 'tokens'}`;
