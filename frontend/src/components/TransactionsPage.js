@@ -481,51 +481,40 @@ function TransactionsPage() {
           </div>
         )}
 
-        {/* Individual Referrals List */}
+        {/* Individual Referrals List - REPLACE with this compact version */}
         {referralStats && referralStats.referrals && referralStats.referrals.length > 0 && (
           <div className="border-t border-gray-200 pt-4">
             <h4 className="text-sm font-medium text-gray-900 mb-3">Your Referrals ({referralStats.referrals.length})</h4>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {referralStats.referrals.map((referral, index) => (
-                <div key={referral.address} className="card card-compact hover:shadow-sm transition-shadow">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    {/* Left side - Address and date */}
+                <div key={referral.address} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-sm">
+                  {/* Left side - Number and Address */}
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-medium text-purple-600">{index + 1}</span>
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-medium text-purple-600">{index + 1}</span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-mono text-xs sm:text-sm text-gray-900 truncate" title={referral.address}>
-                            <span className="sm:hidden">
-                              {referral.address.substring(0, 8)}...{referral.address.substring(referral.address.length - 6)}
-                            </span>
-                            <span className="hidden sm:inline">
-                              {referral.address.substring(0, 12)}...{referral.address.substring(referral.address.length - 8)}
-                            </span>
-                          </div>
-                        </div>
+                      <div className="font-mono text-xs text-gray-900 truncate" title={referral.address}>
+                        <span className="sm:hidden">
+                          {referral.address.substring(0, 6)}...{referral.address.substring(referral.address.length - 4)}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {referral.address.substring(0, 10)}...{referral.address.substring(referral.address.length - 6)}
+                        </span>
                       </div>
-                      <div className="text-xs text-gray-500 ml-8">
-                        Joined {new Date(referral.linkedAt).toLocaleDateString()}
+                      <div className="text-xs text-gray-500">
+                        {new Date(referral.linkedAt).toLocaleDateString()} • {(referral.totalEarningsGenerated || 0).toFixed(3)} ALGO • {referral.totalClaims || 0} claims
                       </div>
                     </div>
-
-                    {/* Right side - Stats */}
-                    <div className="flex items-center justify-between sm:justify-end sm:space-x-6 pl-8 sm:pl-0">
-                      <div className="text-center">
-                        <div className="text-sm font-semibold text-green-600">
-                          {(referral.totalEarningsGenerated || 0).toFixed(3)}
-                        </div>
-                        <div className="text-xs text-gray-500">ALGO earned</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-semibold text-blue-600">
-                          {referral.totalClaims || 0}
-                        </div>
-                        <div className="text-xs text-gray-500">Claims</div>
-                      </div>
-                    </div>
+                  </div>
+                  
+                  {/* Right side - Status indicator (optional) */}
+                  <div className="flex-shrink-0">
+                    {referral.totalClaims > 0 ? (
+                      <div className="w-2 h-2 bg-green-400 rounded-full" title="Active referral"></div>
+                    ) : (
+                      <div className="w-2 h-2 bg-gray-300 rounded-full" title="No claims yet"></div>
+                    )}
                   </div>
                 </div>
               ))}
