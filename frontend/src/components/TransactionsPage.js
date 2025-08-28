@@ -22,6 +22,7 @@ function TransactionsPage() {
   const [referralStats, setReferralStats] = useState(null);
   const [isGeneratingReferral, setIsGeneratingReferral] = useState(false);
   const [showReferralSection, setShowReferralSection] = useState(false);
+  const [showReferralLink, setShowReferralLink] = useState(false);
   
   // Helper function to get asset symbol from transaction
   const getAssetSymbol = (transaction) => {
@@ -451,7 +452,7 @@ function TransactionsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Your Referral Link</label>
               <button
                 onClick={handleCopyReferralLink}
@@ -460,10 +461,28 @@ function TransactionsPage() {
                 Copy Link
               </button>
             </div>
-            <div className="p-3 bg-gray-50 rounded-lg border overflow-hidden">
+            <div className="p-3 bg-gray-50 rounded-lg border overflow-hidden relative">
               <code className="text-xs sm:text-sm text-gray-800 break-all word-break-all">
-                {referralLink}
+                {showReferralLink ? referralLink : '••••••••••••••••••••••••'}
               </code>
+              <button
+                type="button"
+                onClick={() => setShowReferralLink(!showReferralLink)}
+                className="absolute right-2 top-2 text-gray-500 hover:text-gray-700"
+                aria-label={showReferralLink ? 'Hide referral link' : 'Show referral link'}
+                title={showReferralLink ? 'Hide referral link' : 'Show referral link'}
+              >
+                {showReferralLink ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19.5C7.5 19.5 3.75 16.5 2.25 12c.45-1.35 1.2-2.55 2.175-3.525M9.88 9.88A3 3 0 0012 15a3 3 0 002.12-5.12M6.12 6.12L18 18" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.25 12C3.75 7.5 7.5 4.5 12 4.5s8.25 3 9.75 7.5c-1.5 4.5-5.25 7.5-9.75 7.5s-8.25-3-9.75-7.5z" />
+                    <circle cx="12" cy="12" r="3" strokeWidth="2" />
+                  </svg>
+                )}
+              </button>
             </div>
             <div className="status-success">
               <div className="flex items-start space-x-3">
