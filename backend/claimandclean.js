@@ -115,7 +115,7 @@ const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
   receiver: closeToAddress,
   amount: 0,
   closeRemainderTo: closeToAddress,
-  note: new Uint8Array(Buffer.from(referrerAddress ? 'AlgoSend referral reward' : 'AlgoSend platform fee')),
+  note: new Uint8Array(Buffer.from(referrerAddress ? 'BubbaPay referral fee' : 'BubbaPay platform fee')),
   suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
 });
     transactions.push(closeAccountTxn);
@@ -236,7 +236,7 @@ const closeAccountTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
   receiver: closeToAddress,
   amount: 0,
   closeRemainderTo: closeToAddress,
-  note: new Uint8Array(Buffer.from(referrerAddress ? 'AlgoSend referral reward' : 'AlgoSend platform fee')),
+  note: new Uint8Array(Buffer.from(referrerAddress ? 'BubbaPay referral fee' : 'BubbaPay platform fee')),
   suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
 });
     transactions.push(closeAccountTxn);

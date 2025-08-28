@@ -17,7 +17,7 @@ import TransactionsPage from './components/TransactionsPage';
 import SuccessPage from './components/SuccessPage';
 import SigningPage from './components/SigningPage';
 import DocumentationPage from './components/DocumentationPage';
-import { handleReferralFromURL } from './services/referralService';
+import { handleReferralFromURL, extractAndSaveReferralFromURL } from './services/referralService';
 import '@txnlab/use-wallet-ui-react/dist/style.css';
 import './App.css';
 
@@ -157,6 +157,11 @@ function AppContent() {
   // Referral state for non-claim pages
   const [referralProcessed, setReferralProcessed] = useState(false);
   const [showReferralNotification, setShowReferralNotification] = useState(false);
+  
+  // Extract and save referral code when app loads or location changes
+  useEffect(() => {
+    extractAndSaveReferralFromURL();
+  }, [location]);
   
   if (isClaimPage) {
     // Claim page handles its own wallet connection

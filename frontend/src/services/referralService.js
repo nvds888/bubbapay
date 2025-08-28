@@ -11,6 +11,59 @@ const referralApiClient = axios.create({
   }
 });
 
+// Local storage keys
+const REFERRAL_STORAGE_KEY = 'bubbapay_referral_code';
+const REFERRAL_TIMESTAMP_KEY = 'bubbapay_referral_timestamp';
+
+// Helper functions for local storage
+const saveReferralToStorage = (referralCode) => {
+  if (referralCode) {
+    localStorage.setItem(REFERRAL_STORAGE_KEY, referralCode);
+    localStorage.setItem(REFERRAL_TIMESTAMP_KEY, Date.now().toString());
+  }
+};
+
+const getReferralFromStorage = () => {
+  const referralCode = localStorage.getItem(REFERRAL_STORAGE_KEY);
+  const timestamp = localStorage.getItem(REFERRAL_TIMESTAMP_KEY);
+  
+  if (!referralCode || !timestamp) return null;
+  
+  // Check if referral is older than 24 hours (86400000 ms)
+  const isExpired = (Date.now() - parseInt(timestamp)) > 86400000;
+  
+  if (isExpired) {
+    clearReferralFromStorage();
+    return null;
+  }
+  
+  return referralCode;
+};
+
+const clearReferralFromStorage = () => {
+  localStorage.removeItem(REFERRAL_STORAGE_KEY);
+  localStorage.removeItem(REFERRAL_TIMESTAMP_KEY);
+};
+
+// Extract referral code from URL and save to storage
+export const extractAndSaveReferralFromURL = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const referralCode = urlParams.get('ref');
+  
+  if (referralCode) {
+    // If there's already a stored referral, only replace it if it's different
+    const existingReferral = getReferralFromStorage();
+    if (existingReferral && existingReferral !== referralCode) {
+      // User is using a different referral link, clear the old one
+      clearReferralFromStorage();
+    }
+    saveReferralToStorage(referralCode);
+    return referralCode;
+  }
+  
+  return null;
+};
+
 // Generate referral link for a user
 export const generateReferralLink = async (walletAddress) => {
   try {
@@ -49,9 +102,13 @@ export const getReferralStats = async (walletAddress) => {
 // Handle referral linking when wallet connects
 export const handleReferralFromURL = async (walletAddress) => {
   try {
-    // Get referral code from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const referralCode = urlParams.get('ref');
+    // First try to get referral code from URL
+    let referralCode = new URLSearchParams(window.location.search).get('ref');
+    
+    // If no referral code in URL, try to get from storage
+    if (!referralCode) {
+      referralCode = getReferralFromStorage();
+    }
     
     if (!referralCode || !walletAddress) {
       return { linked: false, reason: 'No referral code or wallet' };
@@ -60,10 +117,14 @@ export const handleReferralFromURL = async (walletAddress) => {
     // Attempt to link referral
     const result = await linkReferral(walletAddress, referralCode);
     
-    // Clean URL after processing
-    if (window.history && window.history.replaceState) {
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
+    // If successful, clear the referral from storage and clean URL
+    if (result.success) {
+      clearReferralFromStorage();
+      
+      if (window.history && window.history.replaceState) {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
     }
     
     return { 
@@ -81,5 +142,6 @@ export default {
   generateReferralLink,
   linkReferral,
   getReferralStats,
-  handleReferralFromURL
+  handleReferralFromURL,
+  extractAndSaveReferralFromURL
 };
