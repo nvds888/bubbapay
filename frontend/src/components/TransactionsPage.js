@@ -473,15 +473,16 @@ function TransactionsPage() {
                 <div className="text-sm">
                   <p className="font-medium text-green-800">How it works:</p>
                   <p className="text-green-700 mt-1">
-                    When people you refer create claim links and others claim them, you earn 100% of the platform fees - paid instantly to your address.
-                  </p>
+    Share this link with anyone! If they connect their wallet through your link and aren’t already referred, you’ll become their referrer and receive 100% of the platform fees — instantly paid to your address.
+</p>
+
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Individual Referrals List - REPLACE with this compact version */}
+        {/* Individual Referrals List*/}
         {referralStats && referralStats.referrals && referralStats.referrals.length > 0 && (
           <div className="border-t border-gray-200 pt-4">
             <h4 className="text-sm font-medium text-gray-900 mb-3">Your Referrals ({referralStats.referrals.length})</h4>
