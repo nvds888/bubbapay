@@ -41,6 +41,13 @@ function AmountStep({
       setError('Please enter a valid amount greater than 0');
       return;
     }
+
+    // Check minimum based on asset decimals
+    const minAmount = selectedAssetInfo?.decimals === 8 ? 0.0001 : 0.01;
+    if (parseFloat(safeFormData.amount) < minAmount) {
+      setError(`Amount must be at least ${minAmount} ${selectedAssetInfo?.symbol || 'tokens'}`);
+      return;
+    }
     
     // Check if amount exceeds balance
     if (assetBalance !== null && parseFloat(safeFormData.amount) > parseFloat(assetBalance)) {
@@ -148,11 +155,12 @@ if (assetBalance !== null && safeFormData.amount) {
   }
 }
 
-// Check minimum balance requirement (0.01 minimum)
+// Check minimum balance requirement
 if (assetBalance !== null) {
   const balance = parseFloat(assetBalance);
+  const minAmount = selectedAssetInfo?.decimals === 8 ? 0.0001 : 0.01;
   
-  if (balance < 0.01) {
+  if (balance < minAmount) {
     return { 
       type: 'warning', 
       message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
@@ -223,8 +231,8 @@ if (assetBalance !== null) {
               onChange={handleInputChange}
               className="w-full pl-7 pr-16 py-3 text-lg font-medium border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-colors"
               placeholder="0.00"
-              min="0.01"
-              step="0.01"
+              min={selectedAssetInfo?.decimals === 8 ? "0.0001" : "0.01"}
+              step={selectedAssetInfo?.decimals === 8 ? "0.0001" : "0.01"}
               max={assetBalance ? parseFloat(assetBalance).toString() : undefined}
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -310,7 +318,14 @@ if (assetBalance !== null) {
                 <span className="font-medium">
   {(() => {
     const balance = parseFloat(assetBalance);
-    return balance < 0.01 ? parseFloat(balance.toFixed(6)).toString() : balance.toFixed(2);
+    const displayDecimals = selectedAssetInfo?.decimals === 8 ? 4 : 2;
+    
+    const minAmount = selectedAssetInfo?.decimals === 8 ? 0.0001 : 0.01;
+    if (balance < minAmount) {
+      // Show more precision for assets with more decimals
+      return parseFloat(balance.toFixed(displayDecimals)).toString();
+    }
+    return balance.toFixed(displayDecimals);
   })()} {selectedAssetInfo?.symbol || 'tokens'}
 </span>
               </div>

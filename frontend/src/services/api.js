@@ -187,10 +187,10 @@ const SUPPORTED_ASSETS = {
   },
   2656692124: {
     id: 2656692124,
-    name: 'BallSack',
+    name: 'Ball Sack',
     symbol: 'BALLSACK',
     decimals: 6,
-    description: 'BallSack is a meme token'
+    description: 'Ball Sack meme token'
   },
   386192725: {
     id: 386192725,
@@ -205,6 +205,20 @@ const SUPPORTED_ASSETS = {
     symbol: 'HAY',
     decimals: 6,
     description: 'The token of Haystack: Trading made easy'
+  },
+  2582294183: {
+    id: 2582294183,
+    name: 'GONNA',
+    symbol: 'GONNA',
+    decimals: 6,
+    description: 'The official coin of the Gonnaverse'
+  },
+  1284444444: {
+    id: 1284444444,
+    name: 'Orange',
+    symbol: 'ORA',
+    decimals: 8,
+    description: 'Orange is a "mineable" meme'
   }
 };
 

@@ -72,10 +72,27 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       isDefault: false,
       description: 'The token of Haystack: Trading made easy'
+    },
+    2582294183: {
+      id: 2582294183,
+      name: 'GONNA',
+      unitName: 'GONNA',
+      symbol: 'GONNA',
+      decimals: 6,
+      isDefault: false,
+      description: 'The official coin of the Gonnaverse'
+    },
+    1284444444: {
+      id: 1284444444,
+      name: 'Orange',
+      unitName: 'ORA',
+      symbol: 'ORA',
+      decimals: 8,
+      isDefault: false,
+      description: 'Orange is a "mineable" meme'
     }
     // more assets here 
   };
-
   
   // default asset ID (USDC)
   function getDefaultAssetId() {
