@@ -957,7 +957,7 @@ router.post('/cleanup-unfunded-app', async (req, res) => {
       sender: senderAddress,
       appIndex: parseInt(appId),
       onComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
-      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+      suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
     });
     
     const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(deleteAppTxn)).toString('base64');
