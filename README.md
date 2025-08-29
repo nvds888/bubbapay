@@ -1,6 +1,6 @@
 # 💰 BubbaPay
 
-> **⚠️ Currently in Development** - This project is actively being developed
+> **⚠️ Currently in Development** - This is still a working document
 
 Send Algorand Standard Assets (ASAs) instantly via shareable URLs. Fast, secure, and user-friendly payments that make crypto transfers as easy as sharing a link.
 
@@ -33,7 +33,7 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 - **Platform**: Algorand blockchain
 - **SDK**: Algosdk 3.4.0 JavaScript
 - **Smart Contracts**: Custom TEAL programs for escrow functionality
-- **Specific blockchain scripts backend**: atomic-deploy-email-escrow.js, claimandclean.js, teal-programs.js 
+- **Specific blockchain scripts backend**: atomic-deploy-email-escrow.js, claimandclean.js, teal-programs.js, api.js
 
 
 ## 📖 Usage
