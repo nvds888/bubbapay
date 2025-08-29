@@ -930,5 +930,70 @@ router.get('/escrow-recovery/:escrowId', async (req, res) => {
   }
 });
 
+// Generate cleanup transaction for unfunded app
+router.post('/cleanup-unfunded-app', async (req, res) => {
+  try {
+    const { appId, senderAddress } = req.body;
+    
+    // Verify this is an unfunded app by this sender
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    const escrow = await escrowCollection.findOne({
+      appId: parseInt(appId),
+      senderAddress,
+      funded: false,
+      status: 'APP_CREATED_AWAITING_FUNDING'
+    });
+    
+    if (!escrow) {
+      return res.status(404).json({ error: 'Unfunded app not found or not owned by sender' });
+    }
+    
+    // Generate delete transaction (no assets to worry about since unfunded)
+    const suggestedParams = await algodClient.getTransactionParams().do();
+    
+    const deleteAppTxn = algosdk.makeApplicationCallTxnFromObject({
+      sender: senderAddress,
+      appIndex: parseInt(appId),
+      onComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
+      suggestedParams: { ...suggestedParams, fee: 1000, flatFee: true }
+    });
+    
+    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(deleteAppTxn)).toString('base64');
+    
+    res.json({ transaction: encodedTxn });
+  } catch (error) {
+    console.error('Error generating cleanup transaction:', error);
+    res.status(500).json({ error: 'Failed to generate cleanup transaction' });
+  }
+});
+
+// Submit cleanup of unfunded app
+router.post('/submit-cleanup-unfunded', async (req, res) => {
+  try {
+    const { signedTxn, appId, escrowId } = req.body;
+    
+    // Submit transaction
+    const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+    await algosdk.waitForConfirmation(algodClient, txid, 5);
+    
+    // Remove escrow record
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    if (escrowId && ObjectId.isValid(escrowId)) {
+      await escrowCollection.deleteOne({ _id: new ObjectId(escrowId) });
+    } else {
+      await escrowCollection.deleteOne({ appId: parseInt(appId), funded: false });
+    }
+    
+    res.json({ success: true, txid });
+  } catch (error) {
+    console.error('Error submitting cleanup:', error);
+    res.status(500).json({ error: 'Failed to submit cleanup transaction' });
+  }
+});
+
 
 module.exports = router;

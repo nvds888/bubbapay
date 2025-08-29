@@ -123,11 +123,16 @@ app_global_get
 ==
 bz reject
 
-// Only allow delete when claimed=1
+// Allow delete if either: claimed=1 OR amount not set (unfunded)
 byte "claimed"
 app_global_get
 int 1
 ==
+byte "amount"
+app_global_get
+int 0
+==
+||  // OR condition: claimed=1 OR amount=0
 bz reject_not_completed
 
 // STEP 1: Opt out of any assets first

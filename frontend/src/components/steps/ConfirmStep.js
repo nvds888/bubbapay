@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useWallet } from '@txnlab/use-wallet-react';
 import { WalletButton } from '@txnlab/use-wallet-ui-react';
+import axios from 'axios';
+import algosdk from 'algosdk';
+import { Buffer } from 'buffer';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 function ConfirmStep({
   formData,
@@ -22,9 +27,9 @@ function ConfirmStep({
   const [stage, setStage] = useState(recoveryMode ? 'app-created' : 'initial'); 
   const [subStage, setSubStage] = useState('idle'); // idle, signing-1, submitting-1, signing-2, submitting-2, completed
   const [showTransactionDetails, setShowTransactionDetails] = useState(false);
-  
-  // Get wallet functionality from use-wallet
-  const { activeAddress } = useWallet();
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [cleanupError, setCleanupError] = useState(null);
+  const { activeAddress, signTransactions } = useWallet();
   
   // Use the effective account address (for MCP compatibility)
   const effectiveAccountAddress = accountAddress || activeAddress;
@@ -70,6 +75,40 @@ function ConfirmStep({
   // Determine if back button should be shown (not for MCP or recovery mode)
   const canGoBack = !mcpSessionData && !recoveryMode && stage === 'initial';
   
+  // cleanup handler (unfunded app)
+  const handleCleanupUnfundedApp = async () => {
+    if (!txnData?.appId || !effectiveAccountAddress) return;
+    
+    setIsCleaningUp(true);
+    setCleanupError(null); // Clear previous errors
+    try {
+      // Generate cleanup transaction
+      const response = await axios.post(`${API_URL}/cleanup-unfunded-app`, {
+        appId: txnData.appId,
+        senderAddress: effectiveAccountAddress
+      });
+      
+      // Sign and submit
+      const txnBytes = new Uint8Array(Buffer.from(response.data.transaction, 'base64'));
+      const txn = algosdk.decodeUnsignedTransaction(txnBytes);
+      const signedTxns = await signTransactions([txn]);
+      
+      await axios.post(`${API_URL}/submit-cleanup-unfunded`, {
+        signedTxn: Buffer.from(signedTxns[0]).toString('base64'),
+        appId: txnData.appId,
+        escrowId: txnData.escrowId
+      });
+      
+      // Reset to initial state for retry
+      window.location.reload();
+      
+    } catch (error) {
+      setCleanupError('Failed to cleanup unfunded app: ' + error.message); // Use local error state
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto">
       
@@ -281,6 +320,21 @@ function ConfirmStep({
           </div>
         </div>
       )}
+
+      {/* Show cleanup error if it exists */}
+{cleanupError && (
+  <div className="card card-compact status-error mb-2">
+    <div className="flex items-start space-x-2">
+      <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+      </svg>
+      <div className="text-sm">
+        <div className="font-medium text-red-800">Cleanup Error</div>
+        <div className="text-red-700 mt-1">{cleanupError}</div>
+      </div>
+    </div>
+  </div>
+)}
       
       {/* Error display */}
       {error && (
@@ -292,6 +346,36 @@ function ConfirmStep({
             <div className="text-sm">
               <div className="font-medium text-red-800">Transaction Error</div>
               <div className="text-red-700 mt-1">{error}</div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* In the render section, add cleanup option when in recovery mode with unfunded app */}
+      {recoveryMode && currentEscrow && !currentEscrow.funded && (
+        <div className="card card-normal mb-4 status-warning">
+          <div className="space-y-3">
+            <div className="flex items-start space-x-3">
+              <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h3 className="font-medium text-amber-800">App Created But Session Lost</h3>
+                <p className="text-amber-700 text-sm mt-1">
+                  Your app was created but the claim link was lost due to a connection issue. 
+                  You can either fund it anyway (no claim link) or clean up and start fresh.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={handleCleanupUnfundedApp}
+                disabled={isCleaningUp}
+                className="btn-secondary px-4 py-2 text-sm"
+              >
+                {isCleaningUp ? 'Cleaning Up...' : 'Clean Up & Retry'}
+              </button>
             </div>
           </div>
         </div>
@@ -332,7 +416,7 @@ function ConfirmStep({
                   throw error;
                 }
               }}
-              disabled={isLoading}
+              disabled={isLoading || (currentEscrow && !currentEscrow.funded)} // Disable if unfunded app exists
               className={`btn-primary py-3 px-4 font-medium disabled:opacity-70 ${
                 !canGoBack ? 'w-full' : 'flex-1'
               }`}

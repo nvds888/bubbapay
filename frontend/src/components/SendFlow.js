@@ -367,9 +367,44 @@ function SendFlow() {
       });
     } catch (error) {
       console.error('Error signing transaction:', error);
+      
+      // NEW: Check if app was actually created despite the error
+      await checkForUnfundedApp();
+      
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit transaction');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Check database for unfunded apps after apparent failure
+  const checkForUnfundedApp = async () => {
+    if (!effectiveAccountAddress) return;
+    
+    try {
+      const response = await axios.get(`${API_URL}/incomplete-escrows/${effectiveAccountAddress}`);
+      const unfundedApps = response.data.filter(escrow => 
+        escrow.status === 'APP_CREATED_AWAITING_FUNDING' &&
+        new Date(escrow.createdAt) > new Date(Date.now() - 5 * 60 * 1000) // Last 5 minutes
+      );
+      
+      if (unfundedApps.length > 0) {
+        const mostRecent = unfundedApps[0];
+        setCurrentEscrow(mostRecent);
+        setTxnData({
+          appId: mostRecent.appId,
+          appAddress: mostRecent.appAddress,
+          groupTransactions: mostRecent.groupTransactions,
+          tempAccount: mostRecent.tempAccount,
+          amount: mostRecent.amount,
+          microAmount: mostRecent.amount * 1e6,
+          escrowId: mostRecent._id
+        });
+        setRecoveryMode(true);
+        setError(null); // Clear the error since we found the app
+      }
+    } catch (error) {
+      console.error('Error checking for unfunded apps:', error);
     }
   };
   
