@@ -661,24 +661,68 @@ if (claimStatus === 'insufficient-algo-for-optin') {
       </div>
       
       <div className="space-y-3">
-        <button
-          onClick={() => window.location.reload()}
-          className="btn-primary px-4 py-2 font-medium w-full"
-        >
-          <span className="flex items-center justify-center space-x-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Check Again</span>
-          </span>
-        </button>
+  <button
+    onClick={async () => {
+      setError(null);
+      const checkWalletStatus = async () => {
+        if (!accountAddress || !escrowDetails) return;
         
-        <div data-wallet-ui className="wallet-button-container">
-          <WalletButton 
-            className="btn-secondary px-4 py-2 font-medium w-full text-sm" 
-          />
-        </div>
-      </div>
+        setClaimStatus('checking');
+        setIsLoading(true);
+        
+        try {
+          const targetAssetId = escrowDetails.assetId || 31566704;
+          const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
+          const { hasOptedIn, canAffordOptIn, availableAlgoBalance, requiredForOptIn, algoShortfall } = optInResponse.data;
+          
+          setIsOptedIn(hasOptedIn);
+          
+          if (hasOptedIn) {
+            setClaimStatus('ready-to-claim-optimized');
+          } else if (escrowDetails.payRecipientFees || canAffordOptIn) {
+            setClaimStatus('ready-to-optin-and-claim');
+          } else {
+            setClaimStatus('insufficient-algo-for-optin');
+            setError(`Insufficient ALGO for opt-in. You need ${requiredForOptIn} ALGO but only have ${availableAlgoBalance} ALGO available (shortfall: ${algoShortfall} ALGO).`);
+          }
+          
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error rechecking wallet status:', error);
+          setError('Failed to check your wallet status');
+          setIsLoading(false);
+        }
+      };
+      
+      await checkWalletStatus();
+    }}
+    disabled={isLoading}
+    className="btn-primary px-4 py-2 font-medium w-full"
+  >
+    <span className="flex items-center justify-center space-x-2">
+      {isLoading ? (
+        <div className="w-4 h-4 spinner"></div>
+      ) : (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      )}
+      <span>{isLoading ? 'Checking...' : 'Refresh'}</span>
+    </span>
+  </button>
+  
+  <button
+    onClick={() => window.location.reload()}
+    className="btn-secondary px-4 py-2 font-medium w-full"
+  >
+    <span className="flex items-center justify-center space-x-2">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+      </svg>
+      <span>Try Other Wallet</span>
+    </span>
+  </button>
+</div>
       
       <div className="mt-4 text-xs text-gray-500">
         Connected: {formatAddress(accountAddress)}
