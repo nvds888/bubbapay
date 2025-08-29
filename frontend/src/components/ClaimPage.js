@@ -638,7 +638,7 @@ if (claimStatus === 'insufficient-algo-for-optin') {
       
       <h2 className="text-xl font-semibold text-gray-900 mb-3">Insufficient ALGO</h2>
       <p className="text-gray-600 mb-4">
-        You need to opt-in to <span className="text-blue-600 font-semibold">{assetInfo?.name || 'the asset'}</span> first, but don't have enough ALGO to cover the transaction fee.
+        You need to opt-in to <span className="text-blue-600 font-semibold">{assetInfo?.name || 'the asset'}</span> first, but don't have enough ALGO.
       </p>
       
       {error && (
@@ -653,8 +653,8 @@ if (claimStatus === 'insufficient-algo-for-optin') {
         <div className="text-left">
           <h4 className="text-sm font-medium text-gray-900 mb-2">Options:</h4>
           <ul className="text-sm text-gray-600 space-y-1">
-            <li>• Add more ALGO to your wallet (~0.11 ALGO needed)</li>
-            <li>• Ask the sender to create a new link with fee coverage</li>
+            <li>• Add more ALGO to your wallet</li>
+            <li>• Ask sender to create a link with fee coverage</li>
             <li>• Use a different wallet that has ALGO</li>
           </ul>
         </div>
@@ -683,7 +683,7 @@ if (claimStatus === 'insufficient-algo-for-optin') {
             setClaimStatus('ready-to-optin-and-claim');
           } else {
             setClaimStatus('insufficient-algo-for-optin');
-            setError(`Insufficient ALGO for opt-in. You need ${requiredForOptIn} ALGO but only have ${availableAlgoBalance} ALGO available (shortfall: ${algoShortfall} ALGO).`);
+            setError(`You need ${requiredForOptIn} ALGO but only have ${availableAlgoBalance} ALGO available (shortfall: ${algoShortfall} ALGO).`);
           }
           
           setIsLoading(false);
