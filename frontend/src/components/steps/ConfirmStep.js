@@ -439,25 +439,24 @@ function ConfirmStep({
             </button>
           )}
 
-          {/* Second transaction (funding) - available both in normal mode after first txn and immediately in recovery mode */}
-          {(stage === 'app-created' || recoveryMode) && (
-            <button
-              type="button"
-              onClick={async () => {
-                setSubStage('signing-2');
-                try {
-                  await handleSignGroupTransactions();
-                  // Show submitting state briefly before completion
-                  setSubStage('submitting-2');
-                  setTimeout(() => setSubStage('completed'), 500);
-                } catch (error) {
-                  setSubStage('idle');
-                  throw error;
-                }
-              }}
-              disabled={isLoading}
-              className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
-            >
+          {/* Second transaction (funding) - DON'T show if in unfunded recovery mode */}
+{(stage === 'app-created' || recoveryMode) && !(recoveryMode && currentEscrow && !currentEscrow.funded) && ( // ADD condition
+  <button
+    type="button"
+    onClick={async () => {
+      setSubStage('signing-2');
+      try {
+        await handleSignGroupTransactions();
+        setSubStage('submitting-2');
+        setTimeout(() => setSubStage('completed'), 500);
+      } catch (error) {
+        setSubStage('idle');
+        throw error;
+      }
+    }}
+    disabled={isLoading}
+    className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
+  >
               <span className="flex items-center justify-center space-x-2">
                 {isLoading ? (
                   <>

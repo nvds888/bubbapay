@@ -650,12 +650,16 @@ function TransactionsPage() {
     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
       Claimed
     </span>
+    ) : transaction.status === 'UNFUNDED_CLEANED_UP' ? ( 
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+        Cleaned Up (Unfunded)
+      </span>
   ) : !transaction.funded && transaction.status === 'APP_CREATED_AWAITING_FUNDING' ? (
     <div className="space-y-1">
       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
         App Created - Unfunded
       </span>
-      <p className="text-xs text-blue-600">Navigate to home to fund App</p>
+      <p className="text-xs text-blue-600">Navigate to home for cleanup</p>
     </div>
   ) : (
     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -677,37 +681,42 @@ function TransactionsPage() {
   )}
   
   {/* Action buttons */}
-  <div className="space-y-1">
-    {!transaction.funded && transaction.status === 'APP_CREATED_AWAITING_FUNDING' ? (
-      // Unfunded app - only show explorer link
-      <>
-        <span className="text-gray-500 text-sm block">App awaiting funding</span>
-        <Link 
-          to="/"
-          className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm block"
-        >
-          Go to Home to Fund
-        </Link>
-      </>
-    ) : !transaction.claimed && !transaction.reclaimed ? (
-      <button
-        onClick={() => handleReclaim(transaction.appId)}
-        disabled={isReclaiming}
-        className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+<div className="space-y-1">
+  {!transaction.funded && transaction.status === 'APP_CREATED_AWAITING_FUNDING' ? (
+    <>
+      <span className="text-gray-500 text-sm block">App awaiting cleanup</span>
+      <Link 
+        to="/"
+        className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 text-sm block"
       >
-        Reclaim Funds
-      </button>
-    ) : transaction.cleanedUp ? (
-      <span className="text-gray-500 text-sm">Cleaned Up</span>
-    ) : (
-      <button
+        Go to Home for Cleanup
+      </Link>
+    </>
+  ) : transaction.status === 'UNFUNDED_CLEANED_UP' ? (
+    // Already cleaned up unfunded app - just show status
+    <span className="text-gray-500 text-sm">Cleaned Up</span>
+  ) : !transaction.claimed && !transaction.reclaimed ? (
+    // Regular funded app - show reclaim
+    <button
+      onClick={() => handleReclaim(transaction.appId)}
+      disabled={isReclaiming}
+      className="text-red-600 hover:text-red-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
+    >
+      Reclaim Funds
+    </button>
+  ) : transaction.cleanedUp ? (
+    // Already cleaned up regular app
+    <span className="text-gray-500 text-sm">Cleaned Up</span>
+  ) : (
+    // Regular funded app that's claimed/reclaimed - show cleanup
+    <button
       onClick={() => handleCleanup(transaction.appId)}
       disabled={isCleaningUp}
       className="text-green-600 hover:text-green-700 font-medium transition-colors duration-200 disabled:opacity-50 text-sm block"
     >
       Clean Up (~{getCleanupEstimateLabel(transaction)})
     </button>
-    )}
+  )}
     
     {/* Explorer link - always show */}
     <a
@@ -754,12 +763,16 @@ function TransactionsPage() {
     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
       Claimed
     </span>
+    ) : transaction.status === 'UNFUNDED_CLEANED_UP' ? ( 
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+        Cleaned Up (Unfunded)
+      </span>
   ) : !transaction.funded && transaction.status === 'APP_CREATED_AWAITING_FUNDING' ? (
     <div className="text-center">
       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-1">
         App Created - Unfunded
       </span>
-      <p className="text-xs text-blue-600">Navigate to home to fund App</p>
+      <p className="text-xs text-blue-600">Navigate to home for cleanup</p>
     </div>
   ) : (
     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -794,7 +807,7 @@ function TransactionsPage() {
         to="/"
         className="btn-primary px-3 py-1.5 text-sm font-medium w-full text-center block"
       >
-        Go to Home to Fund
+        Go to Home for Cleanup
       </Link>
     ) : !transaction.claimed && !transaction.reclaimed ? (
       <button

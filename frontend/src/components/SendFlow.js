@@ -384,8 +384,7 @@ function SendFlow() {
     try {
       const response = await axios.get(`${API_URL}/incomplete-escrows/${effectiveAccountAddress}`);
       const unfundedApps = response.data.filter(escrow => 
-        escrow.status === 'APP_CREATED_AWAITING_FUNDING' &&
-        new Date(escrow.createdAt) > new Date(Date.now() - 5 * 60 * 1000) // Last 5 minutes
+        escrow.status === 'APP_CREATED_AWAITING_FUNDING'
       );
       
       if (unfundedApps.length > 0) {

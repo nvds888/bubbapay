@@ -978,14 +978,34 @@ router.post('/submit-cleanup-unfunded', async (req, res) => {
     const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
     await algosdk.waitForConfirmation(algodClient, txid, 5);
     
-    // Remove escrow record
+    // Mark as cleaned up instead of deleting the record
     const db = req.app.locals.db;
     const escrowCollection = db.collection('escrows');
     
     if (escrowId && ObjectId.isValid(escrowId)) {
-      await escrowCollection.deleteOne({ _id: new ObjectId(escrowId) });
+      await escrowCollection.updateOne(
+        { _id: new ObjectId(escrowId) },
+        { 
+          $set: { 
+            cleanedUp: true,
+            cleanupTxId: txid,
+            cleanedUpAt: new Date(),
+            status: 'UNFUNDED_CLEANED_UP' 
+          }
+        }
+      );
     } else {
-      await escrowCollection.deleteOne({ appId: parseInt(appId), funded: false });
+      await escrowCollection.updateOne(
+        { appId: parseInt(appId), funded: false },
+        { 
+          $set: { 
+            cleanedUp: true,
+            cleanupTxId: txid,
+            cleanedUpAt: new Date(),
+            status: 'UNFUNDED_CLEANED_UP'
+          }
+        }
+      );
     }
     
     res.json({ success: true, txid });
