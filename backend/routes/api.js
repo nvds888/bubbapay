@@ -431,20 +431,50 @@ router.get('/user-escrows/:address', async (req, res) => {
   }
 });
 
-// Check if user has opted into asset
 router.get('/check-optin/:address/:assetId', async (req, res) => {
   try {
     const accountInfo = await algodClient.accountInformation(req.params.address).do();
     const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
     
     const hasOptedIn = accountInfo.assets?.some(asset => {
-      
       return Number(asset['asset-id']) === targetAssetId || Number(asset.assetId) === targetAssetId;
     }) || false;
     
-    console.log('DEBUG - Has opted in result:', hasOptedIn);
+    // ALGO affordability check for opt-in (only relevant if not opted in)
+    let canAffordOptIn = true;
+    let algoBalance = "0.000000";
+    let requiredForOptIn = "0.111000";
+    let shortfall = "0.000000";
     
-    res.status(200).json({ hasOptedIn, assetId: targetAssetId });
+    if (!hasOptedIn) {
+      const currentBalance = safeToNumber(accountInfo.amount); 
+      const currentMinBalance = safeToNumber(accountInfo.minBalance || 0);
+      const currentAvailableBalance = Math.max(0, currentBalance - currentMinBalance);
+      
+      // Opt-in transaction requires:
+// - 1000 microAlgo transaction fee (0.001 ALGO)  
+// - 100000 microAlgo MBR increase (0.1 ALGO)
+// - 10000 microAlgo buffer (0.01 ALGO)
+const optInFee = 1000; // microAlgo
+const mbrIncrease = 100000; // microAlgo 
+const bufferAmount = 10000; // microAlgo
+      const requiredAmount = optInFee + mbrIncrease + bufferAmount;
+      
+      canAffordOptIn = currentAvailableBalance >= requiredAmount;
+      algoBalance = (currentAvailableBalance / 1000000).toFixed(6);
+      requiredForOptIn = (requiredAmount / 1000000).toFixed(6);
+      shortfall = canAffordOptIn ? "0.000000" : ((requiredAmount - currentAvailableBalance) / 1000000).toFixed(6);
+    }
+    
+    res.status(200).json({ 
+      hasOptedIn, 
+      assetId: targetAssetId,
+      // ALGO info (only meaningful when hasOptedIn = false)
+      canAffordOptIn,
+      availableAlgoBalance: algoBalance,
+      requiredForOptIn,
+      algoShortfall: shortfall
+    });
   } catch (error) {
     console.error('Error checking opt-in status:', error);
     res.status(500).json({ error: 'Failed to check opt-in status', details: error.message });

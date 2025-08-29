@@ -215,7 +215,7 @@ function ClaimPage() {
             onClick={() => window.open(window.location.origin, '_blank')}
             className="btn-primary px-4 py-2 font-medium"
           >
-            {/* CHANGE 15c: Success page button */}
+            {/* Success page button */}
             Send Your Own {assetInfo?.symbol || 'Assets'}
           </button>
         </div>
@@ -367,51 +367,69 @@ const [isOptedIn, setIsOptedIn] = useState(false);
   }, [activeAddress]);
   
   // Check wallet status when connected 
-useEffect(() => {
-  const checkWalletStatus = async () => {
-    if (!accountAddress || !escrowDetails) return;
-    
-    setClaimStatus('checking');
-    setIsLoading(true);
-    
-    try {
-      // Check opt-in status - handle unfunded accounts
-      const targetAssetId = escrowDetails.assetId || 31566704;
-      const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
-      const hasOptedIn = optInResponse.data.hasOptedIn;
+  useEffect(() => {
+    const checkWalletStatus = async () => {
+      if (!accountAddress || !escrowDetails) return;
       
-      setIsOptedIn(hasOptedIn);
+      setClaimStatus('checking');
+      setIsLoading(true);
       
-      // Set status based on opt-in status
-      if (hasOptedIn) {
-        setClaimStatus('ready-to-claim-optimized');
-      } else {
-        setClaimStatus('ready-to-optin-and-claim');
-      }
-      
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error checking wallet status:', error);
-      
-      // Handle unfunded account case
-      if (error.response?.status === 404 || 
-          error.response?.data?.error?.includes('account does not exist') ||
-          error.response?.data?.error?.includes('account not found')) {
-        console.log('Unfunded account detected, assuming needs opt-in');
-        setIsOptedIn(false);
-        setClaimStatus('ready-to-optin-and-claim'); // Unfunded accounts need opt-in
+      try {
+        // Single API call gets both opt-in status AND ALGO balance info
+        const targetAssetId = escrowDetails.assetId || 31566704;
+        const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
+        const { hasOptedIn, canAffordOptIn, availableAlgoBalance, requiredForOptIn, algoShortfall } = optInResponse.data;
+        
+        setIsOptedIn(hasOptedIn);
+        
+        // Set status based on opt-in status and affordability
+        if (hasOptedIn) {
+          setClaimStatus('ready-to-claim-optimized');
+        } else {
+          // User needs to opt-in
+          if (escrowDetails.payRecipientFees) {
+            // Sender covers fees, user can proceed
+            setClaimStatus('ready-to-optin-and-claim');
+          } else if (canAffordOptIn) {
+            // User can afford opt-in
+            setClaimStatus('ready-to-optin-and-claim');
+          } else {
+            // User cannot afford opt-in
+            setClaimStatus('insufficient-algo-for-optin');
+            setError(`Insufficient ALGO for opt-in. You need ${requiredForOptIn} ALGO but only have ${availableAlgoBalance} ALGO available (shortfall: ${algoShortfall} ALGO).`);
+          }
+        }
+        
         setIsLoading(false);
-      } else {
-        setError('Failed to check your wallet status');
-        setIsLoading(false);
+      } catch (error) {
+        console.error('Error checking wallet status:', error);
+        
+        // Handle unfunded account case
+        if (error.response?.status === 404 || 
+            error.response?.data?.error?.includes('account does not exist') ||
+            error.response?.data?.error?.includes('account not found')) {
+          console.log('Unfunded account detected');
+          setIsOptedIn(false);
+          
+          // Unfunded accounts definitely need fee coverage to opt-in
+          if (escrowDetails.payRecipientFees) {
+            setClaimStatus('ready-to-optin-and-claim');
+          } else {
+            setClaimStatus('insufficient-algo-for-optin');
+            setError('Unfunded account cannot opt-in without fee coverage from sender.');
+          }
+          setIsLoading(false);
+        } else {
+          setError('Failed to check your wallet status');
+          setIsLoading(false);
+        }
       }
+    };
+    
+    if (accountAddress && escrowDetails) {
+      checkWalletStatus();
     }
-  };
-  
-  if (accountAddress && escrowDetails) {
-    checkWalletStatus();
-  }
-}, [accountAddress, escrowDetails]);
+  }, [accountAddress, escrowDetails]);
   
   // Handle optimized claim (for users already opted in)
 const handleOptimizedClaim = async () => {
@@ -606,6 +624,69 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
       );
     }
     
+    // User needs to opt-in but doesn't have enough ALGO
+if (claimStatus === 'insufficient-algo-for-optin') {
+  return (
+    <div className="text-center">
+      <div className="flex justify-center mb-4">
+        <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center">
+          <svg className="w-7 h-7 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.232 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+      </div>
+      
+      <h2 className="text-xl font-semibold text-gray-900 mb-3">Insufficient ALGO</h2>
+      <p className="text-gray-600 mb-4">
+        You need to opt-in to <span className="text-blue-600 font-semibold">{assetInfo?.name || 'the asset'}</span> first, but don't have enough ALGO to cover the transaction fee.
+      </p>
+      
+      {error && (
+        <div className="mb-4 card card-compact">
+          <div className="text-yellow-700 text-sm">
+            {error}
+          </div>
+        </div>
+      )}
+      
+      <div className="mb-6 card card-compact">
+        <div className="text-left">
+          <h4 className="text-sm font-medium text-gray-900 mb-2">Options:</h4>
+          <ul className="text-sm text-gray-600 space-y-1">
+            <li>• Add more ALGO to your wallet (~0.11 ALGO needed)</li>
+            <li>• Ask the sender to create a new link with fee coverage</li>
+            <li>• Use a different wallet that has ALGO</li>
+          </ul>
+        </div>
+      </div>
+      
+      <div className="space-y-3">
+        <button
+          onClick={() => window.location.reload()}
+          className="btn-primary px-4 py-2 font-medium w-full"
+        >
+          <span className="flex items-center justify-center space-x-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Check Again</span>
+          </span>
+        </button>
+        
+        <div data-wallet-ui className="wallet-button-container">
+          <WalletButton 
+            className="btn-secondary px-4 py-2 font-medium w-full text-sm" 
+          />
+        </div>
+      </div>
+      
+      <div className="mt-4 text-xs text-gray-500">
+        Connected: {formatAddress(accountAddress)}
+      </div>
+    </div>
+  );
+}
+
     // User needs to opt-in - show combined opt-in and claim button
     if (claimStatus === 'ready-to-optin-and-claim') {
       return (
