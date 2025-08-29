@@ -11,7 +11,7 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 ## ✨ Key Features
 
 - 🔒 **Secure Escrow System** - App hold funds safely until recipients claim them
-- 📧 **Email & Link Sharing** - Send payments via shareable links or email
+- 📧 **Link Sharing** - Send payments via shareable links
 - 🛡️ **Temporary Account Security** - Unique authorization credentials for each transfer
 - 🔐 **Hash-Based Protection** - Database breaches cannot expose claim credentials
 - 💸 **Fee Coverage** - Optional transaction fee coverage for seamless recipient experience
@@ -28,13 +28,12 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 ### Backend
 - **Runtime**: Node.js with Express.js framework
 - **Database**: MongoDB for metadata and transfer tracking
-- **API**: RESTful endpoints
 
 ### Blockchain
 - **Platform**: Algorand blockchain
 - **SDK**: Algosdk 3.4.0 JavaScript
 - **Smart Contracts**: Custom TEAL programs for escrow functionality
-- specific blockchain scripts: atomic-deploy-email-escrow.js, claimandclean.js, teal-programs.js 
+- **Specific blockchain scripts backend**: atomic-deploy-email-escrow.js, claimandclean.js, teal-programs.js 
 
 
 ## 📖 Usage
@@ -48,24 +47,27 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 ## 🛠️ Development Status
 
 ### ✅ Completed
-- escrow smart contract functionality
+- Escrow smart contract functionality
 - Frontend wallet integration
 - Link generation and sharing system
 - Database schema and API endpoints
+- Simple Referral Program
+- Fee coverage included directly in escrow App
 
 ### 🚧 In Progress
-- protection against loss of statemanagement (edge cases on mobile) - without sacrificying security
-- possible fee coverage included in App, to enable reclaim
+- Protection against loss of statemanagement (edge cases on mobile)
+- Claim page edge cases handling
 
 ### 📋 Upcoming
-- more ASAs
+- Cleanup scripts for better organization 
 - Batch payment functionality
-- Analytics dashboard
+- Much more
 
 ## 🐛 Known Issues
 
-- MCP scripts require updating to latest version
-- Some edge cases in error handling need refinement
+- MCP scripts are outdated 
+- Email send code is outdated 
+- Some redundant endpoints
 
 ## 📄 License
 
