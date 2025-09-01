@@ -415,20 +415,25 @@ button[class*="WalletButton"]:active {
   animation: bounce-in 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-/* Smooth slide-in for step transitions */
-@keyframes slide-in {
+/* Hourglass spinner animation */
+@keyframes hourglass {
   0% {
-    transform: translateY(-10px);
-    opacity: 0;
+    transform: rotate(0deg);
+    border-radius: 0;
+  }
+  50% {
+    transform: rotate(180deg);
+    border-radius: 50%;
   }
   100% {
-    transform: translateY(0);
-    opacity: 1;
+    transform: rotate(360deg);
+    border-radius: 0;
   }
 }
 
-.animate-slide-in {
-  animation: slide-in 0.3s ease-out;
+.hourglass-spinner {
+  background: linear-gradient(45deg, transparent 40%, #a855f7 40%, #a855f7 60%, transparent 60%);
+  animation: hourglass 1.5s ease-in-out infinite;
 }
 
 [data-logo-transition="true"] {
