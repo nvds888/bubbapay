@@ -22,15 +22,17 @@ function Navbar({ hideWalletConnection = false }) {
                   alt="Bubbapay Logo"
                   className="w-7 h-7 rounded-lg object-cover group-hover:scale-110 transition-transform duration-200"
                 />
-                {/* Keep the bubbapay text (assuming it's here, if not, keep as is) */}
-                <div className="flex items-center space-x-1">
-                  <span className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-200">
-                    Bubba<span className="gradient-text">Pay</span>
-                  </span>
-                  <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200 rounded">
-                    Beta
-                  </span>
-                </div>
+                <div className="flex flex-col">
+  <div className="flex items-center space-x-1">
+    <span className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-200">
+      Bubba<span className="gradient-text">Pay</span>
+    </span>
+    <span className="px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200 rounded">
+      Beta
+    </span>
+  </div>
+  <span className="text-xs text-gray-500 -mt-0.5">Send crypto to anyone with just a link</span>
+</div>
               </div>
             </Link>
             

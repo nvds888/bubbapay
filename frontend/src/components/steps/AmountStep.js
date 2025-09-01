@@ -189,7 +189,6 @@ if (assetBalance !== null) {
       <span className="text-purple-700 text-sm font-medium">{selectedAssetInfo?.symbol || 'Asset'}</span>
     </div>
   </div>
-  <p className="text-gray-600 text-sm">Send crypto to anyone with just a link</p>
 </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
