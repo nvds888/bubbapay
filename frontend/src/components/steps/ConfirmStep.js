@@ -115,12 +115,12 @@ function ConfirmStep({
       {/* Compact header */}
 <div className="text-center mb-6">
 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3">
-  <img
-    src="/bubbapay.jpg"
-    alt="Bubbapay Logo"
-    className="w-12 h-12 rounded-lg object-cover animate-bounce-in"
-    id="bubbapay-logo-destination"
-  />
+<img
+  src="/bubbapay.jpg"
+  alt="Bubbapay Logo"
+  className="w-12 h-12 rounded-lg object-cover animate-slide-in"
+  id="bubbapay-logo-destination"
+/>
 </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
     {recoveryMode ? 'Complete Link Creation' : 'Finalise Your Claim Link'}

@@ -178,7 +178,7 @@ if (assetBalance !== null) {
     <img
   src="/bubbapay.jpg"
   alt="Bubbapay Logo"
-  className="w-12 h-12 rounded-lg object-cover group-hover:scale-110 transition-all duration-500"
+  className="w-12 h-12 rounded-lg object-cover group-hover:scale-110 transition-all duration-500 animate-bounce-in"
   data-logo-transition="true"
   id="bubbapay-logo-source"
 />

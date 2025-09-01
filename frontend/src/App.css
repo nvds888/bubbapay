@@ -393,6 +393,7 @@ button[class*="WalletButton"]:active {
   -webkit-backdrop-filter: none !important;
 }
 
+/* Existing bounce-in for initial page loads */
 @keyframes bounce-in {
   0% {
     transform: scale(0.3) rotate(-10deg);
@@ -414,7 +415,22 @@ button[class*="WalletButton"]:active {
   animation: bounce-in 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-/* For smoother page transitions */
+/* Smooth slide-in for step transitions */
+@keyframes slide-in {
+  0% {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
 [data-logo-transition="true"] {
   transform-origin: center;
 }
