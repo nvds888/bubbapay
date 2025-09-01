@@ -219,6 +219,13 @@ const SUPPORTED_ASSETS = {
     symbol: 'ORA',
     decimals: 8,
     description: 'Orange is a "mineable" meme'
+  },
+  2582590415: {
+    id: 2582590415,
+    name: 'Meep',
+    symbol: 'MEEP',
+    decimals: 6,
+    description: 'A meme coin created by Shep NFT&apos;s Gary Jules'
   }
 };
 

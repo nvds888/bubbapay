@@ -90,6 +90,15 @@ const SUPPORTED_ASSETS = {
       decimals: 8,
       isDefault: false,
       description: 'Orange is a "mineable" meme'
+    },
+    2582590415: {
+      id: 2582590415,
+      name: 'Meep',
+      unitName: 'MEEP',
+      symbol: 'Meep',
+      decimals: 6,
+      isDefault: false,
+      description: 'A meme coin created by Shep NFT&apos;s GaryJules'
     }
     // more assets here 
   };
