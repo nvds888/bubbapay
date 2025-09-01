@@ -176,10 +176,12 @@ if (assetBalance !== null) {
   <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3" 
        style={{}}>
     <img
-                  src="/bubbapay.jpg"
-                  alt="Bubbapay Logo"
-                  className="w-12 h-12 rounded-lg object-cover group-hover:scale-110 transition-transform duration-200"
-                />
+  src="/bubbapay.jpg"
+  alt="Bubbapay Logo"
+  className="w-12 h-12 rounded-lg object-cover group-hover:scale-110 transition-all duration-500"
+  data-logo-transition="true"
+  id="bubbapay-logo-source"
+/>
   </div>
   <h2 className="text-xl font-semibold text-gray-900 mb-1">
     Create Claim Link
