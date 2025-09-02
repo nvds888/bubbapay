@@ -748,9 +748,6 @@ if (claimStatus === 'insufficient-algo-for-optin') {
           <p className="text-gray-600 mb-2">
             Get your <span className="text-blue-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> in one txn
           </p>
-          <p className="text-gray-500 text-sm mb-6">
-            This will opt you into {assetInfo?.name || 'the asset'} and claim your crypto
-          </p>
           
           {escrowDetails?.payRecipientFees && (
   <div className="mb-4 card card-compact">
