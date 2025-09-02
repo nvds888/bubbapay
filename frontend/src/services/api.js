@@ -225,7 +225,7 @@ const SUPPORTED_ASSETS = {
     name: 'Meep',
     symbol: 'MEEP',
     decimals: 6,
-    description: 'A meme coin created by Shep NFT&apos;s Gary Jules'
+    description: 'A meme coin created by Shep NFTs Gary Jules'
   }
 };
 

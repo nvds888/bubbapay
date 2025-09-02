@@ -809,6 +809,9 @@ function TransactionsPage() {
       >
         Go to Home for Cleanup
       </Link>
+    ) : transaction.status === 'UNFUNDED_CLEANED_UP' ? (
+      // Already cleaned up unfunded app 
+      <span className="text-gray-500 text-sm">Cleaned Up</span>
     ) : !transaction.claimed && !transaction.reclaimed ? (
       <button
         onClick={() => handleReclaim(transaction.appId)}

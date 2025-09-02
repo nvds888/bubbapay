@@ -98,7 +98,7 @@ const SUPPORTED_ASSETS = {
       symbol: 'Meep',
       decimals: 6,
       isDefault: false,
-      description: 'A meme coin created by Shep NFT&apos;s GaryJules'
+      description: 'A meme coin created by Shep NFTs GaryJules'
     }
     // more assets here 
   };
