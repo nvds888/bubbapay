@@ -60,9 +60,10 @@ function AmountStep({
     // Check ALGO availability
     if (algoAvailability && !algoAvailability.hasSufficientAlgo) {
       const totalCost = algoAvailability.requiredForTransaction;
-      const deficit = algoAvailability.shortfall || 0;
       
-      let errorMessage = `Transaction requires ${totalCost} ALGO total. You need ${deficit} more ALGO.`;
+      const shortage = parseFloat(algoAvailability.requiredForTransaction) - parseFloat(algoAvailability.availableBalance);
+const displayShortage = Math.ceil(shortage * 100) / 100;
+let errorMessage = `Transaction requires ${algoAvailability.requiredForTransaction} ALGO total. You need ~${displayShortage.toFixed(2)} more ALGO.`;
       
       if (safeFormData.payRecipientFees && algoAvailability.breakdown?.recipientFunding === "0.300000") {
         const costWithoutRecipientFees = (parseFloat(totalCost) - 0.301).toFixed(6);
@@ -128,7 +129,9 @@ const getTransactionStatus = () => {
   if (balanceError || algoError) return { type: 'error', message: balanceError || algoError };
   
   if (algoAvailability && !algoAvailability.hasSufficientAlgo) {
-    return { type: 'error', message: `Need ${algoAvailability.shortfall} more ALGO` };
+    const shortage = parseFloat(algoAvailability.requiredForTransaction) - parseFloat(algoAvailability.availableBalance);
+const displayShortage = Math.ceil(shortage * 100) / 100;
+return { type: 'error', message: `Need ~${displayShortage.toFixed(2)} more ALGO` };
   }
   
   if (algoAvailability && !algoAvailability.canCompleteGroupTxns) {

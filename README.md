@@ -55,7 +55,7 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 - Fee coverage included directly in escrow App
 
 ### 🚧 In Progress
-- Protection against loss of statemanagement (edge cases on mobile)
+- Protection against loss of statemanagement (edge cases on mobile). 
 - Claim page edge cases handling
 
 ### 📋 Upcoming
