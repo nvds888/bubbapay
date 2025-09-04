@@ -370,7 +370,7 @@ function ConfirmStep({
                 <h3 className="font-medium text-amber-800">App Created But Session Lost</h3>
                 <p className="text-amber-700 text-sm mt-1">
                   Your app was created but the claim link was lost due to a connection issue. 
-                  You can either fund it anyway (no claim link) or clean up and start fresh.
+                  You can clean up and start fresh.
                 </p>
               </div>
             </div>

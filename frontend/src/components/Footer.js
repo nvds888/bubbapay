@@ -53,8 +53,8 @@ function Footer() {
               <h3 className="text-gray-900 font-medium mb-3 text-sm">Support</h3>
               <ul className="space-y-2 text-sm">
                 <li><a href="#" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Contact Us</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Privacy Policy</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Terms of Service</a></li>
+                <li><Link to="/terms" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Privacy Policy</Link></li>
+                <li><Link to="/terms" className="text-gray-600 hover:text-gray-900 transition-colors duration-200">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
