@@ -81,29 +81,24 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
   const finalMinBalance = minBalanceAfterAppCreation; // Doesn't change during group txns
   const finalAvailableBalance = Math.max(0, finalBalance - finalMinBalance);
   
-  // Check if we can complete each phase
+  // Check if we can complete each phase (EXACT calculations)
   const canCreateApp = currentAvailableBalance >= appCreationFee;
   const canCompleteGroupTxns = availableAfterAppCreation >= groupTxnCost;
   const finalBalancePositive = finalBalance >= finalMinBalance;
   
-  // Overall availability
-  const hasSufficientAlgo = canCreateApp && canCompleteGroupTxns && finalBalancePositive;
-  
-  // Calculate shortfall more accurately
-  let shortfall = 0;
-  if (!hasSufficientAlgo) {
-    if (!canCreateApp) {
-      shortfall = appCreationFee - currentAvailableBalance;
-    } else if (!canCompleteGroupTxns) {
-      shortfall = groupTxnCost - availableAfterAppCreation;
-    } else if (!finalBalancePositive) {
-      shortfall = finalMinBalance - finalBalance;
-    }
-  }
-  
-  // Total required (for UI display) - add 10% buffer to be extra safe
+  // Calculate total required and add buffer
   const totalRequired = totalFees + totalAlgoSentOut + TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE;
   const totalRequiredWithBuffer = Math.ceil(totalRequired * 1.05);
+  
+  // FIXED: Use buffered amount for hasSufficientAlgo to match UI display
+  const hasSufficientAlgoExact = canCreateApp && canCompleteGroupTxns && finalBalancePositive;
+  const hasSufficientAlgoWithBuffer = currentAvailableBalance >= totalRequiredWithBuffer;
+  
+  // Calculate shortfall based on buffered amount (for consistency)
+  let shortfall = 0;
+  if (!hasSufficientAlgoWithBuffer) {
+    shortfall = totalRequiredWithBuffer - currentAvailableBalance;
+  }
   
   return {
     address: accountInfo.address,
@@ -111,23 +106,24 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
     currentMinBalance: microAlgoToAlgo(currentMinBalance),
     availableBalance: microAlgoToAlgo(currentAvailableBalance),
     requiredForTransaction: microAlgoToAlgo(totalRequiredWithBuffer),
-    hasSufficientAlgo,
-    canCompleteGroupTxns,
+    // FIXED: Use buffered calculation to match what user sees
+    hasSufficientAlgo: hasSufficientAlgoWithBuffer,
+    canCompleteGroupTxns: hasSufficientAlgoWithBuffer, // Updated for consistency
     shortfall: microAlgoToAlgo(shortfall),
-    groupTxnShortfall: microAlgoToAlgo(canCompleteGroupTxns ? 0 : (groupTxnCost - availableAfterAppCreation)),
+    groupTxnShortfall: microAlgoToAlgo(hasSufficientAlgoWithBuffer ? 0 : shortfall),
     breakdown: {
       // What you get back after cleanup
       recoverable: {
-        appReserve: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE), // 0.1 ALGO
-        appFunding: microAlgoToAlgo(TRANSACTION_COSTS.CONTRACT_FUNDING), // 0.21 ALGO
-        total: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE + TRANSACTION_COSTS.CONTRACT_FUNDING) // 0.31 ALGO
+        appReserve: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE),
+        appFunding: microAlgoToAlgo(TRANSACTION_COSTS.CONTRACT_FUNDING),
+        total: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE + TRANSACTION_COSTS.CONTRACT_FUNDING)
       },
       
       // Real costs (not recoverable)
       realCosts: {
-        platformFee: microAlgoToAlgo(TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING), // 0.105 ALGO
-        transactionFees: microAlgoToAlgo(totalFees), // ~0.007 ALGO
-        recipientFees: microAlgoToAlgo(payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0), // 0.21 ALGO if enabled
+        platformFee: microAlgoToAlgo(TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING),
+        transactionFees: microAlgoToAlgo(totalFees),
+        recipientFees: microAlgoToAlgo(payRecipientFees ? TRANSACTION_COSTS.RECIPIENT_FEE_FUNDING : 0),
         total: microAlgoToAlgo(
           TRANSACTION_COSTS.TEMP_ACCOUNT_FUNDING + 
           totalFees + 
@@ -155,10 +151,13 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
       finalMinBalance: microAlgoToAlgo(finalMinBalance),
       finalAvailable: microAlgoToAlgo(finalAvailableBalance),
       
-      // Checks
-      canCreateApp,
-      canCompleteGroupTxns,
-      finalBalancePositive
+      // Checks (keep exact calculations for debugging)
+      canCreateAppExact: canCreateApp,
+      canCompleteGroupTxnsExact: canCompleteGroupTxns,
+      finalBalancePositiveExact: finalBalancePositive,
+      hasSufficientAlgoExact: hasSufficientAlgoExact,
+      // New buffered checks
+      hasSufficientAlgoWithBuffer: hasSufficientAlgoWithBuffer
     },
     debug: {
       payRecipientFees,
@@ -166,9 +165,10 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
       appCreationFee: microAlgoToAlgo(appCreationFee),
       totalAlgoSentOut: microAlgoToAlgo(totalAlgoSentOut),
       totalFees: microAlgoToAlgo(totalFees),
-      shortfallReason: !canCreateApp ? 'app_creation' : 
-                      !canCompleteGroupTxns ? 'group_txns' : 
-                      !finalBalancePositive ? 'final_balance' : 'none'
+      totalRequired: microAlgoToAlgo(totalRequired),
+      totalRequiredWithBuffer: microAlgoToAlgo(totalRequiredWithBuffer),
+      shortfallReason: !hasSufficientAlgoWithBuffer ? 'insufficient_with_buffer' : 'none',
+      bufferAmount: microAlgoToAlgo(totalRequiredWithBuffer - totalRequired)
     }
   };
 }
