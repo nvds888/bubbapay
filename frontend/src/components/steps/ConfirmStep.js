@@ -166,13 +166,6 @@ function ConfirmStep({
       <span className="font-semibold text-lg">{formatAmount(formData.amount)} {selectedAssetInfo?.symbol || 'tokens'}</span>
     </div>
     
-    <div className="flex justify-between items-center">
-      <span className="text-gray-600">Recipient:</span>
-      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors">
-        Shareable Claim Link
-      </span>
-    </div>
-    
     {formData.payRecipientFees && (
       <div className="flex justify-between items-center">
         <span className="text-gray-600">Fee Coverage:</span>
@@ -192,6 +185,12 @@ function ConfirmStep({
         {/* Expanded transaction details */}
 {showTransactionDetails && (
   <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm text-gray-600">
+    <div className="flex justify-between">
+      <span>Recipient:</span>
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors">
+        Shareable Claim Link
+      </span>
+    </div>
     <div className="flex justify-between">
       <span>Sender Address:</span>
       <span className="font-mono text-xs text-purple-600">
