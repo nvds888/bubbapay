@@ -186,15 +186,15 @@ function ConfirmStep({
 {showTransactionDetails && (
   <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm text-gray-600">
     <div className="flex justify-between">
-      <span>Recipient:</span>
-      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors">
-        Shareable Claim Link
-      </span>
-    </div>
-    <div className="flex justify-between">
       <span>Sender Address:</span>
       <span className="font-mono text-xs text-purple-600">
         {isWalletConnected ? formatAddress(effectiveAccountAddress) : 'Connect wallet'}
+      </span>
+    </div>
+    <div className="flex justify-between">
+      <span>Recipient:</span>
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors">
+        Shareable Claim Link
       </span>
     </div>
     <div className="flex justify-between">
