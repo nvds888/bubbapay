@@ -1,6 +1,6 @@
 # 💰 BubbaPay
 
-> **⚠️ Currently in Development** - This is still a working document
+> ** Currently in Development** 
 
 Send Algorand Standard Assets (ASAs) instantly via shareable URLs. Fast, secure, and user-friendly payments that make crypto transfers as easy as sharing a link.
 
@@ -53,21 +53,21 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 - Database schema and API endpoints
 - Simple Referral Program
 - Fee coverage included directly in escrow App
+- Recovery system to delete App when claimURL is lost 
 
 ### 🚧 In Progress
-- Protection against loss of statemanagement (edge cases on mobile). 
-- Claim page edge cases handling
+- Proper instructions for edge case scenarios
 
 ### 📋 Upcoming
-- Cleanup scripts for better organization 
+- Cleanup scripts for better organization
 - Batch payment functionality
-- Much more
+- REST APIs to use functionality by external apps
 
 ## 🐛 Known Issues
 
 - MCP scripts are outdated 
 - Email send code is outdated 
-- Some redundant endpoints
+- Some redundant endpoints and helper functions
 
 ## 📄 License
 

@@ -61,7 +61,7 @@ function SendFlow() {
   // Use internal account address for balance and ALGO checks
   const effectiveAccountAddress = internalAccountAddress || activeAddress;
   
-  // NEW: Check for incomplete escrows on wallet connection
+  // Check for incomplete escrows on wallet connection
   useEffect(() => {
     const checkForIncompleteEscrows = async () => {
       if (!effectiveAccountAddress || mcpSessionData) return;
@@ -84,7 +84,7 @@ function SendFlow() {
     checkForIncompleteEscrows();
   }, [effectiveAccountAddress, mcpSessionData]);
   
-  // NEW: Recovery function
+  // Recovery function
   const recoverFromEscrow = async (escrow) => {
     try {
       setRecoveryMode(true);
@@ -266,7 +266,7 @@ function SendFlow() {
       return mcpTxnData;
     }
     
-    // NEW: If we're in recovery mode and have current escrow, skip generation
+    // If we're in recovery mode and have current escrow, skip generation
     if (recoveryMode && currentEscrow && txnData) {
       return txnData;
     }
@@ -368,7 +368,7 @@ function SendFlow() {
     } catch (error) {
       console.error('Error signing transaction:', error);
       
-      // NEW: Check if app was actually created despite the error
+      // Check if app was actually created despite the error
       await checkForUnfundedApp();
       
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit transaction');
@@ -464,7 +464,7 @@ function SendFlow() {
       console.error('Error signing group transactions:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit group transactions');
       
-      // NEW: Don't clear transaction data in recovery mode
+      // Don't clear transaction data in recovery mode
       if (!recoveryMode) {
         setTxnData(null);
       }

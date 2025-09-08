@@ -183,7 +183,7 @@ router.post('/submit-app-creation', async (req, res) => {
       assetId: assetId || getDefaultAssetId()
     });
 
-    // Step 5: SAVE TO DATABASE IMMEDIATELY (NEW!)
+    // Step 5: SAVE TO DATABASE 
     const db = req.app.locals.db;
     const escrowCollection = db.collection('escrows');
     
@@ -205,7 +205,7 @@ router.post('/submit-app-creation', async (req, res) => {
       amount: parseFloat(amount),
       createdAt: new Date(),
       claimed: false,
-      funded: false, // KEY: App created but not funded yet
+      funded: false, // App created but not funded yet
       senderAddress,
       payRecipientFees: !!payRecipientFees,
       cleanedUp: false,
@@ -215,7 +215,6 @@ router.post('/submit-app-creation', async (req, res) => {
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: {
         address: tempAccount.address,
-        // Don't store private key in DB for security
       },
       // Add status tracking
       status: 'APP_CREATED_AWAITING_FUNDING'
@@ -223,14 +222,14 @@ router.post('/submit-app-creation', async (req, res) => {
     
     const result = await escrowCollection.insertOne(escrowRecord);
 
-    // Step 6: Return data including escrow ID
+    // Return data 
     res.status(200).json({
       appId: Number(appId),
-      escrowId: result.insertedId, // NEW: Return escrow ID
+      escrowId: result.insertedId, 
       appAddress: postAppTxns.appAddress,
       groupTransactions: postAppTxns.groupTransactions,
       tempAccount: postAppTxns.tempAccount,
-      claimUrl: claimUrl // NEW: Return claim URL early
+      claimUrl: claimUrl 
     });
 
   } catch (error) {
