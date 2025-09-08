@@ -6,17 +6,9 @@ function TermsOfService() {
       {/* Header */}
       <div className="text-center mb-12">
         <div className="flex items-center justify-center space-x-2 mb-4">
-          <img
-            src="/bubbapay.jpg"
-            alt="Bubbapay Logo"
-            className="w-8 h-8 rounded-lg object-cover"
-          />
-          <h1 className="text-3xl font-bold text-gray-900">
-            Bubba<span className="bg-gradient-to-r from-purple-500 to-purple-500 bg-clip-text text-transparent">Pay</span>
-          </h1>
         </div>
         <h2 className="text-2xl font-semibold text-gray-800 mb-2">Terms of Service & Privacy Policy</h2>
-        <p className="text-gray-600">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <p className="text-gray-600">Last updated: September 7, 2025</p>
       </div>
 
       <div className="prose prose-lg max-w-none">
@@ -143,7 +135,7 @@ function TermsOfService() {
               <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
               </svg>
-              <span><strong>Twitter/X:</strong> Contact us via our official social media</span>
+              <span><strong>Twitter/X:</strong> @BubbaPay_</span>
             </div>
           </div>
 
