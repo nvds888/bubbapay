@@ -327,7 +327,7 @@ if (assetBalance !== null) {
                   <span className="font-medium">{algoAvailability.availableBalance} ALGO</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">ALGO Required:</span>
+                  <span className="text-gray-600">ALGO Required (including buffer):</span>
                   <span className="font-medium">{algoAvailability.requiredForTransaction} ALGO</span>
                 </div>
                 
