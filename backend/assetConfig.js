@@ -99,6 +99,15 @@ const SUPPORTED_ASSETS = {
       decimals: 6,
       isDefault: false,
       description: 'A meme coin created by Shep NFTs GaryJules'
+    },
+    2200000000: {
+      id: 2200000000,
+      name: 'Tinyman',
+      unitName: 'TINY',
+      symbol: 'TINY',
+      decimals: 6,
+      isDefault: false,
+      description: 'Tinyman is a leading DEX on Algorand'
     }
     // more assets here 
   };
