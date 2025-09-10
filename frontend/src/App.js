@@ -96,19 +96,11 @@ function MainAppWithReferrals({
   referralProcessed, 
   setReferralProcessed, 
   showReferralNotification, 
-  setShowReferralNotification 
+  setShowReferralNotification,
+  showFirstTimeModal,
+  setShowFirstTimeModal 
 }) {
   const { activeAddress } = useWallet();
-  
-  // First-time modal state
-  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
-
-  // Check if first-time modal should be shown
-  useEffect(() => {
-    if (shouldShowFirstTimeModal()) {
-      setShowFirstTimeModal(true);
-    }
-  }, []);
 
   // Handle first-time modal acceptance
   const handleFirstTimeAccept = () => {
@@ -214,10 +206,23 @@ function MainAppWithReferrals({
 function AppContent() {
   const location = useLocation();
   const isClaimPage = location.pathname === '/claim';
+  const isTermsPage = location.pathname === '/terms';
   
   // Referral state for non-claim pages
   const [referralProcessed, setReferralProcessed] = useState(false);
   const [showReferralNotification, setShowReferralNotification] = useState(false);
+  
+  // First-time modal state
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+
+  // Check if first-time modal should be shown (only on main pages, not claim or terms)
+  useEffect(() => {
+    if (!isClaimPage && !isTermsPage && shouldShowFirstTimeModal()) {
+      setShowFirstTimeModal(true);
+    } else {
+      setShowFirstTimeModal(false);
+    }
+  }, [isClaimPage, isTermsPage]);
   
   // Extract and save referral code when app loads or location changes
   useEffect(() => {
@@ -244,6 +249,8 @@ function AppContent() {
           setReferralProcessed={setReferralProcessed}
           showReferralNotification={showReferralNotification}
           setShowReferralNotification={setShowReferralNotification}
+          showFirstTimeModal={showFirstTimeModal}
+          setShowFirstTimeModal={setShowFirstTimeModal}
         />
       </WalletUIProvider>
     </WalletProvider>
