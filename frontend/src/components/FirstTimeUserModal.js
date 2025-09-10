@@ -45,8 +45,8 @@ function FirstTimeUserModal({ isOpen, onAccept, onClose }) {
               <div className="text-sm">
                 <p className="font-medium text-amber-800 mb-1">Mobile Users</p>
                 <p className="text-amber-700">
-                  Creating links may fail if your browser session is interrupted during wallet signing. 
-                  Use desktop for best results.
+                  Creating links may fail if your browser session is unmounted during the signing process. 
+                  To prevent this, make sure you have a fresh connection, or use desktop for the best experience.
                 </p>
               </div>
             </div>
@@ -61,7 +61,7 @@ function FirstTimeUserModal({ isOpen, onAccept, onClose }) {
               <div className="text-sm">
                 <p className="font-medium text-blue-800 mb-1">If Something Goes Wrong</p>
                 <p className="text-blue-700">
-                  Max risk: ~0.1 ALGO fee. You can always reclaim funds or cleanup failed transactions.
+                  You will lose the platform fee - even if you didn't get a claim link. Your funds can always be reclaimed. For more information, please see the Terms of Service.
                 </p>
               </div>
             </div>
