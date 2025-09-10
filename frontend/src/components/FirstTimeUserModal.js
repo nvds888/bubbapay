@@ -61,7 +61,7 @@ function FirstTimeUserModal({ isOpen, onAccept, onClose }) {
               <div className="text-sm">
                 <p className="font-medium text-blue-800 mb-1">If Something Goes Wrong</p>
                 <p className="text-blue-700">
-                  You will lose the platform fee - even if you didn't get a claim link. Your funds can always be reclaimed. For more information, please see the Terms of Service.
+                  You could lose the platform fee - even if you didn't get a claim link. Your funds can always be reclaimed. For more information, please see the Docs & Terms of Service.
                 </p>
               </div>
             </div>
