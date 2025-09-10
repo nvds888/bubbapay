@@ -17,6 +17,7 @@ import TransactionsPage from './components/TransactionsPage';
 import SuccessPage from './components/SuccessPage';
 import TermsOfService from './components/TermsOfService';
 import DocumentationPage from './components/DocumentationPage';
+import FirstTimeUserModal from './components/FirstTimeUserModal';
 import { handleReferralFromURL, extractAndSaveReferralFromURL } from './services/referralService';
 import '@txnlab/use-wallet-ui-react/dist/style.css';
 import './App.css';
@@ -31,6 +32,33 @@ const walletManager = new WalletManager({
   ],
   defaultNetwork: NetworkId.MAINNET, 
 });
+
+// First-time modal localStorage constants
+const FIRST_TIME_STORAGE_KEY = 'bubbapay_first_time_accepted';
+const FIRST_TIME_EXPIRY_DAYS = 7;
+
+// Helper functions for first-time modal
+const shouldShowFirstTimeModal = () => {
+  const stored = localStorage.getItem(FIRST_TIME_STORAGE_KEY);
+  if (!stored) return true;
+  
+  try {
+    const { timestamp } = JSON.parse(stored);
+    const now = Date.now();
+    const daysPassed = (now - timestamp) / (1000 * 60 * 60 * 24);
+    
+    return daysPassed >= FIRST_TIME_EXPIRY_DAYS;
+  } catch {
+    return true;
+  }
+};
+
+const markFirstTimeAccepted = () => {
+  localStorage.setItem(FIRST_TIME_STORAGE_KEY, JSON.stringify({
+    accepted: true,
+    timestamp: Date.now()
+  }));
+};
 
 // Referral notification component
 function ReferralNotification({ show, onClose }) {
@@ -63,7 +91,7 @@ function ReferralNotification({ show, onClose }) {
   );
 }
 
-// Main app component with referral handling
+// Main app component with referral handling and first-time modal
 function MainAppWithReferrals({ 
   referralProcessed, 
   setReferralProcessed, 
@@ -71,6 +99,27 @@ function MainAppWithReferrals({
   setShowReferralNotification 
 }) {
   const { activeAddress } = useWallet();
+  
+  // First-time modal state
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+
+  // Check if first-time modal should be shown
+  useEffect(() => {
+    if (shouldShowFirstTimeModal()) {
+      setShowFirstTimeModal(true);
+    }
+  }, []);
+
+  // Handle first-time modal acceptance
+  const handleFirstTimeAccept = () => {
+    markFirstTimeAccepted();
+    setShowFirstTimeModal(false);
+  };
+
+  // Handle first-time modal close (without accepting)
+  const handleFirstTimeClose = () => {
+    setShowFirstTimeModal(false);
+  };
 
   // Handle referral linking when wallet connects
   useEffect(() => {
@@ -107,6 +156,13 @@ function MainAppWithReferrals({
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      {/* First-time user modal */}
+      <FirstTimeUserModal
+        isOpen={showFirstTimeModal}
+        onAccept={handleFirstTimeAccept}
+        onClose={handleFirstTimeClose}
+      />
+
       {/* Referral notification */}
       <ReferralNotification 
         show={showReferralNotification} 
@@ -179,7 +235,7 @@ function AppContent() {
     );
   }
   
-  // All other pages get normal wallet functionality with referral handling
+  // All other pages get normal wallet functionality with referral handling and first-time modal
   return (
     <WalletProvider manager={walletManager}>
       <WalletUIProvider>
