@@ -169,6 +169,75 @@ function DocumentationPage() {
             </section>
 
             <section>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">Referral Program</h2>
+              <p>
+                BubbaPay's referral program lets you earn ALGO by introducing others to the platform. When someone you refer creates transfers, you receive 100% of the platform fees instantly.
+              </p>
+
+              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">How Referrals Work</h3>
+              
+              <div className="card card-compact bg-gray-50 font-mono text-sm my-6 overflow-x-auto">
+                <pre className="text-gray-700">
+{`Referral Flow:
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ You Share Your  │───▶│ Friend Connects │───▶│ You Earn From   │
+│ Referral Link   │    │ Wallet & Gets   │    │ Their Platform  │
+│                 │    │ Linked to You   │    │ Fees Forever    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+   Generate Once          One-Time Link Step       Earn on Every Claim`}
+                </pre>
+              </div>
+
+              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Earning Structure</h3>
+              <p>
+                When someone claims a transfer created by your referral, you receive 0.105 ALGO (the full platform fee) instantly to your wallet. This happens automatically during the claim transaction - no manual collection needed.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+                <div className="card card-compact bg-gray-50">
+                  <h4 className="text-green-700 font-semibold mb-2">For Referrers</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• Earn 0.105 ALGO per claim from referrals</li>
+                    <li>• Payments are instant and automatic</li>
+                    <li>• Track earnings in your transactions page</li>
+                    <li>• No limits on number of referrals</li>
+                  </ul>
+                </div>
+                
+                <div className="card card-compact bg-gray-50">
+                  <h4 className="text-blue-700 font-semibold mb-2">For Referred Users</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• No extra costs or fees</li>
+                    <li>• Same great BubbaPay experience</li>
+                    <li>• Support someone who introduced you</li>
+                    <li>• Can create their own referral links</li>
+                  </ul>
+                </div>
+              </div>
+
+              <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Getting Started</h3>
+              <p>
+                Visit your transactions page to generate your unique referral link. Share it with friends, on social media, or anywhere you want to introduce people to BubbaPay. Once someone connects their wallet through your link, they're permanently linked as your referral.
+              </p>
+
+              <div className="status-success my-6">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <div className="text-sm">
+                    <p className="font-medium text-green-800">Win-Win System:</p>
+                    <p className="text-green-700 mt-1">
+                      Referrals are permanent and exclusive - each wallet can only be referred once, ensuring fair attribution. The platform fee would exist anyway, so this system simply redirects it to community members who help grow the platform.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Security Model</h2>
               <p>
                 BubbaPay uses multiple layers of security to protect your transfers:
