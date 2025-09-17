@@ -95,6 +95,27 @@ router.post('/generate-transactions', async (req, res) => {
     if (!isAssetSupported(targetAssetId)) {
       return res.status(400).json({ error: 'Unsupported asset selected' });
     }
+
+    // Check for existing unfunded apps
+    const db = req.app.locals.db;
+    const escrowCollection = db.collection('escrows');
+    
+    const existingUnfundedApps = await escrowCollection.find({
+      senderAddress,
+      funded: false,
+      status: 'APP_CREATED_AWAITING_FUNDING'
+    }).toArray();
+    
+    if (existingUnfundedApps.length > 0) {
+      return res.status(409).json({
+        error: 'You have unfunded apps that need to be cleaned up first. Please refresh the page.',
+        unfundedApps: existingUnfundedApps.map(app => ({
+          appId: app.appId,
+          createdAt: app.createdAt,
+          amount: app.amount
+        }))
+      });
+    }
     
     // Generate the transactions
     const txnData = await generateUnsignedDeployTransactions({
