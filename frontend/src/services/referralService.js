@@ -99,28 +99,32 @@ export const getReferralStats = async (walletAddress) => {
   }
 };
 
-// Handle referral linking when wallet connects
 export const handleReferralFromURL = async (walletAddress) => {
   try {
-    // First try to get referral code from URL
     let referralCode = new URLSearchParams(window.location.search).get('ref');
     
-    // If no referral code in URL, try to get from storage
     if (!referralCode) {
       referralCode = getReferralFromStorage();
     }
     
+    console.log('🔍 Referral Debug:', {
+      walletAddress,
+      referralCode,
+      urlParams: window.location.search,
+      storageCode: getReferralFromStorage()
+    });
+    
     if (!referralCode || !walletAddress) {
+      console.log('❌ Missing referral code or wallet');
       return { linked: false, reason: 'No referral code or wallet' };
     }
     
-    // Attempt to link referral
     const result = await linkReferral(walletAddress, referralCode);
     
-    // If successful, clear the referral from storage and clean URL
+    console.log('🔗 Referral Link Result:', result);
+    
     if (result.success) {
       clearReferralFromStorage();
-      
       if (window.history && window.history.replaceState) {
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
@@ -130,11 +134,11 @@ export const handleReferralFromURL = async (walletAddress) => {
     return { 
       linked: result.success, 
       referrer: result.referrerAddress,
-      message: result.message 
+      reason: result.message || result.error // Handle both message and error
     };
   } catch (error) {
-    console.error('Error handling referral from URL:', error);
-    return { linked: false, reason: error };
+    console.error('❌ Error handling referral from URL:', error);
+    return { linked: false, reason: error.message || error };
   }
 };
 
