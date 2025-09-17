@@ -570,12 +570,6 @@ function TransactionsPage() {
             </div>
             <h4 className="text-sm font-medium text-gray-900 mb-1">No referrals yet</h4>
             <p className="text-xs text-gray-500 mb-2">Share your referral link to start earning</p>
-            <button
-              onClick={handleCopyReferralLink}
-              className="btn-secondary text-xs px-3 py-1"
-            >
-              Copy Link
-            </button>
           </div>
         )}
       </div>

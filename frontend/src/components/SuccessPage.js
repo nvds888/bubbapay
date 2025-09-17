@@ -28,6 +28,10 @@ function SuccessPage() {
   const hasClaimError = location.state?.hasClaimError || 
                       (claimUrl && claimUrl.includes('undefined')) || 
                       !claimUrl;
+                       
+                      useEffect(() => {
+                        window.scrollTo(0, 0);
+                      }, []);
   
   // SECURITY: Browser History Protection - Clear sensitive data from history
   useEffect(() => {
