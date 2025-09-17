@@ -60,9 +60,9 @@ function DocumentationPage() {
                 </div>
                 
                 <div className="card card-compact bg-gray-50">
-                  <h4 className="text-green-700 font-semibold mb-2">🌍 Global Payments</h4>
+                  <h4 className="text-green-700 font-semibold mb-2">🌍 Giveaways</h4>
                   <p className="text-sm text-gray-600">
-                    Send USDC anywhere in the world instantly, 24/7, with minimal fees. Perfect for emergency funding or international payments.
+                    Send ASAs to anyone: just drop a claim link in their inbox and they can claim the tokens to their wallet.
                   </p>
                 </div>
                 
