@@ -54,12 +54,13 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 - Simple Referral Program
 - Fee coverage included directly in escrow App
 - Recovery system to delete App when claimURL is lost 
+- Better organisation of backend routes and utilities
+- Proper instructions for edge case scenarios (warnings and instructions)
 
 ### 🚧 In Progress
-- Proper instructions for edge case scenarios
+- 
 
 ### 📋 Upcoming
-- Cleanup scripts for better organization
 - Batch payment functionality
 - REST APIs to use functionality by external apps
 
@@ -68,6 +69,7 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 - MCP scripts are outdated 
 - Email send code is outdated 
 - Some redundant endpoints and helper functions
+- Loss of claim url when page unmounts during signing process - edge case on mobile
 
 ## 📄 License
 

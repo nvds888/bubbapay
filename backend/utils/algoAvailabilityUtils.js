@@ -90,7 +90,7 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
   const totalRequired = totalFees + totalAlgoSentOut + TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE;
   const totalRequiredWithBuffer = Math.ceil(totalRequired * 1.05);
   
-  // FIXED: Use buffered amount for hasSufficientAlgo to match UI display
+  // Use buffered amount for hasSufficientAlgo to match UI display
   const hasSufficientAlgoExact = canCreateApp && canCompleteGroupTxns && finalBalancePositive;
   const hasSufficientAlgoWithBuffer = currentAvailableBalance >= totalRequiredWithBuffer;
   
@@ -106,13 +106,11 @@ RECIPIENT_FEE_FUNDING: 210000,      // 0.21 ALGO - recipient fee coverage (if en
     currentMinBalance: microAlgoToAlgo(currentMinBalance),
     availableBalance: microAlgoToAlgo(currentAvailableBalance),
     requiredForTransaction: microAlgoToAlgo(totalRequiredWithBuffer),
-    // FIXED: Use buffered calculation to match what user sees
     hasSufficientAlgo: hasSufficientAlgoWithBuffer,
-    canCompleteGroupTxns: hasSufficientAlgoWithBuffer, // Updated for consistency
+    canCompleteGroupTxns: hasSufficientAlgoWithBuffer, 
     shortfall: microAlgoToAlgo(shortfall),
     groupTxnShortfall: microAlgoToAlgo(hasSufficientAlgoWithBuffer ? 0 : shortfall),
     breakdown: {
-      // What you get back after cleanup
       recoverable: {
         appReserve: microAlgoToAlgo(TRANSACTION_COSTS.APP_CREATION_MIN_BALANCE),
         appFunding: microAlgoToAlgo(TRANSACTION_COSTS.CONTRACT_FUNDING),

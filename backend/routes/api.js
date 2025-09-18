@@ -9,7 +9,7 @@ const {
   generateUnsignedDeployTransactions, 
   generatePostAppTransactions,
   generateReclaimTransaction,
-} = require('../atomic-deploy-email-escrow');
+} = require('../utils/transactions');
 const algosdk = require('algosdk');
 const { checkAlgoAvailabilityForEscrow } = require('../utils/algoAvailabilityUtils');
 const { getDefaultAssetId, getAssetInfo, isAssetSupported, toMicroUnits, fromMicroUnits } = require('../assetConfig');
@@ -313,7 +313,7 @@ router.post('/submit-group-transactions', async (req, res) => {
     // Get the app address
     const appAddress = algosdk.getApplicationAddress(parseInt(appId));
     
-    // UPDATE existing record instead of creating new one
+    // Update existing record instead of creating new one
     const db = req.app.locals.db;
     const escrowCollection = db.collection('escrows');
     
@@ -394,7 +394,7 @@ router.post('/submit-group-transactions', async (req, res) => {
   }
 });
 
-// Get escrow details - Updated to work with claim hash
+// Get escrow details 
 router.get('/escrow/:id', async (req, res) => {
   try {
     const db = req.app.locals.db;
@@ -460,7 +460,7 @@ router.get('/check-optin/:address/:assetId', async (req, res) => {
       return Number(asset['asset-id']) === targetAssetId || Number(asset.assetId) === targetAssetId;
     }) || false;
     
-    // ALGO affordability check for opt-in (only relevant if not opted in)
+    // ALGO affordability check for opt-in (only if not opted in)
     let canAffordOptIn = true;
     let algoBalance = "0.000000";
     let requiredForOptIn = "0.111000";
@@ -489,7 +489,7 @@ const bufferAmount = 10000; // microAlgo
     res.status(200).json({ 
       hasOptedIn, 
       assetId: targetAssetId,
-      // ALGO info (only meaningful when hasOptedIn = false)
+      // ALGO info (onlywhen hasOptedIn = false)
       canAffordOptIn,
       availableAlgoBalance: algoBalance,
       requiredForOptIn,
@@ -514,62 +514,6 @@ router.get('/check-optin/:address', async (req, res) => {
   }
 });
 
-// Generate opt-in transaction
-router.post('/generate-optin', async (req, res) => {
-  try {
-    const { recipientAddress, assetId } = req.body;
-    
-    if (!recipientAddress) {
-      return res.status(400).json({ error: 'Missing required parameters' });
-    }
-    
-    // Get suggested parameters
-    const suggestedParams = await algodClient.getTransactionParams().do();
-    
-    const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-      sender: recipientAddress,
-      receiver: recipientAddress,
-      closeRemainderTo: undefined,
-      revocationTarget: undefined,
-      amount: 0,
-      note: undefined,
-      assetIndex: assetId || getDefaultAssetId(),
-      suggestedParams: suggestedParams
-    });
-    
-    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(optInTxn)).toString('base64');
-    
-    res.status(200).json({
-      transaction: encodedTxn,
-      txnId: optInTxn.txID()
-    });
-  } catch (error) {
-    console.error('Error generating opt-in transaction:', error);
-    res.status(500).json({ error: 'Failed to generate opt-in transaction', details: error.message });
-  }
-});
-
-// Submit opt-in transaction
-router.post('/submit-optin', async (req, res) => {
-  try {
-    const { signedTxn } = req.body;
-    
-    if (!signedTxn) {
-      return res.status(400).json({ error: 'Missing required parameters' });
-    }
-    
-    // Submit the signed transaction
-    const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
-    
-    // Wait for confirmation
-    await algosdk.waitForConfirmation(algodClient, txid, 5);
-    
-    res.status(200).json({ success: true, txid });
-  } catch (error) {
-    console.error('Error submitting opt-in transaction:', error);
-    res.status(500).json({ error: 'Failed to submit opt-in transaction', details: error.message });
-  }
-});
 
 
 // Asset balance endpoint (with assetId)
@@ -950,90 +894,6 @@ router.get('/escrow-recovery/:escrowId', async (req, res) => {
   }
 });
 
-// Generate cleanup transaction for unfunded app
-router.post('/cleanup-unfunded-app', async (req, res) => {
-  try {
-    const { appId, senderAddress } = req.body;
-    
-    // Verify this is an unfunded app by this sender
-    const db = req.app.locals.db;
-    const escrowCollection = db.collection('escrows');
-    
-    const escrow = await escrowCollection.findOne({
-      appId: parseInt(appId),
-      senderAddress,
-      funded: false,
-      status: 'APP_CREATED_AWAITING_FUNDING'
-    });
-    
-    if (!escrow) {
-      return res.status(404).json({ error: 'Unfunded app not found or not owned by sender' });
-    }
-    
-    // Generate delete transaction (no assets to worry about since unfunded)
-    const suggestedParams = await algodClient.getTransactionParams().do();
-    
-    const deleteAppTxn = algosdk.makeApplicationCallTxnFromObject({
-      sender: senderAddress,
-      appIndex: parseInt(appId),
-      onComplete: algosdk.OnApplicationComplete.DeleteApplicationOC,
-      suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true }
-    });
-    
-    const encodedTxn = Buffer.from(algosdk.encodeUnsignedTransaction(deleteAppTxn)).toString('base64');
-    
-    res.json({ transaction: encodedTxn });
-  } catch (error) {
-    console.error('Error generating cleanup transaction:', error);
-    res.status(500).json({ error: 'Failed to generate cleanup transaction' });
-  }
-});
-
-// Submit cleanup of unfunded app
-router.post('/submit-cleanup-unfunded', async (req, res) => {
-  try {
-    const { signedTxn, appId, escrowId } = req.body;
-    
-    // Submit transaction
-    const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
-    await algosdk.waitForConfirmation(algodClient, txid, 5);
-    
-    // Mark as cleaned up instead of deleting the record
-    const db = req.app.locals.db;
-    const escrowCollection = db.collection('escrows');
-    
-    if (escrowId && ObjectId.isValid(escrowId)) {
-      await escrowCollection.updateOne(
-        { _id: new ObjectId(escrowId) },
-        { 
-          $set: { 
-            cleanedUp: true,
-            cleanupTxId: txid,
-            cleanedUpAt: new Date(),
-            status: 'UNFUNDED_CLEANED_UP' 
-          }
-        }
-      );
-    } else {
-      await escrowCollection.updateOne(
-        { appId: parseInt(appId), funded: false },
-        { 
-          $set: { 
-            cleanedUp: true,
-            cleanupTxId: txid,
-            cleanedUpAt: new Date(),
-            status: 'UNFUNDED_CLEANED_UP'
-          }
-        }
-      );
-    }
-    
-    res.json({ success: true, txid });
-  } catch (error) {
-    console.error('Error submitting cleanup:', error);
-    res.status(500).json({ error: 'Failed to submit cleanup transaction' });
-  }
-});
 
 
 module.exports = router;

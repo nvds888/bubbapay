@@ -6,7 +6,9 @@ const { MongoClient } = require('mongodb');
 const sgMail = require('@sendgrid/mail');
 const rateLimit = require('express-rate-limit');
 const apiRoutes = require('./routes/api');
-const claimAndCleanRoutes = require('./claimandclean'); 
+const claimsRoutes = require('./routes/claims');
+const cleanupRoutes = require('./routes/cleanup');
+const assetsRoutes = require('./routes/assets');
 const mcpRoutes = require('./routes/mcpapi');
 const referralRoutes = require('./routes/referrals');
 
@@ -226,7 +228,9 @@ const startServer = async () => {
     
     // ✅ Register API routes AFTER rate limits and database connection
     app.use('/api', apiRoutes);
-    app.use('/api', claimAndCleanRoutes);
+    app.use('/api', claimsRoutes);
+    app.use('/api', cleanupRoutes);
+    app.use('/api', assetsRoutes);
     app.use('/api/mcp', mcpRoutes);
 
     app.use('/api/referrals', referralRoutes);

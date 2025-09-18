@@ -9,6 +9,7 @@
 // - Creator-only reclaim before claim
 // - Safe asset opt-out on deletion
 // - No reentrancy vulnerabilities
+// - option to delete unfunded escrows - only creator can delete
 
 const { getDefaultAssetId } = require('./assetConfig');
 
