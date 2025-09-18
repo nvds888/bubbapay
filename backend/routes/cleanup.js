@@ -220,11 +220,13 @@ router.post('/submit-cleanup', async (req, res) => {
     
     console.log(`Cleanup transaction group confirmed with ID: ${txId}`);
     
-    // Update database to mark contract as cleaned up
+    // Update database 
+    let recoveryAmount = 0.46; // Default base recovery
     try {
       const db = req.app.locals.db;
       const escrowCollection = db.collection('escrows');
       const escrow = await escrowCollection.findOne({ appId: parseInt(appId), senderAddress });
+      
       if (escrow) {
         await escrowCollection.updateOne(
           { _id: escrow._id },
@@ -237,25 +239,22 @@ router.post('/submit-cleanup', async (req, res) => {
           }
         );
         console.log(`Database updated for cleaned up contract ${appId}`);
+        
+        // Calculate recovery amount with escrow data
+        if (escrow.payRecipientFees && escrow.claimType === 'optimized-claim') {
+          recoveryAmount += 0.21; // Add unused recipient fee coverage
+        }
       }
     } catch (dbError) {
       console.warn('Failed to update database after cleanup:', dbError);
     }
     
-    // Calculate correct recovery amount
-const escrow = await escrowCollection.findOne({ appId: parseInt(appId), senderAddress });
-let recoveryAmount = 0.46; // (app reserve + app funding)
-
-if (escrow && escrow.payRecipientFees && escrow.claimType === 'optimized-claim') {
-  recoveryAmount += 0.21; // Add unused recipient fee coverage
-}
-
-res.json({
-  success: true,
-  txId,
-  message: 'Contract cleaned up successfully',
-  estimatedRecovered: `~${recoveryAmount.toFixed(2)} ALGO`
-});
+    res.json({
+      success: true,
+      txId,
+      message: 'Contract cleaned up successfully',
+      estimatedRecovered: `~${recoveryAmount.toFixed(2)} ALGO`
+    });
     
   } catch (error) {
     console.error('Error submitting cleanup transaction group:', error);
