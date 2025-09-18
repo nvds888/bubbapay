@@ -215,16 +215,10 @@ async function checkAlgoAvailabilityForEscrow(algodClient, address, payRecipient
     // Calculate availability with accurate simulation
     const availability = calculateAlgoAvailability(accountInfo, payRecipientFees);
     
-    console.log(`ALGO availability check for ${address}:`, {
-      payRecipientFees,
-      required: availability.requiredForTransaction,
-      available: availability.availableBalance,
-      sufficient: availability.hasSufficientAlgo,
-      canCompleteGroup: availability.canCompleteGroupTxns,
-      shortfall: availability.shortfall,
-      shortfallReason: availability.debug.shortfallReason,
-      simulation: availability.simulation
-    });
+    // Only log errors
+if (!availability.hasSufficientAlgo) {
+  console.log(`Insufficient ALGO for ${address}: needs ${availability.requiredForTransaction}, has ${availability.availableBalance}`);
+}
     
     return availability;
   } catch (error) {

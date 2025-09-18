@@ -637,13 +637,6 @@ router.get('/algo-availability/:address', async (req, res) => {
       shouldPayRecipientFees
     );
     
-    // Log debug information for monitoring
-    console.log(`ALGO Availability Check for ${address}:`, {
-      payRecipientFees: shouldPayRecipientFees,
-      hasSufficientAlgo: availability.hasSufficientAlgo,
-      shortfall: availability.shortfall,
-      requiredForTransaction: availability.requiredForTransaction
-    });
     
     res.status(200).json(availability);
     
