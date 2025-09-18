@@ -148,7 +148,6 @@ export const checkAlgoAvailability = async (address, payRecipientFees = false) =
   }
 };
 
-// Add supported assets constant at the top (after imports)
 const SUPPORTED_ASSETS = {
   31566704: { 
     id: 31566704, 

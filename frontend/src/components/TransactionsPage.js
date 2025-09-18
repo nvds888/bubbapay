@@ -34,14 +34,6 @@ function TransactionsPage() {
     return 'USDC';
   };
 
-  // Helper function to get asset info
-  const getTransactionAssetInfo = (transaction) => {
-    if (transaction.assetId) {
-      return getAssetInfo(transaction.assetId);
-    }
-    // Fallback for older transactions
-    return { symbol: 'USDC', name: 'USDC' };
-  };
   
   // Fetch user transactions when component mounts
   useEffect(() => {
@@ -109,7 +101,7 @@ function TransactionsPage() {
     }).format(date);
   };
 
-    // Estimate ALGO recovery for cleanup
+    // Estimate algo recovery for cleanup
     const getCleanupEstimateValue = (tx) => {
       return 0.46 + (tx && tx.payRecipientFees && tx.claimType === 'optimized-claim' ? 0.21 : 0);
     };
@@ -230,7 +222,7 @@ function TransactionsPage() {
       
       setCleanupStatus({ appId, status: 'Success' });
       const txForEstimate = transactions.find(tx => tx.appId === parseInt(appId));
-      alert(`Successfully cleaned up contract and recovered ~${getCleanupEstimateLabel(txForEstimate)}!`);
+      alert(`Successfully cleaned up contract and recovered ${result.estimatedRecovered || getCleanupEstimateLabel(txForEstimate)}!`);
       
     } catch (error) {
       console.error('Error cleaning up contract:', error);
@@ -552,7 +544,6 @@ function TransactionsPage() {
               </div>
             </div>
             
-            {/* Show scroll indicator when scrollable */}
             {referralStats.referrals.length > 3 && (
               <div className="px-3 py-1 bg-gray-50 border-t border-gray-200 rounded-b-lg text-center">
               </div>

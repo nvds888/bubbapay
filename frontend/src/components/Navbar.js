@@ -16,7 +16,6 @@ function Navbar({ hideWalletConnection = false }) {
             {/* Logo */}
             <Link to="/" className="flex items-center group">
               <div className="flex items-center space-x-2">
-                {/* Replace SVG logo with image */}
                 <img
                   src="/bubbapay.jpg"
                   alt="Bubbapay Logo"
@@ -75,7 +74,7 @@ function Navbar({ hideWalletConnection = false }) {
               
               {!hideWalletConnection && (
                 <div className="flex items-center">
-                  {/* Use-wallet button with explicit styling */}
+                  {/* Use-wallet button */}
                   <div data-wallet-ui className="wallet-button-container">
                     <WalletButton className="btn-primary px-4 py-2 text-sm font-medium" />
                   </div>

@@ -389,7 +389,7 @@ if (assetBalance !== null) {
 
                     {/* Help text */}
                     <div className="text-xs text-gray-400 bg-gray-50 rounded p-2">
-                      💡 The recoverable amounts are temporarily locked but returned to you after you "cleanup" the contract in your transaction history.
+                      💡 The recoverable amounts are temporarily locked but returned to you after you "cleanup" the App in your "Manage Links".
                     </div>
                   </div>
                 )}
@@ -424,7 +424,7 @@ if (assetBalance !== null) {
           
           {showAdvanced && (
             <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
-              <p>Pay ~0.21 ALGO to cover the recipient's opt-in & txn fees. You get this back if the recipient is already opted-in.</p>
+              <p>Pay ~0.21 ALGO for opt-in & txn fees (refunded if already opted in).</p>
             </div>
           )}
         </div>

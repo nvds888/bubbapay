@@ -28,7 +28,7 @@ const walletManager = new WalletManager({
     WalletId.PERA,
     WalletId.DEFLY,
     WalletId.LUTE,
-    // Add more wallets as needed
+    // Add more
   ],
   defaultNetwork: NetworkId.MAINNET, 
 });
@@ -74,7 +74,7 @@ function ReferralNotification({ show, onClose }) {
           <div className="flex-1">
             <h4 className="text-sm font-medium text-green-800">Welcome to Bubbapay!</h4>
             <p className="text-sm text-green-700 mt-1">
-              You've been referred! Your referrer will earn from your transactions.
+              You've been referred! Your referrer will earn from your claim links.
             </p>
           </div>
           <button
@@ -161,7 +161,7 @@ function MainAppWithReferrals({
         onClose={() => setShowReferralNotification(false)}
       />
 
-      {/* Clean background - minimal decoration */}
+      {/* Clean background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 right-10 w-32 h-32 bg-purple-50 rounded-full blur-3xl opacity-30"></div>
         <div className="absolute bottom-32 left-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-20"></div>
@@ -202,7 +202,6 @@ function MainAppWithReferrals({
   );
 }
 
-// Component to handle location-based logic
 function AppContent() {
   const location = useLocation();
   const isClaimPage = location.pathname === '/claim';

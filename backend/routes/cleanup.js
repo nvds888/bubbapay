@@ -242,12 +242,20 @@ router.post('/submit-cleanup', async (req, res) => {
       console.warn('Failed to update database after cleanup:', dbError);
     }
     
-    res.json({
-      success: true,
-      txId,
-      message: 'Contract cleaned up successfully',
-      estimatedRecovered: "~0.31 ALGO"
-    });
+    // Calculate correct recovery amount
+const escrow = await escrowCollection.findOne({ appId: parseInt(appId), senderAddress });
+let recoveryAmount = 0.46; // (app reserve + app funding)
+
+if (escrow && escrow.payRecipientFees && escrow.claimType === 'optimized-claim') {
+  recoveryAmount += 0.21; // Add unused recipient fee coverage
+}
+
+res.json({
+  success: true,
+  txId,
+  message: 'Contract cleaned up successfully',
+  estimatedRecovered: `~${recoveryAmount.toFixed(2)} ALGO`
+});
     
   } catch (error) {
     console.error('Error submitting cleanup transaction group:', error);

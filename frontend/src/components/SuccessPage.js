@@ -18,7 +18,7 @@ function SuccessPage() {
   // Add asset info state
   const [assetInfo, setAssetInfo] = useState(null);
   
-  // SECURITY: URL revelation state
+  // URL revelation state
   const [urlRevealed, setUrlRevealed] = useState(false);
   
   // Get the claim URL from location state if available
@@ -33,7 +33,7 @@ function SuccessPage() {
                         window.scrollTo(0, 0);
                       }, []);
   
-  // SECURITY: Browser History Protection - Clear sensitive data from history
+  // Browser History Protection - Clear sensitive data from history
   useEffect(() => {
     if (claimUrl) {
       window.history.replaceState(
@@ -99,14 +99,14 @@ function SuccessPage() {
   }, [hasClaimError, error]);
   
   
-  // SECURITY: URL Obfuscation function
+  // URL Obfuscation function
   const obfuscateUrl = (url) => {
     if (!url || !url.includes('#key=')) return url;
     const [base, key] = url.split('#key=');
     return `${base}#key=${key.slice(0, 8)}•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••${key.slice(-4)}`;
   };
   
-  // SECURITY: Secure copy with auto-clear
+  //Secure copy with auto-clear
   const copyToClipboard = () => {
     if (!escrowDetails?.claimUrl) return;
     

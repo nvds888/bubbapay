@@ -10,7 +10,7 @@ const ALGOD_TOKEN = '';
 const ALGOD_SERVER = process.env.ALGOD_SERVER || 'https://mainnet-api.algonode.cloud';
 const ALGOD_PORT = '';
 
-const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || 'REPLACE_WITH_YOUR_PLATFORM_ADDRESS';
+const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS || '';
 
 // Initialize Algorand client
 const algodClient = new algosdk.Algodv2(ALGOD_TOKEN, ALGOD_SERVER, ALGOD_PORT);
@@ -72,7 +72,7 @@ async function generateUnsignedDeployTransactions({ amount, recipientEmail, send
     
     console.log("Processing parameters complete. Generating TEAL programs...");
     
-    // Compile the TEAL programs - now using imported functions
+    // Compile the TEAL programs 
     const approvalProgramSource = createApprovalProgram(senderAddress, tempAddress, targetAssetId);
     const approvalProgram = await compileProgram(approvalProgramSource);
     
@@ -176,7 +176,7 @@ const appAddress = appAddressObj.toString();
     console.log(`Group transaction total fee budget: ${totalFeeNeeded / 1e6} ALGO`);
     
     
-    // 1. Fund the app with ALGO (back to 0.21 ALGO since no platform fee)
+    // 1. Fund the app with algo
     const fundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: senderAddress,
       receiver: appAddress,
@@ -184,7 +184,7 @@ const appAddress = appAddressObj.toString();
       suggestedParams: { ...suggestedParams, fee: EXACT_FEES.FUNDING, flatFee: true }
     });
     
-    // 2. Fund the temporary account with minimal ALGO for claim transaction
+    // 2. Fund the temporary account with algo for claim transaction
     const tempFundingTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
       sender: senderAddress,
       receiver: tempAccountAddress,
@@ -257,8 +257,8 @@ const appAddress = appAddressObj.toString();
       groupTransactions: encodedTxns,
       totalFee: actualTotalFee / 1e6,
       tempAccount: {
-        address: tempAccountAddress,  // Use the clean string address
-        privateKey: tempAccount.privateKey  // Keep only the private key string
+        address: tempAccountAddress, 
+        privateKey: tempAccount.privateKey  
       }
     };
   } catch (error) {
@@ -268,7 +268,7 @@ const appAddress = appAddressObj.toString();
 }
 
 
-//TEAL compilation with error handling
+//TEAL compilation 
 async function compileProgram(programSource) {
   try {
     const compileResponse = await algodClient.compile(programSource).do();

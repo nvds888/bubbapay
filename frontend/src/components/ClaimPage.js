@@ -32,10 +32,6 @@ const getAssetInfo = (assetId) => {
   return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
 };
 
-// Add fallback for when assetInfo is not yet loaded
-const getDisplaySymbol = (assetInfo) => {
-  return assetInfo?.symbol || 'USDC'; // Fallback to USDC for backwards compatibility
-};
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -68,7 +64,7 @@ function ClaimPage() {
   const [walletEnabled, setWalletEnabled] = useState(false);
   const [assetInfo, setAssetInfo] = useState(null);
 
-  // Ecosystem projects data
+  // Ecosystem projects
   const ecosystemProjects = [
     {
       name: "Alpha Arcade",
@@ -377,7 +373,7 @@ const [isOptedIn, setIsOptedIn] = useState(false);
       setIsLoading(true);
       
       try {
-        // Single API call gets both opt-in status AND ALGO balance info
+        // get both opt-in status and ALGO balance info
         const targetAssetId = escrowDetails.assetId || 31566704;
         const optInResponse = await axios.get(`${API_URL}/check-optin/${accountAddress}/${targetAssetId}`);
         const { hasOptedIn, canAffordOptIn, availableAlgoBalance, requiredForOptIn, algoShortfall } = optInResponse.data;
@@ -500,17 +496,17 @@ const handleOptInAndClaim = async () => {
     
     console.log("Group transaction generated, user needs to sign opt-in transaction");
     
-    // Decode ALL transactions for signing (wallet needs to see the complete group)
+    // Decode all transactions for signing (wallet needs to see the complete group)
 const userTxnIndex = response.data.userTxnIndex;
 const unsignedTxns = response.data.unsignedTransactions.map(txnB64 => {
   const txnUint8 = new Uint8Array(Buffer.from(txnB64, 'base64'));
   return algosdk.decodeUnsignedTransaction(txnUint8);
 });
 
-// Send ENTIRE group to wallet, but only user's transaction will be signable
+// Send group to wallet, but only user's transaction will be signable
 const signedUserTxns = await signTransactions(unsignedTxns);
 
-// Extract only the user's signed transaction (others will be null/undefined)
+// Extract only the user's signed transaction 
 const userSignedTxn = signedUserTxns[userTxnIndex];
 
 // Combine user's signed transaction with temp account's pre-signed transactions
@@ -569,7 +565,6 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           
           {escrowDetails && (
             <div className="mb-6">
-              {/* Another "You've received" message in wallet content */}
               <h2 className="text-xl font-semibold text-gray-900 mb-3">
                 You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
               </h2>
@@ -626,7 +621,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
       );
     }
     
-    // User needs to opt-in but doesn't have enough ALGO
+    // User needs to opt-in but doesn't have enough algo
 if (claimStatus === 'insufficient-algo-for-optin') {
   return (
     <div className="text-center">
@@ -913,7 +908,6 @@ if (claimStatus === 'insufficient-algo-for-optin') {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  {/* CHANGE 7n: Bottom button text */}
                   <span>Create Claim Link</span>
                 </span>
               </button>

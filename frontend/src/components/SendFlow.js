@@ -71,7 +71,7 @@ function SendFlow() {
         const incompleteEscrows = response.data;
         
         if (incompleteEscrows.length > 0) {
-          // For simplicity, auto-recover the most recent incomplete escrow
+          // auto-recover the most recent incomplete escrow
           const mostRecent = incompleteEscrows[0];
           await recoverFromEscrow(mostRecent);
         }
@@ -298,7 +298,7 @@ function SendFlow() {
   // Handle first transaction signing (app creation)
   const handleSignFirstTransaction = async () => {
     try {
-      // NEW: Skip if we're in recovery mode (app already created)
+      // Skip if we're in recovery mode (app already created)
       if (recoveryMode && currentEscrow) {
         return;
       }
@@ -308,7 +308,7 @@ function SendFlow() {
       if (!currentTxnData) {
         currentTxnData = await generateTransaction();
         if (!currentTxnData) {
-          return; // Error already set in generateTransaction
+          return; 
         }
       }
       
@@ -344,7 +344,7 @@ function SendFlow() {
         assetId: selectedAssetId
       });
       
-      // NEW: Save escrow data and set current escrow
+      // save escrow data and set current escrow
       setCurrentEscrow({
         _id: response.data.escrowId,
         appId: response.data.appId,
@@ -360,7 +360,7 @@ function SendFlow() {
       setTxnData({
         ...currentTxnData,
         appId: response.data.appId,
-        escrowId: response.data.escrowId, // NEW: Store escrow ID
+        escrowId: response.data.escrowId, 
         appAddress: response.data.appAddress,
         groupTransactions: response.data.groupTransactions,
         tempAccount: response.data.tempAccount
@@ -426,7 +426,7 @@ function SendFlow() {
         txnGroup.push(txn);
       }
       
-      // Sign with use-wallet (supports multiple wallets)
+      // Sign 
       const signedTxns = await signTransactions(txnGroup);
       
       // Convert signed transactions to base64 array
@@ -444,10 +444,10 @@ function SendFlow() {
         senderAddress: effectiveAccountAddress,
         payRecipientFees: formData.payRecipientFees,
         assetId: selectedAssetId,
-        escrowId: txnData.escrowId || (currentEscrow?._id) //  Pass escrow ID
+        escrowId: txnData.escrowId || (currentEscrow?._id) 
       });
       
-      // Generate claim URL ourselves to match the backend version
+      // Generate claim URL to match the backend version
       const generatedClaimUrl = `${window.location.origin}/claim?app=${txnData.appId}#key=${txnData.tempAccount.privateKey}`;
       
       const validClaimUrl = generatedClaimUrl.includes('undefined') ? null : generatedClaimUrl;
