@@ -2,8 +2,8 @@
 
 const algosdk = require('algosdk');
 const crypto = require('crypto');
-const { createApprovalProgram, createClearProgram } = require('./teal-programs');
-const { getDefaultAssetId, toMicroUnits, getAssetInfo } = require('./assetConfig');
+const { createApprovalProgram, createClearProgram } = require('../teal-programs');
+const { getDefaultAssetId, toMicroUnits, getAssetInfo } = require('../assetConfig');
 
 // Configuration
 const ALGOD_TOKEN = '';
