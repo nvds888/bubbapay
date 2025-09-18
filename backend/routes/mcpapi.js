@@ -7,7 +7,7 @@ const {
   generateUnsignedDeployTransactions, 
   generatePostAppTransactions,
   generateReclaimTransaction
-} = require('../atomic-deploy-email-escrow');
+} = require('../utils/transactions');
 const algosdk = require('algosdk');
 
 // Initialize Algorand client
