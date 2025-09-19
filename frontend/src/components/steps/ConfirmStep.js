@@ -462,9 +462,9 @@ function ConfirmStep({
   </>
 )}
 
-{/* Second transaction (funding) - DON'T show if in unfunded recovery mode */}
 {(stage === 'app-created' || recoveryMode) && !(recoveryMode && currentEscrow && !currentEscrow.funded) && (
   <>
+    {/* Show continue button if network error, otherwise show sign button */}
     {error && (error.includes('Network') || error.includes('network') || error.includes('timeout')) ? (
       <button
         type="button"
@@ -483,27 +483,14 @@ function ConfirmStep({
               hasClaimError: !validClaimUrl,
             },
           });
-
-          setSubStage('submitting-2');
-          setTimeout(() => setSubStage('completed'), 500); // UI feedback
         }}
-        disabled={isLoading}
-        className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
+        className="btn-primary w-full py-3 px-4 font-medium"
       >
         <span className="flex items-center justify-center space-x-2">
-          {isLoading ? (
-            <>
-              <div className="w-4 h-4 spinner"></div>
-              <span>Processing...</span>
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>{recoveryMode ? 'Fund Escrow' : 'Continue'}</span>
-            </>
-          )}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span>Continue</span>
         </span>
       </button>
     ) : (
