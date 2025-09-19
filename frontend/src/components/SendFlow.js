@@ -288,6 +288,7 @@ function SendFlow() {
       return response.data;
     } catch (error) {
       console.error('Error generating transaction:', error);
+      setTxnData(null);
       setError(error.response?.data?.error || 'Failed to generate transaction');
       return null;
     } finally {
@@ -367,6 +368,8 @@ function SendFlow() {
       });
     } catch (error) {
       console.error('Error signing transaction:', error);
+
+      setTxnData(null);
       
       // Check if app was actually created despite the error
       await checkForUnfundedApp();
