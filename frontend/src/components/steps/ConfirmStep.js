@@ -22,7 +22,8 @@ function ConfirmStep({
   onWalletConnect = null,
   selectedAssetInfo, 
   recoveryMode = false, 
-  currentEscrow = null   
+  currentEscrow = null,
+  diagnosticInfo   
 }) {
   // Initialize stage based on recovery mode
   const [stage, setStage] = useState(recoveryMode ? 'app-created' : 'initial'); 
@@ -340,19 +341,56 @@ function ConfirmStep({
 )}
       
       {/* Error display */}
-      {error && (
-        <div className="card card-compact status-error mb-4">
-          <div className="flex items-start space-x-2">
-            <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <div className="text-sm">
-              <div className="font-medium text-red-800">Transaction Error</div>
-              <div className="text-red-700 mt-1">{error}</div>
-            </div>
-          </div>
+{error && (
+  <div className="card card-compact status-error mb-4">
+    <div className="flex items-start space-x-2">
+      <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+      </svg>
+      <div className="text-sm">
+        <div className="font-medium text-red-800">Transaction Error</div>
+        <div className="text-red-700 mt-1">
+          {error.includes('Network') || error.includes('network') ? (
+            <>
+              <p>Network error during transaction submission. Please try again or reclaim funds.</p>
+              {process.env.NODE_ENV === 'development' && diagnosticInfo && (
+                <div className="mt-2 p-2 bg-red-50 rounded text-xs">
+                  <p className="font-medium">Diagnostic Info (Temporary):</p>
+                  <ul className="list-disc pl-4">
+                    <li><strong>Flow:</strong> {diagnosticInfo.flow.join(' → ')}</li>
+                    <li><strong>Temp Key Available:</strong> 
+                      Before: {diagnosticInfo.tempKeyBefore ? 'Yes' : 'No'}, 
+                      After: {diagnosticInfo.tempKeyAfter ? 'Yes' : 'No'}
+                    </li>
+                    {diagnosticInfo.errorDetails && (
+                      <>
+                        <li><strong>Error:</strong> {diagnosticInfo.errorDetails.message}</li>
+                        {diagnosticInfo.errorDetails.status && (
+                          <li><strong>Status:</strong> {diagnosticInfo.errorDetails.status} {diagnosticInfo.errorDetails.statusText}</li>
+                        )}
+                        {diagnosticInfo.errorDetails.code && (
+                          <li><strong>Error Code:</strong> {diagnosticInfo.errorDetails.code}</li>
+                        )}
+                        <li><strong>API Timing:</strong> {diagnosticInfo.apiTiming || 'N/A'}</li>
+                        <li><strong>Request URL:</strong> {diagnosticInfo.errorDetails.requestUrl || 'N/A'}</li>
+                        {diagnosticInfo.errorDetails.responseData?.error && (
+                          <li><strong>Server Error:</strong> {diagnosticInfo.errorDetails.responseData.error}</li>
+                        )}
+                      </>
+                    )}
+                  </ul>
+                  <p className="mt-2">This info is for debugging and will be removed. Contact support with details.</p>
+                </div>
+              )}
+            </>
+          ) : (
+            error
+          )}
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
       
       {/* In the render section, add cleanup option when in recovery mode with unfunded app */}
       {recoveryMode && currentEscrow && !currentEscrow.funded && (
