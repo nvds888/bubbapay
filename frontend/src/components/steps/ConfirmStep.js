@@ -58,10 +58,28 @@ function ConfirmStep({
     }
   }, [activeAddress, onWalletConnect, effectiveAccountAddress]);
   
-  // Format USDC amount with 2 decimal places
-  const formatAmount = (amount) => {
-    return parseFloat(amount).toFixed(2);
-  };
+  // Format amount based on asset properties
+const formatAmount = (amount, assetInfo) => {
+  if (!assetInfo || !amount) return '0';
+  
+  const numAmount = parseFloat(amount);
+  const { decimals = 6, minAmount = 0.01 } = assetInfo;
+  
+  // For high precision assets (like goBTC with minAmount < 0.01)
+  if (minAmount < 0.01) {
+    // Show full precision but remove trailing zeros
+    return numAmount.toFixed(decimals).replace(/\.?0+$/, '');
+  } else {
+    // Standard assets 
+    if (numAmount >= 1000) {
+      return numAmount.toFixed(2);
+    } else if (numAmount >= 1) {
+      return numAmount.toFixed(4);
+    } else {
+      return numAmount.toFixed(Math.min(6, decimals));
+    }
+  }
+};
   
   // Format Algorand address
   const formatAddress = (address) => {
@@ -163,7 +181,7 @@ function ConfirmStep({
   <div className="space-y-3">
     <div className="flex justify-between items-center">
       <span className="text-gray-600">Amount:</span>
-      <span className="font-semibold text-lg">{formatAmount(formData.amount)} {selectedAssetInfo?.symbol || 'tokens'}</span>
+      <span className="font-semibold text-lg">{formatAmount(formData.amount, selectedAssetInfo)} {selectedAssetInfo?.symbol || 'tokens'}</span>
     </div>
     
     {formData.payRecipientFees && (
