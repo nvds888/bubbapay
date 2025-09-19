@@ -125,7 +125,7 @@ export const submitReclaimTransaction = async (data) => {
 
 export const fetchAssetBalance = async (address, assetId = DEFAULT_ASSET_ID) => {
   try {
-    const response = await apiClient.get(`/asset-balance/${address}/${assetId}`);
+    const response = await apiClient.get(`/assets/balance/${address}/${assetId}`);
     return response.data.balance;
   } catch (error) {
     console.error('Error fetching asset balance:', error);
