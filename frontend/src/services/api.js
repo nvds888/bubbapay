@@ -154,84 +154,108 @@ const SUPPORTED_ASSETS = {
     name: 'USDC', 
     symbol: 'USDC', 
     decimals: 6, 
-    description: 'USDC is a stablecoin by Circle' 
+    description: 'USDC is a stablecoin by Circle',
+    minAmount: 0.01,
+  step: 0.01 
   },
   760037151: { 
     id: 760037151, 
     name: 'xUSD', 
     symbol: 'xUSD', 
     decimals: 6, 
-    description: 'xUSD is a stablecoin by CompX' 
+    description: 'xUSD is a stablecoin by CompX',
+    minAmount: 0.01,
+  step: 0.01 
   },
   2494786278: {
     id: 2494786278,
     name: 'Monko',
     symbol: 'MONKO',
     decimals: 6,
-    description: 'Be Monko meme token'
+    description: 'Be Monko meme token',
+    minAmount: 0.01,
+  step: 0.01
   },
   2726252423: {
     id: 2726252423,
     name: 'Alpha',
     symbol: 'ALPHA',
     decimals: 6,
-    description: 'Alpha Arcade prediction market token'
+    description: 'Alpha Arcade prediction market token',
+    minAmount: 0.01,
+  step: 0.01
   },
   523683256: {
     id: 523683256,
     name: 'Akita Inu',
     symbol: 'AKITA',
     decimals: 6,
-    description: 'Akita Inu is an og Algorand meme token'
+    description: 'Akita Inu is an og Algorand meme token',
+    minAmount: 0.01,
+  step: 0.01
   },
   2656692124: {
     id: 2656692124,
     name: 'Ball Sack',
     symbol: 'BALLSACK',
     decimals: 6,
-    description: 'Ball Sack meme token'
+    description: 'Ball Sack meme token',
+    minAmount: 0.01,
+  step: 0.01
   },
   386192725: {
     id: 386192725,
     name: 'goBTC',
     symbol: 'goBTC',
     decimals: 6,
-    description: 'Send BTC on Algorand by Algomint'
+    description: 'Send BTC on Algorand by Algomint',
+    minAmount: 0.000001,
+  step: 0.000001
   },
   3160000000: {
     id: 3160000000,
     name: 'Haystack',
     symbol: 'HAY',
     decimals: 6,
-    description: 'The token of Haystack: Trading made easy'
+    description: 'The token of Haystack: Trading made easy',
+    minAmount: 0.01,
+  step: 0.01
   },
   2582294183: {
     id: 2582294183,
     name: 'GONNA',
     symbol: 'GONNA',
     decimals: 6,
-    description: 'The official coin of the Gonnaverse'
+    description: 'The official coin of the Gonnaverse',
+    minAmount: 0.01,
+  step: 0.01
   },
   1284444444: {
     id: 1284444444,
     name: 'Orange',
     symbol: 'ORA',
     decimals: 8,
-    description: 'Orange is a "mineable" meme'
+    description: 'Orange is a "mineable" meme',
+    minAmount: 0.01,
+  step: 0.01
   },
   2582590415: {
     id: 2582590415,
     name: 'Meep',
     symbol: 'MEEP',
     decimals: 6,
-    description: 'A meme coin created by Shep NFTs Gary Jules'
+    description: 'A meme coin created by Shep NFTs Gary Jules',
+    minAmount: 0.01,
+  step: 0.01
   },
   2200000000: {
     id: 2200000000,
     name: 'Tinyman',
     symbol: 'TINY',
     decimals: 6,
-    description: 'Tinyman is a leading DEX on Algorand'
+    description: 'Tinyman is a leading DEX on Algorand',
+    minAmount: 0.01,
+  step: 0.01
   }
 };
 
@@ -262,6 +286,18 @@ export const submitCleanupTransaction = async (data) => {
   }
 };
 
+// Get minimum amount for an asset
+export const getAssetMinAmount = (assetId) => {
+  const asset = getAssetInfo(assetId);
+  return asset ? asset.minAmount : 0.01;
+};
+
+// Get step amount for an asset
+export const getAssetStep = (assetId) => {
+  const asset = getAssetInfo(assetId);
+  return asset ? asset.step : 0.01;
+};
+
 
 export default {
   generateTransactions,
@@ -282,4 +318,6 @@ export default {
   fetchAssetBalance,
   generateCleanupTransaction,
   submitCleanupTransaction,
+  getAssetMinAmount,
+  getAssetStep,
 };
