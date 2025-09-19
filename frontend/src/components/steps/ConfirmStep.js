@@ -350,42 +350,38 @@ function ConfirmStep({
       <div className="text-sm">
         <div className="font-medium text-red-800">Transaction Error</div>
         <div className="text-red-700 mt-1">
-          {error.includes('Network') || error.includes('network') ? (
-            <>
-              <p>Network error during transaction submission. Please try again or reclaim funds.</p>
-              {process.env.NODE_ENV === 'development' && diagnosticInfo && (
-                <div className="mt-2 p-2 bg-red-50 rounded text-xs">
-                  <p className="font-medium">Diagnostic Info (Temporary):</p>
-                  <ul className="list-disc pl-4">
-                    <li><strong>Flow:</strong> {diagnosticInfo.flow.join(' → ')}</li>
-                    <li><strong>Temp Key Available:</strong> 
-                      Before: {diagnosticInfo.tempKeyBefore ? 'Yes' : 'No'}, 
-                      After: {diagnosticInfo.tempKeyAfter ? 'Yes' : 'No'}
-                    </li>
-                    {diagnosticInfo.errorDetails && (
-                      <>
-                        <li><strong>Error:</strong> {diagnosticInfo.errorDetails.message}</li>
-                        {diagnosticInfo.errorDetails.status && (
-                          <li><strong>Status:</strong> {diagnosticInfo.errorDetails.status} {diagnosticInfo.errorDetails.statusText}</li>
-                        )}
-                        {diagnosticInfo.errorDetails.code && (
-                          <li><strong>Error Code:</strong> {diagnosticInfo.errorDetails.code}</li>
-                        )}
-                        <li><strong>API Timing:</strong> {diagnosticInfo.apiTiming || 'N/A'}</li>
-                        <li><strong>Request URL:</strong> {diagnosticInfo.errorDetails.requestUrl || 'N/A'}</li>
-                        {diagnosticInfo.errorDetails.responseData?.error && (
-                          <li><strong>Server Error:</strong> {diagnosticInfo.errorDetails.responseData.error}</li>
-                        )}
-                      </>
+          <p>{error}</p>
+          <div className="mt-2 p-2 bg-red-50 rounded text-xs">
+            <p className="font-medium">Diagnostic Info (Temporary):</p>
+            {diagnosticInfo ? (
+              <ul className="list-disc pl-4">
+                <li><strong>Flow:</strong> {diagnosticInfo.flow.join(' → ')}</li>
+                <li><strong>Temp Key Available:</strong> 
+                  Before: {diagnosticInfo.tempKeyBefore ? 'Yes' : 'No'}, 
+                  After: {diagnosticInfo.tempKeyAfter ? 'Yes' : 'No'}
+                </li>
+                {diagnosticInfo.errorDetails && (
+                  <>
+                    <li><strong>Error:</strong> {diagnosticInfo.errorDetails.message}</li>
+                    {diagnosticInfo.errorDetails.status && (
+                      <li><strong>Status:</strong> {diagnosticInfo.errorDetails.status} {diagnosticInfo.errorDetails.statusText}</li>
                     )}
-                  </ul>
-                  <p className="mt-2">This info is for debugging and will be removed. Contact support with details.</p>
-                </div>
-              )}
-            </>
-          ) : (
-            error
-          )}
+                    {diagnosticInfo.errorDetails.code && (
+                      <li><strong>Error Code:</strong> {diagnosticInfo.errorDetails.code}</li>
+                    )}
+                    <li><strong>API Timing:</strong> {diagnosticInfo.apiTiming || 'N/A'}</li>
+                    <li><strong>Request URL:</strong> {diagnosticInfo.errorDetails.requestUrl || 'N/A'}</li>
+                    {diagnosticInfo.errorDetails.responseData?.error && (
+                      <li><strong>Server Error:</strong> {diagnosticInfo.errorDetails.responseData.error}</li>
+                    )}
+                  </>
+                )}
+              </ul>
+            ) : (
+              <p>No diagnostic info available. Contact support with error: "{error}"</p>
+            )}
+            <p className="mt-2">This info is for debugging and will be removed. Contact support with details.</p>
+          </div>
         </div>
       </div>
     </div>

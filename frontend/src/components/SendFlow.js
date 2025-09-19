@@ -416,7 +416,7 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
   const handleSignGroupTransactions = async () => {
     // Initialize diagnostic object
     const diagnostics = {
-      flow: [],
+      flow: ['Starting handleSignGroupTransactions'],
       errorDetails: null,
       tempKeyBefore: !!txnData?.tempAccount?.privateKey,
       tempKeyAfter: null,
@@ -438,10 +438,12 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
   
     if (!txnData || !txnData.groupTransactions || !effectiveAccountAddress) {
       diagnostics.flow.push('Failed: Missing transaction data or wallet address');
+      diagnostics.errorDetails = { message: 'Missing transaction data or wallet address' };
+      setDiagnosticInfo(diagnostics); // Set diagnostics on early return
       setError('Group transaction data or wallet not available');
-      setDiagnosticInfo(diagnostics);
       if (process.env.NODE_ENV === 'development') {
         console.log('❌ Early return: Missing data');
+        console.log('Diagnostics set:', diagnostics);
         console.groupEnd();
       }
       return;
@@ -450,6 +452,7 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
     diagnostics.flow.push('Starting transaction signing');
     setIsLoading(true);
     setError(null);
+    setDiagnosticInfo(diagnostics); // Update diagnostics early
   
     try {
       // Decode transactions
@@ -487,6 +490,7 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
       // Convert to base64
       const signedTxnsBase64 = signedTxns.map(txn => Buffer.from(txn).toString('base64'));
       diagnostics.flow.push('Prepared signed transactions for submission');
+      setDiagnosticInfo(diagnostics); // Update diagnostics before API call
   
       // API submission
       diagnostics.flow.push('Submitting transactions to API');
@@ -547,6 +551,7 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
       }
   
       diagnostics.flow.push('Navigating to success page');
+      setDiagnosticInfo(diagnostics); // Update diagnostics before navigation
       // Navigate to success page
       navigate(`/success/${response.data.escrowId}`, {
         state: {
@@ -570,7 +575,7 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
         isNetworkError: error.message?.includes('Network') || error.message?.includes('network') || error.code === 'ECONNABORTED',
       };
       diagnostics.flow.push(`Error occurred: ${error.message}`);
-      setDiagnosticInfo(diagnostics);
+      setDiagnosticInfo(diagnostics); // Ensure diagnostics are set on error
   
       if (process.env.NODE_ENV === 'development') {
         console.error('💥 ERROR in handleSignGroupTransactions');
@@ -578,6 +583,7 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
         console.error('Error breakdown:', diagnostics.errorDetails);
         console.error('Stack trace:', error.stack);
         console.log('🔑 Temp key after error:', diagnostics.tempKeyAfter);
+        console.log('Diagnostics set:', diagnostics);
         if (!recoveryMode) {
           console.log('🗑️ Clearing txnData due to non-recovery mode');
           setTxnData(null);
