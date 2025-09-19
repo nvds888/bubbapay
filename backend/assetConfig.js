@@ -192,7 +192,7 @@ function getAssetStep(assetId) {
     toMicroUnits,
     fromMicroUnits,
     getAssetMinAmount,
-  getAssetStep,
+    getAssetStep,
     // For fallback
     USDC_ASSET_ID: getDefaultAssetId()
   };

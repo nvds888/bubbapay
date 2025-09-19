@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import AssetSelectionModal from '../AssetSelectionModal';
-import { getSupportedAssets, getAssetInfo, getAssetMinAmount, getAssetStep } from '../../services/api';
+import { getAssetMinAmount, getAssetStep } from '../../services/api';
 
 function AmountStep({ 
   formData = {}, 

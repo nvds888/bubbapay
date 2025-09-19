@@ -12,7 +12,7 @@ const {
 } = require('../utils/transactions');
 const algosdk = require('algosdk');
 const { checkAlgoAvailabilityForEscrow } = require('../utils/algoAvailabilityUtils');
-const { getDefaultAssetId, getAssetInfo, isAssetSupported, toMicroUnits, fromMicroUnits, getAssetMinAmount } = require('../assetConfig');
+const { getDefaultAssetId, getAssetInfo, isAssetSupported, fromMicroUnits } = require('../assetConfig');
 
 // Initialize Algorand client
 const ALGOD_TOKEN = process.env.ALGOD_TOKEN || '';
