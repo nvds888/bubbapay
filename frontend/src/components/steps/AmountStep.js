@@ -121,22 +121,20 @@ let errorMessage = `Transaction requires ${algoAvailability.requiredForTransacti
   
   // Set max amount based on balance
   const setMaxAmount = () => {
-  if (assetBalance && parseFloat(assetBalance) > 0) {
-    setError('');
-    
-    const balance = parseFloat(assetBalance);
-    const decimals = selectedAssetInfo?.decimals || 6;
-    
-    const maxAmount = formatAssetAmount(balance, selectedAssetInfo);
-    
-    handleInputChange({
-      target: {
-        name: 'amount',
-        value: maxAmount
-      }
-    });
-  }
-};
+    if (assetBalance && parseFloat(assetBalance) > 0) {
+      setError('');
+      
+      const balance = parseFloat(assetBalance);
+      
+      // Use the raw balance, not the formatted amount
+      handleInputChange({
+        target: {
+          name: 'amount',
+          value: balance.toString()
+        }
+      });
+    }
+  };
 
   // Get status for balance/ALGO checks
 const getTransactionStatus = () => {

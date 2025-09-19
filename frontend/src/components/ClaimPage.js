@@ -254,7 +254,7 @@ function ClaimPage() {
           <div className="mb-6">
             {/* Main display section */}
             <h2 className="text-xl font-semibold text-gray-900 mb-3">
-            You've received {formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}! 🎉
+            You've received {escrowDetails?.amount && assetInfo ? formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo) : 'your crypto'}! 🎉
             </h2>
             <p className="text-gray-600">
               Connect your wallet to claim crypto
@@ -561,7 +561,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           {escrowDetails && (
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-3">
-              You've received {formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}! 🎉
+              You've received {escrowDetails?.amount && assetInfo ? formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo) : 'your crypto'}! 🎉
               </h2>
               <p className="text-gray-600">
                 Connect your wallet to claim crypto
@@ -737,7 +737,7 @@ if (claimStatus === 'insufficient-algo-for-optin') {
           
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Ready to Opt-in & Claim!</h2>
           <p className="text-gray-600 mb-2">
-          Get your <span className="text-blue-600 font-semibold">{formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}</span> in one txn
+          Get your <span className="text-blue-600 font-semibold">{escrowDetails?.amount && assetInfo ? formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo) : 'crypto'}</span> in one txn
           </p>
           
           {escrowDetails?.payRecipientFees && (
@@ -840,7 +840,7 @@ if (claimStatus === 'insufficient-algo-for-optin') {
             
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">Successfully Claimed! 🎉</h2>
 <p className="text-gray-600 mb-2">
-<span className="text-green-600 font-normal">{formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}</span> has been send to {formatAddress(accountAddress)}
+<span className="text-green-600 font-normal">{escrowDetails?.amount && assetInfo ? formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo) : 'Your crypto'}</span> has been sent to {formatAddress(accountAddress)}
 </p>
 {escrowDetails?.payRecipientFees && !isOptedIn && (
   <p className="text-gray-500 text-xs mb-2">

@@ -2,7 +2,7 @@
 
 /**
  * Format asset amount for display based on asset properties
- * Uses minAmount to determine precision (same logic as backend API)
+ * Uses minAmount to determine precision 
  * @param {number|string} amount - The amount to format
  * @param {object} assetInfo - Asset info with minAmount, decimals, symbol
  * @returns {string} Formatted amount
@@ -15,7 +15,7 @@ export function formatAssetAmount(amount, assetInfo) {
     
     const { minAmount = 0.01, decimals = 6 } = assetInfo;
     
-    // KEY LOGIC: Use minAmount to determine precision (same as backend)
+    // Use minAmount to determine precision 
     if (minAmount < 0.01) {
       // High precision assets (like goBTC) - show full precision without trailing zeros
       return numAmount.toFixed(decimals).replace(/\.?0+$/, '');
