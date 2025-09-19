@@ -543,7 +543,6 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
       const assetId = Number(asset.assetId) || Number(asset['asset-id']);
       if (assetId === targetAssetId) {
         const microBalance = safeToNumber(asset.amount);
-        const decimals = assetInfo?.decimals || 6;
         const rawBalance = fromMicroUnits(microBalance, targetAssetId);
 const minAmount = assetInfo?.minAmount || 0.01;
 const step = assetInfo?.step || 0.01;
@@ -607,7 +606,6 @@ router.get('/asset-balance/:address', async (req, res) => {
       const assetId = Number(asset.assetId) || Number(asset['asset-id']);
   if (assetId === targetAssetId) {
         const microBalance = safeToNumber(asset.amount);
-        const decimals = assetInfo?.decimals || 6;
         const rawBalance = fromMicroUnits(microBalance, targetAssetId);
 const minAmount = assetInfo?.minAmount || 0.01;
 const step = assetInfo?.step || 0.01;
