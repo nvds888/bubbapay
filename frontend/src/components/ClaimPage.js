@@ -13,24 +13,14 @@ import axios from 'axios';
 import { Buffer } from 'buffer';
 import algosdk from 'algosdk';
 import { formatAssetAmountWithSymbol } from '../utils/assetFormatter';
+import { getAssetInfo as apiGetAssetInfo } from '../services/api';
 
 const getAssetInfo = (assetId) => {
-  const assets = {
-    31566704: { id: 31566704, name: 'USDC', symbol: 'USDC', decimals: 6 },
-    760037151: { id: 760037151, name: 'xUSD', symbol: 'xUSD', decimals: 6 },
-    2494786278: { id: 2494786278, name: 'Monko', symbol: 'MONKO', decimals: 6 },
-    2726252423: { id: 2726252423, name: 'Alpha', symbol: 'ALPHA', decimals: 6 },
-    523683256: { id: 523683256, name: 'Akita', symbol: 'AKITA', decimals: 6},
-    2656692124: { id: 2656692124, name: 'BallSack', symbol: 'BALLSACK', decimals: 6},
-    386192725: { id: 386192725, name: 'goBTC', symbol: 'goBTC', decimals: 8},
-    3160000000: { id: 3160000000, name: 'Haystack', symbol: 'HAY', decimals: 6},
-    2582294183: { id: 2582294183, name: 'GONNA', symbol: 'GONNA', decimals: 6},
-    1284444444: { id: 1284444444, name: 'Orange', symbol: 'ORA', decimals: 8},
-    2582590415: { id: 2582590415, name: 'Meep', symbol: 'MEEP', decimals: 6},
-    2200000000: { id: 2200000000, name: 'Tinyman', symbol: 'TINY', decimals: 6},
-  };
-
-  return assets[parseInt(assetId)] || { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6 };
+  const asset = apiGetAssetInfo(assetId);
+  if (!asset) {
+    return { id: assetId, name: 'Unknown Asset', symbol: 'ASA', decimals: 6, minAmount: 0.01 };
+  }
+  return asset;
 };
 
 
