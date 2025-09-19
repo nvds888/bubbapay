@@ -24,12 +24,14 @@ function AmountStep({
   const [showAssetModal, setShowAssetModal] = useState(false);
   
   const getDisplayPrecision = (balance, assetMinAmount, assetDecimals) => {
-    // If asset has very small minimum (like goBTC), show full precision
+    const numBalance = parseFloat(balance);
+    
     if (assetMinAmount < 0.01) {
-      return parseFloat(balance).toFixed(assetDecimals).replace(/\.?0+$/, '');
+      // High precision assets - show meaningful decimals
+      return numBalance.toFixed(assetDecimals).replace(/\.?0+$/, '');
     } else {
-      // Standard assets: show 2 decimals
-      return parseFloat(balance).toFixed(2);
+      // Standard assets - show 2 decimals
+      return numBalance.toFixed(2);
     }
   };
 
