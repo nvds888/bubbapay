@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { getAssetInfo } from '../services/api';
+import { formatAssetAmountWithSymbol } from '../utils/assetFormatter';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -133,11 +134,6 @@ function SuccessPage() {
       });
   };
   
-  // Format USDC amount
-  const formatAmount = (amount) => {
-    if (!amount) return '0.00';
-    return parseFloat(amount).toFixed(2);
-  };
   
   // Add asset symbol helper function
   const getAssetSymbol = () => {
@@ -273,7 +269,7 @@ function SuccessPage() {
             {urlRevealed && (
               <div className="flex space-x-2">
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} ${getAssetSymbol()}! Claim it here: ${escrowDetails.claimUrl}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo) : ''}! Claim it here: ${escrowDetails.claimUrl}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
@@ -281,7 +277,7 @@ function SuccessPage() {
                   <span>WhatsApp</span>
                 </a>
                 <a
-                  href={`https://t.me/share/url?url=${encodeURIComponent(escrowDetails.claimUrl)}&text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAmount(escrowDetails.amount) : ''} ${getAssetSymbol()}! Claim it here:`)}`}
+                  href={`https://t.me/share/url?url=${encodeURIComponent(escrowDetails.claimUrl)}&text=${encodeURIComponent(`I've sent you ${escrowDetails ? formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo) : ''}! Claim it here:`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-secondary flex-1 py-2 text-sm font-medium flex items-center justify-center space-x-2"
@@ -301,7 +297,7 @@ function SuccessPage() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Amount:</span>
-              <span className="font-semibold text-gray-900">{formatAmount(escrowDetails.amount)} {getAssetSymbol()}</span>
+              <span className="font-semibold text-gray-900">{formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Date:</span>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AssetSelectionModal from '../AssetSelectionModal';
 import { getAssetMinAmount, getAssetStep } from '../../services/api';
+import { formatAssetAmount } from '../../utils/assetFormatter';
 
 function AmountStep({ 
   formData = {}, 
@@ -23,23 +24,6 @@ function AmountStep({
   const [showBalanceDetails, setShowBalanceDetails] = useState(false);
   const [showAssetModal, setShowAssetModal] = useState(false);
   
-  const getDisplayPrecision = (balance, assetMinAmount, assetDecimals) => {
-    const numBalance = parseFloat(balance);
-    
-    if (assetMinAmount < 0.01) {
-      // High precision assets - show meaningful decimals
-      return numBalance.toFixed(assetDecimals).replace(/\.?0+$/, '');
-    } else {
-      // Standard assets
-      // Show enough decimals to represent the true balance
-      if (numBalance >= 1) {
-        return numBalance.toFixed(2);
-      } else {
-        // For small balances
-        return numBalance.toFixed(6).replace(/\.?0+$/, '');
-      }
-    }
-  };
 
   // Quick amount options
   const quickAmounts = [10, 25, 50, 100];
@@ -74,7 +58,7 @@ if (parseFloat(safeFormData.amount) < assetMinAmount) {
     // Check if amount exceeds balance
     if (assetBalance !== null && parseFloat(safeFormData.amount) > parseFloat(assetBalance)) {
       const symbol = selectedAssetInfo?.symbol || 'tokens';
-      const maxBalance = getDisplayPrecision(assetBalance, assetMinAmount, selectedAssetInfo?.decimals || 6);
+      const maxBalance = formatAssetAmount(assetBalance, selectedAssetInfo);
 setError(`Amount exceeds your available balance of ${maxBalance} ${symbol}`);
       return;
     }
@@ -143,10 +127,7 @@ let errorMessage = `Transaction requires ${algoAvailability.requiredForTransacti
     const balance = parseFloat(assetBalance);
     const decimals = selectedAssetInfo?.decimals || 6;
     
-    // Use precision based on asset's minAmount
-    const maxAmount = assetMinAmount < 0.01 
-      ? balance.toFixed(decimals).replace(/\.?0+$/, '') // Full precision for small-value assets
-      : balance.toFixed(2); // 2 decimals for normal assets
+    const maxAmount = formatAssetAmount(balance, selectedAssetInfo);
     
     handleInputChange({
       target: {
@@ -292,7 +273,7 @@ if (assetBalance !== null) {
     onClick={setMaxAmount}
     className="btn-ghost text-xs mt-2 w-full"
   >
-    Use max balance ({getDisplayPrecision(assetBalance, assetMinAmount, selectedAssetInfo?.decimals || 6)} {selectedAssetInfo?.symbol || 'tokens'})
+    Use max balance ({formatAssetAmount(assetBalance, selectedAssetInfo)} {selectedAssetInfo?.symbol || 'tokens'})
   </button>
 )}
         </div>
@@ -344,7 +325,7 @@ if (assetBalance !== null) {
               <div className="flex justify-between">
                 <span className="text-gray-600">{selectedAssetInfo?.symbol || 'Asset'} Balance:</span>
                 <span className="font-medium">
-                {getDisplayPrecision(assetBalance, assetMinAmount, selectedAssetInfo?.decimals || 6)} {selectedAssetInfo?.symbol || 'tokens'}
+                {formatAssetAmount(assetBalance, selectedAssetInfo)} {selectedAssetInfo?.symbol || 'tokens'}
 </span>
               </div>
             )}

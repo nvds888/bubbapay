@@ -12,6 +12,7 @@ import { WalletUIProvider } from '@txnlab/use-wallet-ui-react';
 import axios from 'axios';
 import { Buffer } from 'buffer';
 import algosdk from 'algosdk';
+import { formatAssetAmountWithSymbol } from '../utils/assetFormatter';
 
 const getAssetInfo = (assetId) => {
   const assets = {
@@ -156,10 +157,6 @@ function ClaimPage() {
     setWalletEnabled(true);
   };
   
-  // Format USDC amount
-  const formatAmount = (amount) => {
-    return parseFloat(amount).toFixed(2);
-  };
   
   // Render content without wallet
   const renderContentWithoutWallet = (assetInfo) => {
@@ -206,7 +203,7 @@ function ClaimPage() {
           {escrowDetails && (
             
             <p className="text-gray-500 text-sm mb-4">
-              Amount: {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}
+              Amount: {formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}
             </p>
           )}
           <button
@@ -257,7 +254,7 @@ function ClaimPage() {
           <div className="mb-6">
             {/* Main display section */}
             <h2 className="text-xl font-semibold text-gray-900 mb-3">
-              You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
+            You've received {formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}! 🎉
             </h2>
             <p className="text-gray-600">
               Connect your wallet to claim crypto
@@ -543,8 +540,6 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
 };
   
   
-  // Format functions
-  const formatAmount = (amount) => parseFloat(amount).toFixed(2);
   const formatAddress = (address) => {
     if (!address) return '';
     return `${address.substring(0, 4)}...${address.substring(address.length - 3)}`;
@@ -566,7 +561,7 @@ finalSignedTxns[userTxnIndex] = Buffer.from(userSignedTxn).toString('base64');
           {escrowDetails && (
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-3">
-                You've received {formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}! 🎉
+              You've received {formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}! 🎉
               </h2>
               <p className="text-gray-600">
                 Connect your wallet to claim crypto
@@ -742,7 +737,7 @@ if (claimStatus === 'insufficient-algo-for-optin') {
           
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Ready to Opt-in & Claim!</h2>
           <p className="text-gray-600 mb-2">
-            Get your <span className="text-blue-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> in one txn
+          Get your <span className="text-blue-600 font-semibold">{formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}</span> in one txn
           </p>
           
           {escrowDetails?.payRecipientFees && (
@@ -799,7 +794,7 @@ if (claimStatus === 'insufficient-algo-for-optin') {
           
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Ready to Claim!</h2>
           <p className="text-gray-600 mb-6">
-            Claim your <span className="text-green-600 font-semibold">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> now
+          Claim your <span className="text-green-600 font-semibold">{formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}</span> now
           </p>
           
           <button
@@ -845,7 +840,7 @@ if (claimStatus === 'insufficient-algo-for-optin') {
             
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">Successfully Claimed! 🎉</h2>
 <p className="text-gray-600 mb-2">
-  <span className="text-green-600 font-normal">{formatAmount(escrowDetails.amount)} {assetInfo?.symbol || 'tokens'}</span> has been send to {formatAddress(accountAddress)}
+<span className="text-green-600 font-normal">{formatAssetAmountWithSymbol(escrowDetails.amount, assetInfo)}</span> has been send to {formatAddress(accountAddress)}
 </p>
 {escrowDetails?.payRecipientFees && !isOptedIn && (
   <p className="text-gray-500 text-xs mb-2">

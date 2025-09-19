@@ -4,6 +4,7 @@ import { WalletButton } from '@txnlab/use-wallet-ui-react';
 import axios from 'axios';
 import algosdk from 'algosdk';
 import { Buffer } from 'buffer';
+import { formatAssetAmountWithSymbol } from '../../utils/assetFormatter';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -58,22 +59,6 @@ function ConfirmStep({
     }
   }, [activeAddress, onWalletConnect, effectiveAccountAddress]);
   
-  // Format amount based on asset properties
-// NEW - same logic as your API
-const formatAmount = (amount, assetInfo) => {
-  if (!assetInfo || !amount) return '0';
-  
-  const numAmount = parseFloat(amount);
-  const { minAmount = 0.01, decimals = 6 } = assetInfo;
-  
-  if (minAmount < 0.01) {
-    // High precision assets: show full precision
-    return numAmount.toFixed(decimals).replace(/\.?0+$/, '');
-  } else {
-    // Standard assets: show 2 decimals  
-    return numAmount.toFixed(2);
-  }
-};
   
   // Format Algorand address
   const formatAddress = (address) => {
@@ -175,7 +160,7 @@ const formatAmount = (amount, assetInfo) => {
   <div className="space-y-3">
     <div className="flex justify-between items-center">
       <span className="text-gray-600">Amount:</span>
-      <span className="font-semibold text-lg">{formatAmount(formData.amount, selectedAssetInfo)} {selectedAssetInfo?.symbol || 'tokens'}</span>
+      <span className="font-semibold text-lg">{formatAssetAmountWithSymbol(formData.amount, selectedAssetInfo)}</span>
     </div>
     
     {formData.payRecipientFees && (

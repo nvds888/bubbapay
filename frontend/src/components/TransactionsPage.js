@@ -6,6 +6,8 @@ import algosdk from 'algosdk';
 import { Buffer } from 'buffer';
 import api, { getAssetInfo } from '../services/api';
 import { generateReferralLink, getReferralStats } from '../services/referralService';
+import { formatAssetAmountWithSymbol } from '../utils/assetFormatter';
+
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -84,10 +86,6 @@ function TransactionsPage() {
     }
   }, [activeAddress]);
   
-  // Format USDC amount
-  const formatAmount = (amount) => {
-    return parseFloat(amount).toFixed(2);
-  };
   
   // Format date
   const formatDate = (dateString) => {
@@ -613,9 +611,9 @@ function TransactionsPage() {
                       {formatDate(transaction.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-semibold text-gray-900">
-                        {formatAmount(transaction.amount)} {getAssetSymbol(transaction)}
-                      </span>
+                    <span className="text-sm font-semibold text-gray-900">
+  {formatAssetAmountWithSymbol(transaction.amount, getAssetInfo(transaction.assetId))}
+</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {transaction.recipientEmail || (
@@ -733,7 +731,7 @@ function TransactionsPage() {
       </svg>
     </div>
     <div>
-      <div className="text-gray-900 font-semibold">{formatAmount(transaction.amount)} {getAssetSymbol(transaction)}</div>
+    <div className="text-gray-900 font-semibold">{formatAssetAmountWithSymbol(transaction.amount, getAssetInfo(transaction.assetId))}</div>
       <div className="text-gray-500 text-sm">{formatDate(transaction.createdAt)}</div>
     </div>
   </div>
