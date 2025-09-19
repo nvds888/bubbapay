@@ -72,7 +72,7 @@ const SUPPORTED_ASSETS = {
       name: 'goBTC',
       unitName: 'goBTC',
       symbol: 'goBTC',
-      decimals: 6,
+      decimals: 8,
       isDefault: false,
       description: 'BTC on Algorand by Algomint',
       minAmount: 0.000001, // 1 satoshi equivalent
