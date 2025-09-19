@@ -143,12 +143,17 @@ const setMaxAmount = () => {
     // Calculate the maximum sendable amount based on asset step
     let maxAmount;
     if (assetMinAmount < 0.01) {
-      // High precision assets like goBTC -
+      // High precision assets like goBTC
       maxAmount = balance;
     } else {
       // Standard assets - round DOWN to the asset's step to ensure they have enough
-      // e.g., 211.008857 AKITA → can send max 211.00 AKITA
-      maxAmount = Math.floor(balance / assetStep) * assetStep;
+      // e.g., 111.008857 AKITA → can send max 111.00 AKITA
+      const steps = Math.floor(balance / assetStep);
+      maxAmount = steps * assetStep;
+      
+      // Fix floating point precision issues by rounding to step precision
+      const stepDecimals = assetStep.toString().split('.')[1]?.length || 0;
+      maxAmount = parseFloat(maxAmount.toFixed(stepDecimals));
     }
     
     handleInputChange({
