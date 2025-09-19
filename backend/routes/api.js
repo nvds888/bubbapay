@@ -545,12 +545,16 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
         const microBalance = safeToNumber(asset.amount);
         const decimals = assetInfo?.decimals || 6;
         const rawBalance = fromMicroUnits(microBalance, targetAssetId);
-// Show up to the asset's decimal places, but remove trailing zeros
-assetBalance = rawBalance.toLocaleString('en-US', {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: decimals,
-  useGrouping: false
-});
+// Use minAmount to determine precision
+const minAmount = assetInfo?.minAmount || 0.01;
+
+if (minAmount < 0.01) {
+  // Small-value assets: show full precision
+  assetBalance = rawBalance.toFixed(decimals).replace(/\.?0+$/, '');
+} else {
+  // Standard assets: show 2 decimals  
+  assetBalance = rawBalance.toFixed(2);
+}
         break;
       }
     }

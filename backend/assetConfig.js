@@ -75,8 +75,8 @@ const SUPPORTED_ASSETS = {
       decimals: 8,
       isDefault: false,
       description: 'BTC on Algorand by Algomint',
-      minAmount: 0.000001, // 1 satoshi equivalent
-  step: 0.000001
+      minAmount: 0.00000001, 
+      step: 0.00000001
     },
     3160000000: {
       id: 3160000000,

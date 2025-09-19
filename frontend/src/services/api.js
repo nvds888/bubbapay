@@ -207,10 +207,10 @@ const SUPPORTED_ASSETS = {
     id: 386192725,
     name: 'goBTC',
     symbol: 'goBTC',
-    decimals: 6,
+    decimals: 8,
     description: 'Send BTC on Algorand by Algomint',
-    minAmount: 0.000001,
-  step: 0.000001
+    minAmount: 0.00000001,
+    step: 0.00000001 
   },
   3160000000: {
     id: 3160000000,

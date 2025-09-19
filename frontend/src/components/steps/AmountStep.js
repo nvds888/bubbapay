@@ -23,6 +23,16 @@ function AmountStep({
   const [showBalanceDetails, setShowBalanceDetails] = useState(false);
   const [showAssetModal, setShowAssetModal] = useState(false);
   
+  const getDisplayPrecision = (balance, assetMinAmount, assetDecimals) => {
+    // If asset has very small minimum (like goBTC), show full precision
+    if (assetMinAmount < 0.01) {
+      return parseFloat(balance).toFixed(assetDecimals).replace(/\.?0+$/, '');
+    } else {
+      // Standard assets: show 2 decimals
+      return parseFloat(balance).toFixed(2);
+    }
+  };
+
   // Quick amount options
   const quickAmounts = [10, 25, 50, 100];
 
@@ -56,8 +66,8 @@ if (parseFloat(safeFormData.amount) < assetMinAmount) {
     // Check if amount exceeds balance
     if (assetBalance !== null && parseFloat(safeFormData.amount) > parseFloat(assetBalance)) {
       const symbol = selectedAssetInfo?.symbol || 'tokens';
-      const maxBalance = parseFloat(assetBalance).toFixed(2);
-      setError(`Amount exceeds your available balance of ${maxBalance} ${symbol}`);
+      const maxBalance = getDisplayPrecision(assetBalance, assetMinAmount, selectedAssetInfo?.decimals || 6);
+setError(`Amount exceeds your available balance of ${maxBalance} ${symbol}`);
       return;
     }
 
@@ -119,19 +129,25 @@ let errorMessage = `Transaction requires ${algoAvailability.requiredForTransacti
   
   // Set max amount based on balance
   const setMaxAmount = () => {
-    if (assetBalance && parseFloat(assetBalance) > 0) {
-      setError('');
-      
-      const balance = parseFloat(assetBalance);
-const maxAmount = (Math.floor(balance * 100) / 100).toFixed(2);
-      handleInputChange({
-        target: {
-          name: 'amount',
-          value: maxAmount
-        }
-      });
-    }
-  };
+  if (assetBalance && parseFloat(assetBalance) > 0) {
+    setError('');
+    
+    const balance = parseFloat(assetBalance);
+    const decimals = selectedAssetInfo?.decimals || 6;
+    
+    // Use precision based on asset's minAmount
+    const maxAmount = assetMinAmount < 0.01 
+      ? balance.toFixed(decimals).replace(/\.?0+$/, '') // Full precision for small-value assets
+      : balance.toFixed(2); // 2 decimals for normal assets
+    
+    handleInputChange({
+      target: {
+        name: 'amount',
+        value: maxAmount
+      }
+    });
+  }
+};
 
   // Get status for balance/ALGO checks
 const getTransactionStatus = () => {
@@ -239,7 +255,7 @@ if (assetBalance !== null) {
               className="w-full pl-7 pr-16 py-3 text-lg font-medium border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-colors"
               placeholder="0.00"
               min={assetMinAmount}
-              step={assetStep}
+              step={assetStep > 0.001 ? assetStep : "any"}
               max={assetBalance ? parseFloat(assetBalance).toString() : undefined}
             />
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -268,10 +284,7 @@ if (assetBalance !== null) {
     onClick={setMaxAmount}
     className="btn-ghost text-xs mt-2 w-full"
   >
-    Use max balance ({(() => {
-  const balance = parseFloat(assetBalance);
-  return balance < 0.01 ? parseFloat(balance.toFixed(6)).toString() : balance.toFixed(2);
-})()} {selectedAssetInfo?.symbol || 'tokens'})
+    Use max balance ({getDisplayPrecision(assetBalance, assetMinAmount, selectedAssetInfo?.decimals || 6)} {selectedAssetInfo?.symbol || 'tokens'})
   </button>
 )}
         </div>
@@ -323,10 +336,7 @@ if (assetBalance !== null) {
               <div className="flex justify-between">
                 <span className="text-gray-600">{selectedAssetInfo?.symbol || 'Asset'} Balance:</span>
                 <span className="font-medium">
-  {(() => {
-    const balance = parseFloat(assetBalance);
-    return balance < 0.01 ? parseFloat(balance.toFixed(6)).toString() : balance.toFixed(2);
-  })()} {selectedAssetInfo?.symbol || 'tokens'}
+                {getDisplayPrecision(assetBalance, assetMinAmount, selectedAssetInfo?.decimals || 6)} {selectedAssetInfo?.symbol || 'tokens'}
 </span>
               </div>
             )}
