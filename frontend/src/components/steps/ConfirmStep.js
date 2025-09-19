@@ -59,25 +59,19 @@ function ConfirmStep({
   }, [activeAddress, onWalletConnect, effectiveAccountAddress]);
   
   // Format amount based on asset properties
+// NEW - same logic as your API
 const formatAmount = (amount, assetInfo) => {
   if (!assetInfo || !amount) return '0';
   
   const numAmount = parseFloat(amount);
-  const { decimals = 6, minAmount = 0.01 } = assetInfo;
+  const { minAmount = 0.01, decimals = 6 } = assetInfo;
   
-  // For high precision assets (like goBTC with minAmount < 0.01)
   if (minAmount < 0.01) {
-    // Show full precision but remove trailing zeros
+    // High precision assets: show full precision
     return numAmount.toFixed(decimals).replace(/\.?0+$/, '');
   } else {
-    // Standard assets 
-    if (numAmount >= 1000) {
-      return numAmount.toFixed(2);
-    } else if (numAmount >= 1) {
-      return numAmount.toFixed(4);
-    } else {
-      return numAmount.toFixed(Math.min(6, decimals));
-    }
+    // Standard assets: show 2 decimals  
+    return numAmount.toFixed(2);
   }
 };
   
