@@ -545,21 +545,24 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
         const microBalance = safeToNumber(asset.amount);
         const decimals = assetInfo?.decimals || 6;
         const rawBalance = fromMicroUnits(microBalance, targetAssetId);
-// Use minAmount to determine precision
 const minAmount = assetInfo?.minAmount || 0.01;
+const step = assetInfo?.step || 0.01;
 
+// Calculate max sendable balance (not display balance)
+let maxSendable;
 if (minAmount < 0.01) {
-  // High precision assets: show full precision
-  assetBalance = rawBalance.toFixed(decimals).replace(/\.?0+$/, '');
+  // High precision assets - use full balance
+  maxSendable = rawBalance;
 } else {
-  // Standard assets
-  if (rawBalance >= 1) {
-    assetBalance = rawBalance.toFixed(2);
-  } else {
-    // For balances < 1, show more precision 
-    assetBalance = rawBalance.toFixed(6).replace(/\.?0+$/, '');
-  }
+  // Standard assets - calculate max sendable (rounded down to step)
+  maxSendable = Math.floor(rawBalance / step) * step;
+  
+  // Fix floating point precision
+  const stepDecimals = step.toString().split('.')[1]?.length || 0;
+  maxSendable = parseFloat(maxSendable.toFixed(stepDecimals));
 }
+
+assetBalance = maxSendable.toString();
         break;
       }
     }
@@ -606,12 +609,20 @@ router.get('/asset-balance/:address', async (req, res) => {
         const microBalance = safeToNumber(asset.amount);
         const decimals = assetInfo?.decimals || 6;
         const rawBalance = fromMicroUnits(microBalance, targetAssetId);
-// Show up to the asset's decimal places, but remove trailing zeros
-assetBalance = rawBalance.toLocaleString('en-US', {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: decimals,
-  useGrouping: false
-});
+const minAmount = assetInfo?.minAmount || 0.01;
+const step = assetInfo?.step || 0.01;
+
+// Calculate max sendable balance (same logic as first endpoint)
+let maxSendable;
+if (minAmount < 0.01) {
+  maxSendable = rawBalance;
+} else {
+  maxSendable = Math.floor(rawBalance / step) * step;
+  const stepDecimals = step.toString().split('.')[1]?.length || 0;
+  maxSendable = parseFloat(maxSendable.toFixed(stepDecimals));
+}
+
+assetBalance = maxSendable.toString();
         break;
       }
     }
