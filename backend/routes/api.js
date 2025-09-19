@@ -12,7 +12,7 @@ const {
 } = require('../utils/transactions');
 const algosdk = require('algosdk');
 const { checkAlgoAvailabilityForEscrow } = require('../utils/algoAvailabilityUtils');
-const { getDefaultAssetId, getAssetInfo, isAssetSupported } = require('../assetConfig');
+const { getDefaultAssetId, getAssetInfo, isAssetSupported, fromMicroUnits } = require('../assetConfig');
 
 // Initialize Algorand client
 const ALGOD_TOKEN = process.env.ALGOD_TOKEN || '';
@@ -514,6 +514,130 @@ router.get('/check-optin/:address', async (req, res) => {
   }
 });
 
+
+
+// Asset balance endpoint (with assetId)
+router.get('/asset-balance/:address/:assetId', async (req, res) => {
+  try {
+    const address = req.params.address;
+    
+    // Validate the Algorand address
+    try {
+      algosdk.decodeAddress(address);
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid Algorand address format' });
+    }
+    
+    // Query account info including assets
+    const accountInfo = await algodClient.accountInformation(address).do();
+    
+    // Find asset among user's assets
+    const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
+    const assetInfo = getAssetInfo(targetAssetId);
+
+    let assetBalance = '0.00';
+    const assets = accountInfo.assets || [];
+
+    for (const asset of assets) {
+      // Check both possible property names for asset ID
+      const assetId = Number(asset.assetId) || Number(asset['asset-id']);
+      if (assetId === targetAssetId) {
+        const microBalance = safeToNumber(asset.amount);
+        const rawBalance = fromMicroUnits(microBalance, targetAssetId);
+const minAmount = assetInfo?.minAmount || 0.01;
+const step = assetInfo?.step || 0.01;
+
+// Calculate max sendable balance (not display balance)
+let maxSendable;
+if (minAmount < 0.01) {
+  // High precision assets - use full balance
+  maxSendable = rawBalance;
+} else {
+  // Standard assets - calculate max sendable (rounded down to step)
+  maxSendable = Math.floor(rawBalance / step) * step;
+  
+  // Fix floating point precision
+  const stepDecimals = step.toString().split('.')[1]?.length || 0;
+  maxSendable = parseFloat(maxSendable.toFixed(stepDecimals));
+}
+
+assetBalance = maxSendable.toString();
+        break;
+      }
+    }
+    
+    // Return the balance
+    res.status(200).json({
+      address,
+      assetId: targetAssetId,
+      balance: assetBalance,
+      assetInfo: assetInfo
+    });
+    
+  } catch (error) {
+    console.error('Error fetching USDC balance:', error);
+    res.status(500).json({ error: 'Failed to fetch USDC balance', details: error.message });
+  }
+});
+
+// Asset balance endpoint (without assetId)
+router.get('/asset-balance/:address', async (req, res) => {
+  try {
+    const address = req.params.address;
+    
+    // Validate the Algorand address
+    try {
+      algosdk.decodeAddress(address);
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid Algorand address format' });
+    }
+    
+    // Query account info including assets
+    const accountInfo = await algodClient.accountInformation(address).do();
+    
+    // Find asset among user's assets
+    const targetAssetId = getDefaultAssetId();
+    const assetInfo = getAssetInfo(targetAssetId);
+
+    let assetBalance = '0.00';
+    const assets = accountInfo.assets || [];
+
+    for (const asset of assets) {
+      const assetId = Number(asset.assetId) || Number(asset['asset-id']);
+  if (assetId === targetAssetId) {
+        const microBalance = safeToNumber(asset.amount);
+        const rawBalance = fromMicroUnits(microBalance, targetAssetId);
+const minAmount = assetInfo?.minAmount || 0.01;
+const step = assetInfo?.step || 0.01;
+
+// Calculate max sendable balance (same logic as first endpoint)
+let maxSendable;
+if (minAmount < 0.01) {
+  maxSendable = rawBalance;
+} else {
+  maxSendable = Math.floor(rawBalance / step) * step;
+  const stepDecimals = step.toString().split('.')[1]?.length || 0;
+  maxSendable = parseFloat(maxSendable.toFixed(stepDecimals));
+}
+
+assetBalance = maxSendable.toString();
+        break;
+      }
+    }
+    
+    // Return the balance
+    res.status(200).json({
+      address,
+      assetId: targetAssetId,
+      balance: assetBalance,
+      assetInfo: assetInfo
+    });
+    
+  } catch (error) {
+    console.error('Error fetching USDC balance:', error);
+    res.status(500).json({ error: 'Failed to fetch USDC balance', details: error.message });
+  }
+});
 
 // Check ALGO availability
 router.get('/algo-availability/:address', async (req, res) => {
