@@ -53,9 +53,6 @@ function SendFlow() {
   const [selectedAssetId, setSelectedAssetId] = useState(getDefaultAssetId());
   const [selectedAssetInfo, setSelectedAssetInfo] = useState(() => getAssetInfo(getDefaultAssetId()));
   
-  // Add after other useState declarations
-const [diagnosticInfo, setDiagnosticInfo] = useState(null);
-
   // Update internal account address when prop changes
   useEffect(() => {
     setInternalAccountAddress(activeAddress);
@@ -413,102 +410,34 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
     }
   };
   
+  // Handle group transaction signing (funding, opt-in, etc.)
   const handleSignGroupTransactions = async () => {
-    // Initialize diagnostic object
-    const diagnostics = {
-      flow: ['Starting handleSignGroupTransactions'],
-      errorDetails: null,
-      tempKeyBefore: !!txnData?.tempAccount?.privateKey,
-      tempKeyAfter: null,
-      apiTiming: null,
-    };
-  
-    // Console group for debugging
-    if (process.env.NODE_ENV === 'development') {
-      console.group('🔄 handleSignGroupTransactions START');
-      console.log('Entry state:', {
-        hasTxnData: !!txnData,
-        appId: txnData?.appId,
-        effectiveAccountAddress,
-        tempKeyExists: diagnostics.tempKeyBefore,
-        groupTxnsCount: txnData?.groupTransactions?.length,
-        recoveryMode,
-      });
-    }
-  
     if (!txnData || !txnData.groupTransactions || !effectiveAccountAddress) {
-      diagnostics.flow.push('Failed: Missing transaction data or wallet address');
-      diagnostics.errorDetails = { message: 'Missing transaction data or wallet address' };
-      setDiagnosticInfo(diagnostics); // Set diagnostics on early return
       setError('Group transaction data or wallet not available');
-      if (process.env.NODE_ENV === 'development') {
-        console.log('❌ Early return: Missing data');
-        console.log('Diagnostics set:', diagnostics);
-        console.groupEnd();
-      }
       return;
     }
-  
-    diagnostics.flow.push('Starting transaction signing');
+    
     setIsLoading(true);
     setError(null);
-    setDiagnosticInfo(diagnostics); // Update diagnostics early
-  
+    
     try {
-      // Decode transactions
-      diagnostics.flow.push('Decoding group transactions');
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📝 Decoding group transactions...');
-        console.log('Group txns base64 preview:', txnData.groupTransactions.slice(0, 2).map(t => `${t.substring(0, 20)}...`));
-      }
-  
+      // Convert base64 transactions to transaction objects
       const txnGroup = [];
       for (const base64Txn of txnData.groupTransactions) {
         const txnBytes = new Uint8Array(Buffer.from(base64Txn, 'base64'));
         const txn = algosdk.decodeUnsignedTransaction(txnBytes);
         txnGroup.push(txn);
       }
-      diagnostics.flow.push(`Decoded ${txnGroup.length} transactions`);
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Decoded', txnGroup.length, 'transactions for signing');
-        console.log('🔑 Temp key before signing:', diagnostics.tempKeyBefore);
-      }
-  
-      // Sign transactions
-      diagnostics.flow.push('Signing transactions in wallet');
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✍️ Starting signing process');
-      }
+      
+      // Sign 
       const signedTxns = await signTransactions(txnGroup);
-      diagnostics.flow.push('Successfully signed transactions');
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✍️ Signing completed successfully');
-        console.log('Signed txns count:', signedTxns.length);
-        console.log('🔑 Temp key after signing:', !!txnData?.tempAccount?.privateKey);
-      }
-  
-      // Convert to base64
-      const signedTxnsBase64 = signedTxns.map(txn => Buffer.from(txn).toString('base64'));
-      diagnostics.flow.push('Prepared signed transactions for submission');
-      setDiagnosticInfo(diagnostics); // Update diagnostics before API call
-  
-      // API submission
-      diagnostics.flow.push('Submitting transactions to API');
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📤 Preparing API submission to /submit-group-transactions');
-        console.log('Payload preview:', {
-          appId: txnData.appId,
-          tempAccountPreview: txnData.tempAccount ? `${txnData.tempAccount.address.substring(0, 8)}...` : null,
-          amount: txnData.amount,
-          signedTxnsCount: signedTxnsBase64.length,
-          escrowId: txnData.escrowId || currentEscrow?._id,
-        });
-      }
-      const startTime = Date.now();
-      if (process.env.NODE_ENV === 'development') {
-        console.log('⏱️ API call start time:', new Date().toISOString());
-      }
-  
+      
+      // Convert signed transactions to base64 array
+      const signedTxnsBase64 = signedTxns.map(
+        txn => Buffer.from(txn).toString('base64')
+      );
+      
+      // Submit the signed transactions
       const response = await axios.post(`${API_URL}/submit-group-transactions`, {
         signedTxns: signedTxnsBase64,
         appId: txnData.appId,
@@ -518,86 +447,32 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
         senderAddress: effectiveAccountAddress,
         payRecipientFees: formData.payRecipientFees,
         assetId: selectedAssetId,
-        escrowId: txnData.escrowId || (currentEscrow?._id),
+        escrowId: txnData.escrowId || (currentEscrow?._id) 
       });
-  
-      const endTime = Date.now();
-      diagnostics.flow.push(`API response received in ${endTime - startTime}ms`);
-      diagnostics.apiTiming = `${endTime - startTime}ms`;
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📥 API response received in', endTime - startTime, 'ms');
-        console.log('Response data:', {
-          escrowId: response.data.escrowId,
-          claimUrl: response.data.claimUrl ? `${response.data.claimUrl.substring(0, 30)}...` : 'MISSING',
-          isShareable: response.data.isShareable,
-        });
-      }
-  
-      // Generate claim URL
+      
+      // Generate claim URL to match the backend version
       const generatedClaimUrl = `${window.location.origin}/claim?app=${txnData.appId}#key=${txnData.tempAccount.privateKey}`;
-      diagnostics.flow.push('Generated claim URL');
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🆔 Generated claim URL preview:', generatedClaimUrl.substring(0, 50) + '...');
-      }
+      
       const validClaimUrl = generatedClaimUrl.includes('undefined') ? null : generatedClaimUrl;
-      diagnostics.tempKeyAfter = !!txnData?.tempAccount?.privateKey;
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔑 Temp key used for URL gen (exists?):', diagnostics.tempKeyAfter);
-        console.log('🚀 About to navigate to /success with state:', {
-          claimUrl: validClaimUrl ? 'PRESENT' : 'MISSING/INVALID',
-          hasClaimError: !validClaimUrl,
-          isShareable: response.data.isShareable,
-        });
-      }
-  
-      diagnostics.flow.push('Navigating to success page');
-      setDiagnosticInfo(diagnostics); // Update diagnostics before navigation
-      // Navigate to success page
-      navigate(`/success/${response.data.escrowId}`, {
-        state: {
-          claimUrl: response.data.claimUrl || validClaimUrl,
-          isShareable: response.data.isShareable,
-          hasClaimError: !validClaimUrl,
-        },
-      });
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Navigation triggered');
-      }
+
+      // Navigate to success page with both the escrow ID and claim URL
+      navigate(`/success/${response.data.escrowId}`, { 
+  state: { 
+    claimUrl: response.data.claimUrl || validClaimUrl,
+    isShareable: response.data.isShareable,
+    hasClaimError: !validClaimUrl 
+  } 
+});
     } catch (error) {
-      diagnostics.tempKeyAfter = !!txnData?.tempAccount?.privateKey;
-      diagnostics.errorDetails = {
-        message: error.message,
-        code: error.code,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        responseData: error.response?.data,
-        requestUrl: error.config?.url,
-        isNetworkError: error.message?.includes('Network') || error.message?.includes('network') || error.code === 'ECONNABORTED',
-      };
-      diagnostics.flow.push(`Error occurred: ${error.message}`);
-      setDiagnosticInfo(diagnostics); // Ensure diagnostics are set on error
-  
-      if (process.env.NODE_ENV === 'development') {
-        console.error('💥 ERROR in handleSignGroupTransactions');
-        console.error('Full error object:', error);
-        console.error('Error breakdown:', diagnostics.errorDetails);
-        console.error('Stack trace:', error.stack);
-        console.log('🔑 Temp key after error:', diagnostics.tempKeyAfter);
-        console.log('Diagnostics set:', diagnostics);
-        if (!recoveryMode) {
-          console.log('🗑️ Clearing txnData due to non-recovery mode');
-          setTxnData(null);
-        } else {
-          console.log('🔄 Keeping txnData in recovery mode');
-        }
-      }
-  
+      console.error('Error signing group transactions:', error);
       setError(error.response?.data?.error || error.message || 'Failed to sign or submit group transactions');
+      
+      // Don't clear transaction data in recovery mode
+      if (!recoveryMode) {
+        setTxnData(null);
+      }
     } finally {
       setIsLoading(false);
-      if (process.env.NODE_ENV === 'development') {
-        console.groupEnd();
-      }
     }
   };
   
@@ -662,7 +537,6 @@ const [diagnosticInfo, setDiagnosticInfo] = useState(null);
             selectedAssetInfo={selectedAssetInfo}
             recoveryMode={recoveryMode} 
             currentEscrow={currentEscrow} 
-            diagnosticInfo={diagnosticInfo}
           />
         );
       default:

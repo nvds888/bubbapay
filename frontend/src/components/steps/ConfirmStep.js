@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWallet } from '@txnlab/use-wallet-react';
 import { WalletButton } from '@txnlab/use-wallet-ui-react';
 import axios from 'axios';
@@ -22,10 +23,9 @@ function ConfirmStep({
   onWalletConnect = null,
   selectedAssetInfo, 
   recoveryMode = false, 
-  currentEscrow = null,
-  diagnosticInfo   
+  currentEscrow = null   
 }) {
-  // Initialize stage based on recovery mode
+  const navigate = useNavigate();
   const [stage, setStage] = useState(recoveryMode ? 'app-created' : 'initial'); 
   const [subStage, setSubStage] = useState('idle'); // idle, signing-1, submitting-1, signing-2, submitting-2, completed
   const [showTransactionDetails, setShowTransactionDetails] = useState(false);
@@ -341,52 +341,19 @@ function ConfirmStep({
 )}
       
       {/* Error display */}
-{error && (
-  <div className="card card-compact status-error mb-4">
-    <div className="flex items-start space-x-2">
-      <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-      </svg>
-      <div className="text-sm">
-        <div className="font-medium text-red-800">Transaction Error</div>
-        <div className="text-red-700 mt-1">
-          <p>{error}</p>
-          <div className="mt-2 p-2 bg-red-50 rounded text-xs">
-            <p className="font-medium">Diagnostic Info (Temporary):</p>
-            {diagnosticInfo ? (
-              <ul className="list-disc pl-4">
-                <li><strong>Flow:</strong> {diagnosticInfo.flow.join(' → ')}</li>
-                <li><strong>Temp Key Available:</strong> 
-                  Before: {diagnosticInfo.tempKeyBefore ? 'Yes' : 'No'}, 
-                  After: {diagnosticInfo.tempKeyAfter ? 'Yes' : 'No'}
-                </li>
-                {diagnosticInfo.errorDetails && (
-                  <>
-                    <li><strong>Error:</strong> {diagnosticInfo.errorDetails.message}</li>
-                    {diagnosticInfo.errorDetails.status && (
-                      <li><strong>Status:</strong> {diagnosticInfo.errorDetails.status} {diagnosticInfo.errorDetails.statusText}</li>
-                    )}
-                    {diagnosticInfo.errorDetails.code && (
-                      <li><strong>Error Code:</strong> {diagnosticInfo.errorDetails.code}</li>
-                    )}
-                    <li><strong>API Timing:</strong> {diagnosticInfo.apiTiming || 'N/A'}</li>
-                    <li><strong>Request URL:</strong> {diagnosticInfo.errorDetails.requestUrl || 'N/A'}</li>
-                    {diagnosticInfo.errorDetails.responseData?.error && (
-                      <li><strong>Server Error:</strong> {diagnosticInfo.errorDetails.responseData.error}</li>
-                    )}
-                  </>
-                )}
-              </ul>
-            ) : (
-              <p>No diagnostic info available. Contact support with error: "{error}"</p>
-            )}
-            <p className="mt-2">This info is for debugging and will be removed. Contact support with details.</p>
+      {error && (
+        <div className="card card-compact status-error mb-4">
+          <div className="flex items-start space-x-2">
+            <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div className="text-sm">
+              <div className="font-medium text-red-800">Transaction Error</div>
+              <div className="text-red-700 mt-1">{error}</div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
       
       {/* In the render section, add cleanup option when in recovery mode with unfunded app */}
       {recoveryMode && currentEscrow && !currentEscrow.funded && (
@@ -495,42 +462,87 @@ function ConfirmStep({
   </>
 )}
 
-          {/* Second transaction (funding) - DON'T show if in unfunded recovery mode */}
-{(stage === 'app-created' || recoveryMode) && !(recoveryMode && currentEscrow && !currentEscrow.funded) && ( // ADD condition
-  <button
-    type="button"
-    onClick={async () => {
-      setSubStage('signing-2');
-      try {
-        await handleSignGroupTransactions();
-        setSubStage('submitting-2');
-        setTimeout(() => setSubStage('completed'), 500);
-      } catch (error) {
-        setSubStage('idle');
-        throw error;
-      }
-    }}
-    disabled={isLoading}
-    className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
-  >
-              <span className="flex items-center justify-center space-x-2">
-                {isLoading ? (
-                  <>
-                    <div className="w-4 h-4 spinner"></div>
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                    <span>{recoveryMode ? 'Fund Escrow' : 'Sign (2/2)'}</span>
-                  </>
-                )}
-              </span>
-            </button>
+{/* Second transaction (funding) - DON'T show if in unfunded recovery mode */}
+{(stage === 'app-created' || recoveryMode) && !(recoveryMode && currentEscrow && !currentEscrow.funded) && (
+  <>
+    {error && (error.includes('Network') || error.includes('network') || error.includes('timeout')) ? (
+      <button
+        type="button"
+        onClick={() => {
+          // Generate fallback claimUrl if temp key exists (matches normal flow)
+          const generatedClaimUrl = txnData?.tempAccount?.privateKey
+            ? `${window.location.origin}/claim?app=${txnData.appId}#key=${txnData.tempAccount.privateKey}`
+            : null;
+          const validClaimUrl = generatedClaimUrl?.includes('undefined') ? null : generatedClaimUrl;
+
+          // Navigate with same state structure as normal flow
+          navigate(`/success/${currentEscrow?._id || txnData?.escrowId}`, {
+            state: {
+              claimUrl: validClaimUrl,
+              isShareable: formData.isShareableLink,
+              hasClaimError: !validClaimUrl,
+            },
+          });
+
+          setSubStage('submitting-2');
+          setTimeout(() => setSubStage('completed'), 500); // UI feedback
+        }}
+        disabled={isLoading}
+        className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
+      >
+        <span className="flex items-center justify-center space-x-2">
+          {isLoading ? (
+            <>
+              <div className="w-4 h-4 spinner"></div>
+              <span>Processing...</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>{recoveryMode ? 'Fund Escrow' : 'Continue'}</span>
+            </>
           )}
-        </div>
+        </span>
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={async () => {
+          setSubStage('signing-2');
+          try {
+            await handleSignGroupTransactions();
+            setSubStage('submitting-2');
+            setTimeout(() => setSubStage('completed'), 500);
+          } catch (error) {
+            setSubStage('idle');
+            throw error;
+          }
+        }}
+        disabled={isLoading}
+        className="btn-primary w-full py-3 px-4 font-medium disabled:opacity-70"
+      >
+        <span className="flex items-center justify-center space-x-2">
+          {isLoading ? (
+            <>
+              <div className="w-4 h-4 spinner"></div>
+              <span>Processing...</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              <span>{recoveryMode ? 'Fund Escrow' : 'Sign (2/2)'}</span>
+            </>
+          )}
+        </span>
+      </button>
+    )}
+  </>
+)}
+</div>
       )}
     </div>
   );
