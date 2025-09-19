@@ -30,8 +30,14 @@ function AmountStep({
       // High precision assets - show meaningful decimals
       return numBalance.toFixed(assetDecimals).replace(/\.?0+$/, '');
     } else {
-      // Standard assets - show 2 decimals
-      return numBalance.toFixed(2);
+      // Standard assets
+      // Show enough decimals to represent the true balance
+      if (numBalance >= 1) {
+        return numBalance.toFixed(2);
+      } else {
+        // For small balances
+        return numBalance.toFixed(6).replace(/\.?0+$/, '');
+      }
     }
   };
 
