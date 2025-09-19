@@ -309,11 +309,36 @@ router.post('/submit-cleanup-unfunded', async (req, res) => {
   try {
     const { signedTxn, appId, escrowId } = req.body;
     
-    // Submit transaction
-    const { txid } = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+    let txid;
+    
+    try {
+      // Submit transaction
+      const submitResponse = await algodClient.sendRawTransaction(Buffer.from(signedTxn, 'base64')).do();
+      txid = submitResponse.txid;
+    } catch (submitError) {
+      console.error('Error submitting cleanup:', submitError);
+      
+      // Handle "application does not exist" case 
+      if (submitError.message && submitError.message.includes('only ClearState is supported for an application') && 
+          submitError.message.includes('that does not exist')) {
+        console.log('App already deleted, extracting txId...');
+        
+        const txIdMatch = submitError.message.match(/transaction ([A-Z0-9]+):/);
+        if (txIdMatch && txIdMatch[1]) {
+          txid = txIdMatch[1];
+          console.log(`Extracted txId from error: ${txid}`);
+        } else {
+          throw new Error('Could not extract transaction ID from cleanup error');
+        }
+      } else {
+        throw submitError;
+      }
+    }
+    
+    // Wait for confirmation (always do this)
     await algosdk.waitForConfirmation(algodClient, txid, 5);
     
-    // Mark as cleaned up instead of deleting the record
+    // Update database (always do this after confirmation)
     const db = req.app.locals.db;
     const escrowCollection = db.collection('escrows');
     
