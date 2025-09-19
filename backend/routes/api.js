@@ -549,11 +549,16 @@ router.get('/asset-balance/:address/:assetId', async (req, res) => {
 const minAmount = assetInfo?.minAmount || 0.01;
 
 if (minAmount < 0.01) {
-  // Small-value assets: show full precision
+  // High precision assets: show full precision
   assetBalance = rawBalance.toFixed(decimals).replace(/\.?0+$/, '');
 } else {
-  // Standard assets: show 2 decimals  
-  assetBalance = rawBalance.toFixed(2);
+  // Standard assets
+  if (rawBalance >= 1) {
+    assetBalance = rawBalance.toFixed(2);
+  } else {
+    // For balances < 1, show more precision 
+    assetBalance = rawBalance.toFixed(6).replace(/\.?0+$/, '');
+  }
 }
         break;
       }
