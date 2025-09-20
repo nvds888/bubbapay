@@ -286,6 +286,17 @@ export const submitCleanupTransaction = async (data) => {
   }
 };
 
+// Get minimum amount for an asset
+export const getAssetMinAmount = (assetId) => {
+  const asset = getAssetInfo(assetId);
+  return asset ? asset.minAmount : 0.01;
+};
+
+// Get step amount for an asset
+export const getAssetStep = (assetId) => {
+  const asset = getAssetInfo(assetId);
+  return asset ? asset.step : 0.01;
+};
 
 
 export default {
@@ -307,4 +318,6 @@ export default {
   fetchAssetBalance,
   generateCleanupTransaction,
   submitCleanupTransaction,
+  getAssetMinAmount,
+  getAssetStep,
 };
