@@ -171,17 +171,6 @@ const SUPPORTED_ASSETS = {
     return microAmount / Math.pow(10, decimals);
   }
 
-  // Get minimum amount for an asset
-function getAssetMinAmount(assetId) {
-  const asset = getAssetInfo(assetId);
-  return asset ? asset.minAmount : 0.01;
-}
-
-// Get step amount for an asset
-function getAssetStep(assetId) {
-  const asset = getAssetInfo(assetId);
-  return asset ? asset.step : 0.01;
-}
   
   module.exports = {
     SUPPORTED_ASSETS,
@@ -191,8 +180,6 @@ function getAssetStep(assetId) {
     getSupportedAssets,
     toMicroUnits,
     fromMicroUnits,
-    getAssetMinAmount,
-    getAssetStep,
     // For fallback
     USDC_ASSET_ID: getDefaultAssetId()
   };

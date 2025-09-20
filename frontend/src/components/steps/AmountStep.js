@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import AssetSelectionModal from '../AssetSelectionModal';
-import { getAssetMinAmount, getAssetStep } from '../../services/api';
-import { formatAssetAmount } from '../../utils/assetFormatter';
+import { 
+  formatAssetAmount, 
+  formatAssetAmountWithSymbol,
+  validateAmount,
+  canSendAnyAmount,
+  getMaxSendableAmount
+} from '../../utils/assetFormatter';
 
 function AmountStep({ 
   formData = {}, 
@@ -28,9 +33,6 @@ function AmountStep({
   // Quick amount options
   const quickAmounts = [10, 25, 50, 100];
 
-  // Get asset-specific minimum and step values
-const assetMinAmount = getAssetMinAmount(selectedAssetId);
-const assetStep = getAssetStep(selectedAssetId);
 
   const safeFormData = {
     amount: '',
@@ -42,42 +44,12 @@ const assetStep = getAssetStep(selectedAssetId);
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Validate amount
-    if (!safeFormData.amount || parseFloat(safeFormData.amount) <= 0) {
-      setError('Please enter a valid amount greater than 0');
-      return;
-    }
-
-    // Check minimum amount
-if (parseFloat(safeFormData.amount) < assetMinAmount) {
-  const symbol = selectedAssetInfo?.symbol || 'tokens';
-  setError(`Minimum amount is ${assetMinAmount} ${symbol}`);
+    const validation = validateAmount(safeFormData.amount, assetBalance, selectedAssetInfo);
+if (!validation.isValid) {
+  setError(validation.error);
   return;
 }
-    
-    // Check if amount exceeds sendable balance
-if (assetBalance !== null && parseFloat(safeFormData.amount) > parseFloat(assetBalance)) {
-  const balance = parseFloat(assetBalance);
-  const symbol = selectedAssetInfo?.symbol || 'tokens';
-  
-  // Calculate max sendable amount
-  let maxSendable;
-  if (assetMinAmount < 0.01) {
-    // High precision assets 
-    maxSendable = balance;
-  } else {
-    // Standard assets - round down to asset step
-    maxSendable = Math.floor(balance / assetStep) * assetStep;
-  }
-  
-  if (parseFloat(safeFormData.amount) > maxSendable) {
-    const formattedMax = formatAssetAmount(maxSendable.toString(), selectedAssetInfo);
-    setError(`Amount exceeds your sendable balance of ${formattedMax} ${symbol}`);
-    return;
-  }
-}
 
-    
     // Check if wallet is connected
     if (!isConnected) {
       setError('Please connect your wallet first');
@@ -133,37 +105,19 @@ let errorMessage = `Transaction requires ${algoAvailability.requiredForTransacti
     });
   };
   
-  // Set max amount based on balance
-const setMaxAmount = () => {
-  if (assetBalance && parseFloat(assetBalance) > 0) {
-    setError('');
-    
-    const balance = parseFloat(assetBalance);
-    
-    // Calculate the maximum sendable amount based on asset step
-    let maxAmount;
-    if (assetMinAmount < 0.01) {
-      // High precision assets like goBTC
-      maxAmount = balance;
-    } else {
-      // Standard assets - round DOWN to the asset's step to ensure they have enough
-      // e.g., 111.008857 AKITA → can send max 111.00 AKITA
-      const steps = Math.floor(balance / assetStep);
-      maxAmount = steps * assetStep;
+  const setMaxAmount = () => {
+    if (assetBalance && parseFloat(assetBalance) > 0) {
+      setError('');
+      const maxAmount = getMaxSendableAmount(assetBalance);
       
-      // Fix floating point precision issues by rounding to step precision
-      const stepDecimals = assetStep.toString().split('.')[1]?.length || 0;
-      maxAmount = parseFloat(maxAmount.toFixed(stepDecimals));
+      handleInputChange({
+        target: {
+          name: 'amount',
+          value: maxAmount
+        }
+      });
     }
-    
-    handleInputChange({
-      target: {
-        name: 'amount',
-        value: maxAmount.toString()
-      }
-    });
-  }
-};
+  };
 
   // Get status for balance/ALGO checks
 const getTransactionStatus = () => {
@@ -181,37 +135,22 @@ return { type: 'error', message: `Need ~${displayShortage.toFixed(2)} more ALGO`
     return { type: 'warning', message: `Need ${algoAvailability.groupTxnShortfall} more ALGO after app creation` };
   }
   
-// Check if entered amount exceeds sendable balance
-if (assetBalance !== null && safeFormData.amount) {
-  const balance = parseFloat(assetBalance);
-  const enteredAmount = parseFloat(safeFormData.amount);
-  
-  // Calculate max sendable amount 
-  let maxSendable;
-  if (assetMinAmount < 0.01) {
-    maxSendable = balance;
-  } else {
-    maxSendable = Math.floor(balance / assetStep) * assetStep;
+  if (assetBalance !== null && safeFormData.amount) {
+    const validation = validateAmount(safeFormData.amount, assetBalance, selectedAssetInfo);
+    if (!validation.isValid) {
+      return { 
+        type: 'warning', 
+        message: validation.error
+      };
+    }
   }
-  
-  if (enteredAmount > maxSendable) {
-    return { 
-      type: 'warning', 
-      message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
-    };
-  }
-}
 
-// Check minimum balance requirement (0.01 minimum)
-if (assetBalance !== null) {
-  const balance = parseFloat(assetBalance);
-  
-  if (balance < assetMinAmount) {
-    return { 
-      type: 'warning', 
-      message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
-    };
-  }
+  // Check if user can send any amount at all
+if (assetBalance !== null && !canSendAnyAmount(assetBalance, selectedAssetInfo)) {
+  return { 
+    type: 'warning', 
+    message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
+  };
 }
   
   if (algoAvailability && algoAvailability.hasSufficientAlgo && algoAvailability.canCompleteGroupTxns) {
@@ -272,16 +211,16 @@ if (assetBalance !== null) {
               <span className="text-gray-400">$</span>
             </div>
             <input
-              type="number"
-              name="amount"
-              value={safeFormData.amount || ''}
-              onChange={handleInputChange}
-              className="w-full pl-7 pr-16 py-3 text-lg font-medium border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-colors"
-              placeholder="0.00"
-              min={assetMinAmount}
-              step={assetStep > 0.001 ? assetStep : "any"}
-              max={assetBalance ? parseFloat(assetBalance).toString() : undefined}
-            />
+  type="number"
+  name="amount"
+  value={safeFormData.amount || ''}
+  onChange={handleInputChange}
+  className="..."
+  placeholder="0.00"
+  min={selectedAssetInfo?.minAmount || 0.01}
+  step={selectedAssetInfo?.step || 0.01}
+  max={assetBalance ? parseFloat(assetBalance).toString() : undefined}
+/>
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
               <span className="text-gray-500 text-sm font-medium">{selectedAssetInfo?.symbol || 'Asset'}</span>
             </div>
@@ -294,7 +233,7 @@ if (assetBalance !== null) {
                 key={amount}
                 type="button"
                 onClick={() => setQuickAmount(amount)}
-                disabled={assetBalance !== null && (parseFloat(assetBalance) === 0 || amount > parseFloat(assetBalance))}
+                disabled={!canSendAnyAmount(assetBalance, selectedAssetInfo) || amount > parseFloat(assetBalance)}
                 className="btn-secondary compact-button disabled:opacity-50"
               >
                 ${amount}
@@ -302,13 +241,13 @@ if (assetBalance !== null) {
             ))}
           </div>
           
-          {assetBalance !== null && parseFloat(assetBalance) >= assetMinAmount && (
+          {assetBalance !== null && canSendAnyAmount(assetBalance, selectedAssetInfo) && (
   <button 
     type="button"
     onClick={setMaxAmount}
     className="btn-ghost text-xs mt-2 w-full"
   >
-    Use max balance ({formatAssetAmount(assetBalance, selectedAssetInfo)} {selectedAssetInfo?.symbol || 'tokens'})
+    Use max balance ({formatAssetAmountWithSymbol(assetBalance, selectedAssetInfo)})
   </button>
 )}
         </div>
