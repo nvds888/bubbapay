@@ -12,7 +12,7 @@ const {
 } = require('../utils/transactions');
 const algosdk = require('algosdk');
 const { checkAlgoAvailabilityForEscrow } = require('../utils/algoAvailabilityUtils');
-const { getDefaultAssetId, getAssetInfo, isAssetSupported, fromMicroUnits } = require('../assetConfig');
+const { getDefaultAssetId, getAssetInfo, isAssetSupported } = require('../assetConfig');
 
 // Initialize Algorand client
 const ALGOD_TOKEN = process.env.ALGOD_TOKEN || '';
@@ -30,16 +30,6 @@ function safeJson(obj) {
 }
 
 
-function safeToNumber(value) {
-  if (typeof value === 'bigint') {
-    return Number(value);
-  }
-  if (typeof value === 'number') {
-    return value;
-  }
-  return value; 
-}
-
 // Helper function to hash private keys securely
 function hashPrivateKey(privateKey, appId) {
   // Create a hash using the private key and app ID for uniqueness
@@ -48,20 +38,6 @@ function hashPrivateKey(privateKey, appId) {
   return hash.digest('hex');
 }
 
-// Helper function to validate claim parameters
-function validateClaimParameters(tempPrivateKey, appId, claimHash) {
-  if (!tempPrivateKey || !appId) {
-    return { valid: false, error: 'Missing required parameters' };
-  }
-  
-  // Recreate the hash and compare
-  const expectedHash = hashPrivateKey(tempPrivateKey, appId);
-  if (expectedHash !== claimHash) {
-    return { valid: false, error: 'Invalid claim parameters' };
-  }
-  
-  return { valid: true };
-}
 
 // Generate unsigned transactions for app creation
 router.post('/generate-transactions', async (req, res) => {
@@ -395,195 +371,6 @@ router.post('/submit-group-transactions', async (req, res) => {
 });
 
 
-
-router.get('/check-optin/:address/:assetId', async (req, res) => {
-  try {
-    const accountInfo = await algodClient.accountInformation(req.params.address).do();
-    const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
-    
-    const hasOptedIn = accountInfo.assets?.some(asset => {
-      return Number(asset['asset-id']) === targetAssetId || Number(asset.assetId) === targetAssetId;
-    }) || false;
-    
-    // ALGO affordability check for opt-in (only if not opted in)
-    let canAffordOptIn = true;
-    let algoBalance = "0.000000";
-    let requiredForOptIn = "0.111000";
-    let shortfall = "0.000000";
-    
-    if (!hasOptedIn) {
-      const currentBalance = safeToNumber(accountInfo.amount); 
-      const currentMinBalance = safeToNumber(accountInfo.minBalance || 0);
-      const currentAvailableBalance = Math.max(0, currentBalance - currentMinBalance);
-      
-      // Opt-in transaction requires:
-// - 1000 microAlgo transaction fee (0.001 ALGO)  
-// - 100000 microAlgo MBR increase (0.1 ALGO)
-// - 10000 microAlgo buffer (0.01 ALGO)
-const optInFee = 1000; // microAlgo
-const mbrIncrease = 100000; // microAlgo 
-const bufferAmount = 10000; // microAlgo
-      const requiredAmount = optInFee + mbrIncrease + bufferAmount;
-      
-      canAffordOptIn = currentAvailableBalance >= requiredAmount;
-      algoBalance = (currentAvailableBalance / 1000000).toFixed(6);
-      requiredForOptIn = (requiredAmount / 1000000).toFixed(6);
-      shortfall = canAffordOptIn ? "0.000000" : ((requiredAmount - currentAvailableBalance) / 1000000).toFixed(6);
-    }
-    
-    res.status(200).json({ 
-      hasOptedIn, 
-      assetId: targetAssetId,
-      // ALGO info (onlywhen hasOptedIn = false)
-      canAffordOptIn,
-      availableAlgoBalance: algoBalance,
-      requiredForOptIn,
-      algoShortfall: shortfall
-    });
-  } catch (error) {
-    console.error('Error checking opt-in status:', error);
-    res.status(500).json({ error: 'Failed to check opt-in status', details: error.message });
-  }
-});
-
-// Check if user has opted in (without assetId)
-router.get('/check-optin/:address', async (req, res) => {
-  try {
-    const accountInfo = await algodClient.accountInformation(req.params.address).do();
-    const targetAssetId = getDefaultAssetId();
-    const hasOptedIn = accountInfo.assets?.some(asset => asset['asset-id'] === targetAssetId) || false;
-    res.status(200).json({ hasOptedIn, assetId: targetAssetId });
-  } catch (error) {
-    console.error('Error checking opt-in status:', error);
-    res.status(500).json({ error: 'Failed to check opt-in status', details: error.message });
-  }
-});
-
-
-
-// Asset balance endpoint (with assetId)
-router.get('/asset-balance/:address/:assetId', async (req, res) => {
-  try {
-    const address = req.params.address;
-    
-    // Validate the Algorand address
-    try {
-      algosdk.decodeAddress(address);
-    } catch (error) {
-      return res.status(400).json({ error: 'Invalid Algorand address format' });
-    }
-    
-    // Query account info including assets
-    const accountInfo = await algodClient.accountInformation(address).do();
-    
-    // Find asset among user's assets
-    const targetAssetId = parseInt(req.params.assetId) || getDefaultAssetId();
-    const assetInfo = getAssetInfo(targetAssetId);
-
-    let assetBalance = '0.00';
-    const assets = accountInfo.assets || [];
-
-    for (const asset of assets) {
-      // Check both possible property names for asset ID
-      const assetId = Number(asset.assetId) || Number(asset['asset-id']);
-      if (assetId === targetAssetId) {
-        const microBalance = safeToNumber(asset.amount);
-        const rawBalance = fromMicroUnits(microBalance, targetAssetId);
-const minAmount = assetInfo?.minAmount || 0.01;
-const step = assetInfo?.step || 0.01;
-
-// Calculate max sendable balance (not display balance)
-let maxSendable;
-if (minAmount < 0.01) {
-  // High precision assets - use full balance
-  maxSendable = rawBalance;
-} else {
-  // Standard assets - calculate max sendable (rounded down to step)
-  maxSendable = Math.floor(rawBalance / step) * step;
-  
-  // Fix floating point precision
-  const stepDecimals = step.toString().split('.')[1]?.length || 0;
-  maxSendable = parseFloat(maxSendable.toFixed(stepDecimals));
-}
-
-assetBalance = maxSendable.toString();
-        break;
-      }
-    }
-    
-    // Return the balance
-    res.status(200).json({
-      address,
-      assetId: targetAssetId,
-      balance: assetBalance,
-      assetInfo: assetInfo
-    });
-    
-  } catch (error) {
-    console.error('Error fetching USDC balance:', error);
-    res.status(500).json({ error: 'Failed to fetch USDC balance', details: error.message });
-  }
-});
-
-// Asset balance endpoint (without assetId)
-router.get('/asset-balance/:address', async (req, res) => {
-  try {
-    const address = req.params.address;
-    
-    // Validate the Algorand address
-    try {
-      algosdk.decodeAddress(address);
-    } catch (error) {
-      return res.status(400).json({ error: 'Invalid Algorand address format' });
-    }
-    
-    // Query account info including assets
-    const accountInfo = await algodClient.accountInformation(address).do();
-    
-    // Find asset among user's assets
-    const targetAssetId = getDefaultAssetId();
-    const assetInfo = getAssetInfo(targetAssetId);
-
-    let assetBalance = '0.00';
-    const assets = accountInfo.assets || [];
-
-    for (const asset of assets) {
-      const assetId = Number(asset.assetId) || Number(asset['asset-id']);
-  if (assetId === targetAssetId) {
-        const microBalance = safeToNumber(asset.amount);
-        const rawBalance = fromMicroUnits(microBalance, targetAssetId);
-const minAmount = assetInfo?.minAmount || 0.01;
-const step = assetInfo?.step || 0.01;
-
-// Calculate max sendable balance (same logic as first endpoint)
-let maxSendable;
-if (minAmount < 0.01) {
-  maxSendable = rawBalance;
-} else {
-  maxSendable = Math.floor(rawBalance / step) * step;
-  const stepDecimals = step.toString().split('.')[1]?.length || 0;
-  maxSendable = parseFloat(maxSendable.toFixed(stepDecimals));
-}
-
-assetBalance = maxSendable.toString();
-        break;
-      }
-    }
-    
-    // Return the balance
-    res.status(200).json({
-      address,
-      assetId: targetAssetId,
-      balance: assetBalance,
-      assetInfo: assetInfo
-    });
-    
-  } catch (error) {
-    console.error('Error fetching USDC balance:', error);
-    res.status(500).json({ error: 'Failed to fetch USDC balance', details: error.message });
-  }
-});
-
 // Check ALGO availability
 router.get('/algo-availability/:address', async (req, res) => {
   try {
@@ -780,17 +567,6 @@ router.post('/submit-reclaim', async (req, res) => {
   }
 });
 
-// Get supported assets
-router.get('/supported-assets', async (req, res) => {
-  try {
-    const { getSupportedAssets } = require('../assetConfig');
-    const assets = getSupportedAssets();
-    res.status(200).json({ assets });
-  } catch (error) {
-    console.error('Error fetching supported assets:', error);
-    res.status(500).json({ error: 'Failed to fetch supported assets' });
-  }
-});
 
 
 module.exports = router;
