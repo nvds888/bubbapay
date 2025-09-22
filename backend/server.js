@@ -214,7 +214,7 @@ const startServer = async () => {
     app.use('/api/submit-reclaim', transactionRateLimit);
     app.use('/api/cleanup-contract', transactionRateLimit);
     app.use('/api/submit-cleanup', transactionRateLimit);
-    app.use('api/escrows', escrowRoutes);
+    app.use('/api/escrows', escrowRoutes);
     
     // Claim endpoints
     app.use('/api/generate-optimized-claim', claimRateLimit);
