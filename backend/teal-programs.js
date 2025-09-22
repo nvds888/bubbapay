@@ -69,13 +69,13 @@ return
 
 // Handle app calls
 handle_app_call:
-// CHANGE: Check OnComplete action FIRST before trying to access ApplicationArgs
+// Check OnComplete action FIRST before trying to access ApplicationArgs
 txn OnCompletion
 int 5 // DeleteApplication
 ==
 bnz handle_delete
 
-// CHANGE: Check if we have application arguments before accessing them
+// Check if we have application arguments before accessing them
 txn NumAppArgs
 int 0
 >

@@ -49,7 +49,7 @@ function TransactionsPage() {
       setError(null);
       
       try {
-        const response = await axios.get(`${API_URL}/user-escrows/${activeAddress}`);
+        const response = await axios.get(`${API_URL}/escrows/user/${activeAddress}`);
         setTransactions(response.data);
         setIsLoading(false);
       } catch (error) {

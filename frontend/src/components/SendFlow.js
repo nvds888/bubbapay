@@ -67,7 +67,7 @@ function SendFlow() {
       if (!effectiveAccountAddress || mcpSessionData) return;
       
       try {
-        const response = await axios.get(`${API_URL}/incomplete-escrows/${effectiveAccountAddress}`);
+        const response = await axios.get(`${API_URL}/escrows/incomplete/${effectiveAccountAddress}`);
         const incompleteEscrows = response.data;
         
         if (incompleteEscrows.length > 0) {
@@ -385,7 +385,7 @@ function SendFlow() {
     if (!effectiveAccountAddress) return;
     
     try {
-      const response = await axios.get(`${API_URL}/incomplete-escrows/${effectiveAccountAddress}`);
+      const response = await axios.get(`${API_URL}/escrows/incomplete/${effectiveAccountAddress}`);
       const unfundedApps = response.data.filter(escrow => 
         escrow.status === 'APP_CREATED_AWAITING_FUNDING'
       );

@@ -54,7 +54,7 @@ function SuccessPage() {
       setError(null);
       
       try {
-        const response = await axios.get(`${API_URL}/escrow/${escrowId}`);
+        const response = await axios.get(`${API_URL}/escrows/${escrowId}`);
         // If we have a claim URL from navigation state, use that instead of what's in the database
         const escrowData = {
           ...response.data,

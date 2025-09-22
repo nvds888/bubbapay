@@ -54,7 +54,7 @@ export const submitGroupTransactions = async (data) => {
 // Escrow APIs
 export const getEscrowDetails = async (id) => {
   try {
-    const response = await apiClient.get(`/escrow/${id}`);
+    const response = await apiClient.get(`/escrows/${id}`);
     return response.data;
   } catch (error) {
     throw error.response?.data?.error || 'Failed to fetch escrow details';
@@ -63,7 +63,7 @@ export const getEscrowDetails = async (id) => {
 
 export const getUserEscrows = async (address) => {
   try {
-    const response = await apiClient.get(`/user-escrows/${address}`);
+    const response = await apiClient.get(`/escrows/user/${address}`);
     return response.data;
   } catch (error) {
     throw error.response?.data?.error || 'Failed to fetch user escrows';

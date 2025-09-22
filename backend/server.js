@@ -11,6 +11,7 @@ const cleanupRoutes = require('./routes/cleanup');
 const assetsRoutes = require('./routes/assets');
 const mcpRoutes = require('./routes/mcpapi');
 const referralRoutes = require('./routes/referrals');
+const escrowRoutes = require('./routes/escrows');
 
 const fs = require('fs');
 const path = require('path');
@@ -213,6 +214,7 @@ const startServer = async () => {
     app.use('/api/submit-reclaim', transactionRateLimit);
     app.use('/api/cleanup-contract', transactionRateLimit);
     app.use('/api/submit-cleanup', transactionRateLimit);
+    app.use('api/escrows', escrowRoutes);
     
     // Claim endpoints
     app.use('/api/generate-optimized-claim', claimRateLimit);

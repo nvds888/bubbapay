@@ -89,7 +89,7 @@ function ClaimPage() {
       setError(null);
       
       try {
-        const response = await axios.get(`${API_URL}/escrow/${appId}`);
+        const response = await axios.get(`${API_URL}/escrows/${appId}`);
         setEscrowDetails(response.data);
         
         // Set asset info based on escrow data

@@ -55,26 +55,12 @@ if (parseFloat(safeFormData.amount) < assetMinAmount) {
   return;
 }
     
-    // Check if amount exceeds sendable balance
+// Simple balance check - backend already calculated sendable amount
 if (assetBalance !== null && parseFloat(safeFormData.amount) > parseFloat(assetBalance)) {
-  const balance = parseFloat(assetBalance);
   const symbol = selectedAssetInfo?.symbol || 'tokens';
-  
-  // Calculate max sendable amount
-  let maxSendable;
-  if (assetMinAmount < 0.01) {
-    // High precision assets 
-    maxSendable = balance;
-  } else {
-    // Standard assets - round down to asset step
-    maxSendable = Math.floor(balance / assetStep) * assetStep;
-  }
-  
-  if (parseFloat(safeFormData.amount) > maxSendable) {
-    const formattedMax = formatAssetAmount(maxSendable.toString(), selectedAssetInfo);
-    setError(`Amount exceeds your sendable balance of ${formattedMax} ${symbol}`);
-    return;
-  }
+  const formattedBalance = formatAssetAmount(assetBalance, selectedAssetInfo);
+  setError(`Amount exceeds your sendable balance of ${formattedBalance} ${symbol}`);
+  return;
 }
 
     
@@ -133,37 +119,17 @@ let errorMessage = `Transaction requires ${algoAvailability.requiredForTransacti
     });
   };
   
-  // Set max amount based on balance
-const setMaxAmount = () => {
-  if (assetBalance && parseFloat(assetBalance) > 0) {
-    setError('');
-    
-    const balance = parseFloat(assetBalance);
-    
-    // Calculate the maximum sendable amount based on asset step
-    let maxAmount;
-    if (assetMinAmount < 0.01) {
-      // High precision assets like goBTC
-      maxAmount = balance;
-    } else {
-      // Standard assets - round DOWN to the asset's step to ensure they have enough
-      // e.g., 111.008857 AKITA → can send max 111.00 AKITA
-      const steps = Math.floor(balance / assetStep);
-      maxAmount = steps * assetStep;
-      
-      // Fix floating point precision issues by rounding to step precision
-      const stepDecimals = assetStep.toString().split('.')[1]?.length || 0;
-      maxAmount = parseFloat(maxAmount.toFixed(stepDecimals));
+  const setMaxAmount = () => {
+    if (assetBalance && parseFloat(assetBalance) > 0) {
+      setError('');
+      handleInputChange({
+        target: {
+          name: 'amount',
+          value: assetBalance // Backend already provides correct sendable amount
+        }
+      });
     }
-    
-    handleInputChange({
-      target: {
-        name: 'amount',
-        value: maxAmount.toString()
-      }
-    });
-  }
-};
+  };
 
   // Get status for balance/ALGO checks
 const getTransactionStatus = () => {
@@ -181,20 +147,12 @@ return { type: 'error', message: `Need ~${displayShortage.toFixed(2)} more ALGO`
     return { type: 'warning', message: `Need ${algoAvailability.groupTxnShortfall} more ALGO after app creation` };
   }
   
-// Check if entered amount exceeds sendable balance
+// Simplified balance checks - backend already handles the complexity
 if (assetBalance !== null && safeFormData.amount) {
-  const balance = parseFloat(assetBalance);
   const enteredAmount = parseFloat(safeFormData.amount);
+  const availableBalance = parseFloat(assetBalance);
   
-  // Calculate max sendable amount 
-  let maxSendable;
-  if (assetMinAmount < 0.01) {
-    maxSendable = balance;
-  } else {
-    maxSendable = Math.floor(balance / assetStep) * assetStep;
-  }
-  
-  if (enteredAmount > maxSendable) {
+  if (enteredAmount > availableBalance) {
     return { 
       type: 'warning', 
       message: `Insufficient ${selectedAssetInfo?.symbol || 'asset'} balance` 
