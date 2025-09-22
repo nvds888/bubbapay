@@ -36,7 +36,7 @@ function DocumentationPage() {
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                   <div>
-                    <h4 className="text-red-800 font-semibold text-lg mb-2">⚠️ IMPORTANT SECURITY NOTICE</h4>
+                    <h4 className="text-red-800 font-semibold text-lg mb-2">⚠️ SECURITY NOTICE</h4>
                     <p className="text-red-700 mb-3">
                       <strong>BubbaPay is experimental software provided "as is" without warranty.</strong> We take no responsibility for lost, stolen, or inaccessible funds. Use at your own risk with amounts you can afford to lose.
                     </p>
@@ -195,28 +195,6 @@ function DocumentationPage() {
                 When someone claims a transfer created by your referral, you receive 0.105 ALGO (the full platform fee) instantly to your wallet. This happens automatically during the claim transaction - no manual collection needed.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
-                <div className="card card-compact bg-gray-50">
-                  <h4 className="text-green-700 font-semibold mb-2">For Referrers</h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    <li>• Earn 0.105 ALGO per claim from referrals</li>
-                    <li>• Payments are instant and automatic</li>
-                    <li>• Track earnings in your transactions page</li>
-                    <li>• No limits on number of referrals</li>
-                  </ul>
-                </div>
-                
-                <div className="card card-compact bg-gray-50">
-                  <h4 className="text-blue-700 font-semibold mb-2">For Referred Users</h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    <li>• No extra costs or fees</li>
-                    <li>• Same great BubbaPay experience</li>
-                    <li>• Support someone who introduced you</li>
-                    <li>• Can create their own referral links</li>
-                  </ul>
-                </div>
-              </div>
-
               <h3 className="text-xl font-medium text-purple-700 mb-3 mt-6">Getting Started</h3>
               <p>
                 Visit your transactions page to generate your unique referral link. Share it with friends, on social media, or anywhere you want to introduce people to BubbaPay. Once someone connects their wallet through your link, they're permanently linked as your referral.
@@ -291,7 +269,7 @@ function DocumentationPage() {
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Supported Assets</h2>
               <p>
-                Currently supporting USDC, xUSD, MONKO, and ALPHA. Each asset transfer works the same way - secure, fast, and user-friendly.
+                Currently supporting USDC, xUSD, MONKO, ALPHA, and more. If you have a request, please let us know.
               </p>
             </section>
 
