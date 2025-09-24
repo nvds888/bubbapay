@@ -1,24 +1,24 @@
-# 💰 BubbaPay
+# BubbaPay
 
-> ** Currently in Development** 
+> ** In BETA** 
 
 Send Algorand Standard Assets (ASAs) instantly via shareable URLs. Fast, secure, and user-friendly payments that make crypto transfers as easy as sharing a link.
 
-## 🌟 What is BubbaPay?
+## What is BubbaPay?
 
-BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs through shareable links. Recipients don't need to know complex wallet addresses or have deep crypto knowledge - they just click a link to claim their funds.
+BubbaPay simplifies crypto payments on Algorand by allowing users to send ASAs through shareable links. Recipients don't need to know complex wallet addresses or have deep crypto knowledge - they just click a link to claim their funds. If the sender chooses to cover recipient fees, the recipient can claim without having a balance to opt-in.
 
-## ✨ Key Features
+## Key Features
 
-- 🔒 **Secure Escrow System** - App hold funds safely until recipients claim them
-- 📧 **Link Sharing** - Send payments via shareable links
+- 🔒 **Secure Escrow System** - Unique one-time-use App hold funds safely until recipients claim them
+- 📧 **Link Sharing** - Send payments via shareable links - share directly via WhatsApp or Telegram
 - 🛡️ **Temporary Account Security** - Unique authorization credentials for each transfer
 - 🔐 **Hash-Based Protection** - Database breaches cannot expose claim credentials
 - 💸 **Fee Coverage** - Optional transaction fee coverage for seamless recipient experience
 - 🔄 **Fund Recovery** - Senders can always reclaim unclaimed transfers after timeout
-- ⚡ **Instant Claims** - Recipients claim funds immediately upon verification
+- ⚡ **Instant Claims** - Recipients claim funds immediately after wallet connect
 
-## 🏗️ Architecture
+## Architecture
 
 ### Frontend
 - **Framework**: React.js
@@ -33,20 +33,20 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 - **Platform**: Algorand blockchain
 - **SDK**: Algosdk 3.4.0 JavaScript
 - **Smart Contracts**: Custom TEAL programs for escrow functionality
-- **Specific blockchain scripts backend**: atomic-deploy-email-escrow.js, claimandclean.js, teal-programs.js, api.js
 
 
-## 📖 Usage
+## Usage
 
 1. **Create Transfer**: Connect your Algorand wallet and specify the ASA and amount
 2. **Generate Link**: System creates a secure, shareable URL
 3. **Share**: Send the link via email, messaging, or social media
 4. **Claim**: Recipient clicks link and claims funds to their wallet
 5. **Complete**: Funds are transferred instantly from escrow
+6. **Clean**: Clean up the App to free up reserve balance and get back some algo
 
-## 🛠️ Development Status
+## Development Status
 
-### ✅ Completed
+### Completed
 - Escrow smart contract functionality
 - Frontend wallet integration
 - Link generation and sharing system
@@ -57,14 +57,13 @@ BubbaPay simplifies cryptocurrency payments by allowing users to send ASAs throu
 - Better organisation of backend routes and utilities
 - Proper instructions for edge case scenarios (warnings and instructions)
 
-### 🚧 In Progress
+###  In Progress
 - 
 
-### 📋 Upcoming
-- Batch payment functionality
-- REST APIs to use functionality by external apps
+### Upcoming
+- More ASAs
 
-## 🐛 Known Issues
+## Known Issues
 
 - MCP scripts are outdated 
 - Email send code is outdated 
