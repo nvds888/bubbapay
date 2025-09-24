@@ -21,7 +21,7 @@ function createApprovalProgram(senderAddress, authorizedClaimerAddress, assetId 
   return `#pragma version 8
 // Global state variables
 byte "creator"           // Creator address
-byte "amount"           // USDC amount to transfer
+byte "amount"           // amount to transfer
 byte "claimed"          // Whether funds have been claimed (0 or 1)
 byte "authorized_claimer" // Address that can claim funds
 
@@ -93,19 +93,19 @@ byte "claim_fee_coverage"
 ==
 bnz handle_claim_fee_coverage
 
-// Check if claiming USDC
+// Check if claiming 
 txn ApplicationArgs 0
 byte "claim"
 ==
 bnz handle_claim
 
-// Check if setting USDC amount
+// Check if setting ASA amount
 txn ApplicationArgs 0
 byte "set_amount"
 ==
 bnz handle_set_amount
 
-// Check if creator is reclaiming USDC
+// Check if creator is reclaiming ASA
 txn ApplicationArgs 0
 byte "reclaim"
 ==
@@ -242,7 +242,7 @@ itxn_submit
 int 1
 return
 
-// Handle USDC claim - SIMPLIFIED VERSION
+// Handle ASA claim 
 handle_claim:
 // Verify the claim hasn't already been processed
 byte "claimed"
@@ -274,7 +274,7 @@ byte "amount"
 app_global_get
 store 0 // Store amount in register 0
 
-// Begin inner transaction to transfer USDC
+// Begin inner transaction to transfer ASA
 itxn_begin
 int 4 // AssetTransfer
 itxn_field TypeEnum
@@ -293,7 +293,7 @@ itxn_submit
 int 1
 return
 
-// Set USDC amount (called after depositing USDC)
+// Set ASA amount (called after depositing ASA)
 handle_set_amount:
 // Only creator can set amount
 txn Sender
@@ -341,7 +341,7 @@ app_global_put
 
 // Get asset balance
 global CurrentApplicationAddress
-txn Assets 0 // USDC asset ID
+txn Assets 0 // ASA asset ID
 asset_holding_get AssetBalance
 store 1 // Store asset balance flag in register 1
 store 0 // Store asset balance in register 0
@@ -354,7 +354,7 @@ int 0
 &&
 bz reject_no_balance
 
-// Begin inner transaction to transfer all USDC back to creator
+// Begin inner transaction to transfer all ASA back to creator
 itxn_begin
 int 4 // AssetTransfer
 itxn_field TypeEnum
